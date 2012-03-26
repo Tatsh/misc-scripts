@@ -1,0 +1,10 @@
+#!/usr/bin/php
+<?php
+if (isset($argv[1])) {
+  $line = trim($argv[1]);
+  print ucwords($line."\n");
+  exit;
+}
+
+$line = trim(fgets(STDIN));
+print ucwords($line."\n");

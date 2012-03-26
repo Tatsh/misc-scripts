@@ -1,0 +1,5 @@
+#!/bin/sh
+
+[ "$1" == "" ] && printf "Usage: $0 FILE\n\nMissing cover file name\n" && exit 1
+
+eyeD3 --remove-comments --add-image="$1":FRONT_COVER $2

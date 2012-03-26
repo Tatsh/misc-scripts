@@ -1,0 +1,89 @@
+#!/usr/bin/python
+
+import glob
+import subprocess
+import sys
+
+# Debugging
+# skip = True
+norartest = True
+skip = False
+r = 0
+
+# Check if SFV file is present and check SFV if so
+p = "*.sfv"
+if glob.glob(p):
+	print 'Found SFV file, verifying...'
+	if skip != True:
+		r = subprocess.call(['cksfv', '-f', glob.glob(p)[0]])
+	if r != 0:
+		print 'Check errors above.'
+		sys.exit(1)
+else:
+	print 'Could not find any SFV files. Skipping CRC32 verification.'
+
+# Test extraction before burning
+p = "*.rar"
+if glob.glob(p):
+	print 'Testing extraction...'
+	f = glob.glob(p)
+	q = "*.part01.rar"
+	if glob.glob(q):
+		f = glob.glob(q)
+	s = "*.part001.rar"
+	if glob.glob(s):
+		f = glob.glob(s)
+	if skip != True and norartest != True:
+		r = subprocess.call(['unrar', 't', f[0]])
+	if r != 0:
+		print 'Check errors above.'
+		sys.exit(1)
+else:
+	print 'No RARs found.'
+	sys.exit(1)
+
+# Find if there is an ISO within the RAR f
+work = list(['', ''])
+r = subprocess.Popen(['unrar', 'l', f[0]], stdout=subprocess.PIPE)
+for line in r.stdout:
+	if 'iso' in line or 'ISO' in line:
+		work = line.split()
+		break
+r.wait()
+
+# Handle spaces in ISO file name
+fn = work[0]
+if 'iso' not in fn and 'ISO' not in fn:
+	fn = ''
+	i = 0
+	for iso in work:
+		if 'iso' in iso or 'ISO' in iso:
+			fn += iso
+			i += 1
+			break
+		fn += iso + ' '
+		i += 1
+
+if 'iso' not in fn and 'ISO' not in fn:
+	print 'No ISO file found.'
+	sys.exit(1)
+
+if 'iso' in work[0] or 'ISO' in work[0]:
+	i = 1
+
+tsize = work[i]
+
+print 'Command:'
+print '  unrar p -inul ' + f[0] + ' ' + '"' + fn + '"' + ' | wodim speed=8 driveropts=burnfree tsize=' + tsize + ' -dao -eject -v -'
+
+if len(fn) > 0:
+	r1 = subprocess.Popen(['unrar', 'p', '-inul', f[0], fn], stdout=subprocess.PIPE, close_fds=True)
+	r2 = subprocess.Popen(['wodim', 'speed=8', 'driveropts=burnfree', 'tsize=' + tsize, '-dao', '-eject', '-v', '-'], stdin=r1.stdout, close_fds=True)
+
+r1.stdout.close()
+r2.wait()
+r1.wait()
+
+#if r1 != 0:
+#	print 'An error occurred. Check above.'
+#	sys.exit(1)
