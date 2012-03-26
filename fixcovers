@@ -1,0 +1,29 @@
+#!/bin/sh
+
+if [ "$1" = "" ]; then
+	echo "Usage: $0 DIR"
+	echo "where DIR has subdirectories of albums"
+	exit 1
+fi
+
+if [ ! -d "$1" ]; then
+	echo "$1 is not a directory."
+	exit 1
+fi
+
+for i in "$1"/*; do
+	if [ ! -d "$i" ]; then
+		echo "Skipping $i"
+		continue
+	fi
+
+	cd "$i"
+	COVER=`find -iname '*-01-*.jpg' -or -iname '*-01-*.png' | sort | head -n 1`
+	if [ "$COVER" != "" ]; then
+		for j in *.mp3; do
+			eyeD3 --itunes --remove-images --remove-comments "$j"
+			eyeD3 --itunes --add-image="$COVER:FRONT_COVER" "$j"
+		done
+	fi
+	cd ..
+done
