@@ -1,0 +1,22 @@
+#!/bin/sh
+
+IMAGE="$1"
+MOUNTPOINT="$2"
+FS="${3:-ext3}"
+
+if [ $IMAGE = "" ]; then
+	echo "Usage: $0 IMAGE MOUNTPOINT [FILESYSTEM]"
+	exit 1
+fi
+
+if [ $(mount | grep "on $MOUNTPOINT" | wc -l) -ge 1 ]; then
+	echo "Warning: $MOUNTPOINT is already in use. Umounting..."
+	umount-chroot "$MOUNTPOINT"
+fi
+
+mount -t "$FS" "$IMAGE" "$MOUNTPOINT" -o rw
+mount -t proc none "$MOUNTPOINT/proc"
+
+for i in dev dev/pts dev/shm sys tmp usr/portage; do
+	mount -o bind "/$i" "$MOUNTPOINT/$i"
+done

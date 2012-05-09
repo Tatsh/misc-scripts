@@ -1,0 +1,20 @@
+#!/bin/sh
+
+MOUNTPOINT="$1"
+
+if [ "$MOUNTPOINT" = "" ]; then
+	echo "Usage: $0 MOUNTPOINT"
+	exit 1
+fi
+
+if [[ $(mount | grep "on $MOUNTPOINT" | wc -l) -eq 0 ]]; then
+	echo "$MOUNTPOINT is not mounted. Quitting..."
+	exit 1
+fi
+
+for i in dev dev/pts dev/shm sys tmp usr/portage; do
+	umount -l "$MOUNTPOINT/$i" 2> /dev/null
+done
+
+umount -l "$MOUNTPOINT/proc" 2> /dev/null
+umount -l "$MOUNTPOINT" 2> /dev/null
