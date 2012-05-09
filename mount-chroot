@@ -4,7 +4,7 @@ IMAGE="$1"
 MOUNTPOINT="$2"
 FS="${3:-ext3}"
 
-if [ $IMAGE = "" ]; then
+if [ "$IMAGE" = "" ]; then
 	echo "Usage: $0 IMAGE MOUNTPOINT [FILESYSTEM]"
 	exit 1
 fi
