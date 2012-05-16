@@ -17,6 +17,16 @@ fi
 mount -t "$FS" "$IMAGE" "$MOUNTPOINT" -o rw
 mount -t proc none "$MOUNTPOINT/proc"
 
-for i in dev dev/pts dev/shm sys tmp usr/portage; do
+for i in dev sys tmp; do
 	mount -o bind "/$i" "$MOUNTPOINT/$i"
 done
+
+for i in pts shm; do
+	if [[ -d "/dev/$i" ]]; then
+		mount -o bind "/dev/$i" "$MOUNTPOINT/dev/$i"
+	fi
+done
+
+if [[ -d /usr/portage ]]; then
+	mount -o bind /usr/portage "$MOUNTPOINT/usr/portage"
+fi

@@ -12,9 +12,20 @@ if [[ $(mount | grep "on $MOUNTPOINT" | wc -l) -eq 0 ]]; then
 	exit 1
 fi
 
-for i in dev dev/pts dev/shm sys tmp usr/portage; do
+for i in sys tmp; do
 	umount -l "$MOUNTPOINT/$i" 2> /dev/null
 done
 
+for i in pts shm; do
+	if [[ -d "$MOUNTPOINT/dev/$i" ]]; then
+		umount -l "$MOUNTPOINT/dev/$i" 2> /dev/null
+	fi
+done
+
+if [[ -d "$MOUNTPOINT/usr/portage" ]]; then
+	umount -l "$MOUNTPOINT/usr/portage" 2> /dev/null
+fi
+
+umount -l "$MOUNTPOINT/dev" 2> /dev/null
 umount -l "$MOUNTPOINT/proc" 2> /dev/null
 umount -l "$MOUNTPOINT" 2> /dev/null
