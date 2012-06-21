@@ -1,10 +1,9 @@
-#!/usr/bin/php
-<?php
-if (isset($argv[1])) {
-  $line = trim($argv[1]);
-  print ucwords($line."\n");
-  exit;
-}
+#!/usr/bin/python
+import sys
 
-$line = trim(fgets(STDIN));
-print ucwords($line."\n");
+if len(sys.argv) == 2:
+	print sys.argv[1].strip().title()
+	sys.exit(0)
+
+for line in sys.stdin.readlines():
+	print line.strip().title()
