@@ -1,0 +1,197 @@
+#!/usr/bin/python
+
+import os
+import json
+import sys
+import argparse
+import glob
+import re
+import gzip
+import time
+
+# TODO Support files in 7z archives
+
+def get_dirs():
+    home = os.path.abspath(os.getenv('HOME'))
+    dirs = []
+    global_conf_name = '/etc/chatlogsearch.conf'
+    local_conf_name = home + '/.chatlogsearch.conf'
+
+    def add_to_dirs(file_object):
+        text = file_object.read()
+        settings = json.loads(text)
+        if settings['dirs']:
+            for dir_name in settings['dirs']:
+                dirs.append(dir_name)
+
+    if os.path.exists('/etc'):
+        try:
+            with open(global_conf_name, 'r') as global_conf:
+                if args.verbose:
+                    print 'NOTE: Using global configuration file ' + local_conf_name
+                add_to_dirs(global_conf)
+        except IOError:
+            if args.verbose:
+                print 'WARN: Global configuration ' + global_conf_name + ' not found'
+        except:
+            if args.verbose:
+                print 'WARN: Unknown exception occurred while reading global configuration file ' + global_conf_name
+        
+    try:
+        with open(local_conf_name, 'r') as local_conf:
+            if args.verbose:
+                print 'NOTE: Using configuration file ' + local_conf_name + '.'
+            add_to_dirs(local_conf)
+    except IOError:
+        if args.verbose:
+            print 'ERROR: Local configuration' + local_conf_name + ' not found'
+        sys.exit(1)
+
+    if args.verbose:
+        print 'NOTE: Search directories:'
+        for dir_name in dirs:
+            print '    ' + dir_name
+
+    return dirs
+
+def search_file_contents(content, query, is_regexp=False, before=0, after=0, filename=''):
+    lines = content.splitlines()
+    current_index = 0
+
+    for line in lines:
+        should_print = False
+        
+        if is_regexp:
+            match = re.search(query, line)
+            should_print = match != None
+        elif query in line.lower():
+            should_print = True
+
+        if should_print:
+            if args.verbose:
+                print 'Found match on line %(index)d in "%(name)s"' % {"index": current_index, "name": filename}
+            
+            if before:
+                start = current_index - before
+                end = current_index - 1
+                
+                if start < 0:
+                    start = 0
+                if end < 0:
+                    end = 0
+                
+                for i in range(start, end):
+                    try:
+                        print lines[i]
+                        i +=1
+                    except IndexError:
+                        pass
+
+            print line
+
+            if after:
+                start = current_index + 1
+                end = current_index + after
+
+                for i in range(start, end):
+                    try:
+                        print lines[i]
+                        i +=1
+                    except IndexError:
+                        pass
+                
+            
+        current_index += 1
+
+        # Debug
+        #if current_index == 10:
+            #sys.exit(1)
+
+def parse_file(filename, query, is_regexp=False):
+    content = ''
+    if is_regexp == False:
+        query = query.lower()
+    
+    if re.search(r'\.(?:log|txt)\-[0-9]{8}\.gz$', filename):
+        content = gzip.open(filename, 'rb').read()
+    elif filename.endswith('.log') or filename.endswith('.txt'):
+        content = open(filename, 'r').read()
+    else:
+        return
+
+    if args.verbose:
+        print 'NOTE: Searching ' + filename
+
+    search_file_contents(content, query, is_regexp, args.before, args.after, filename)
+
+def entry_list_by_date(dir_name, glob_arg='*'):
+    files = glob.glob(dir_name + '/' + glob_arg)
+    date_file_list = []
+    ret = []
+
+# http://www.daniweb.com/software-development/python/code/216688/file-list-by-date-python
+    for file in files:
+        stats = os.stat(file)
+        lastmod_date = time.localtime(stats[8])
+        date_file_tuple = lastmod_date, file
+        date_file_list.append(date_file_tuple)
+
+    date_file_list.sort()
+    date_file_list.reverse()
+
+    for file in date_file_list:
+        dir, file_name = os.path.split(file[1])
+        ret.append(dir_name + '/' + file_name)
+
+    return ret
+
+def parse_directory(dir_name, query):    
+    if os.path.isdir(dir_name):
+        if args.verbose:
+            print 'NOTE: Recursively Searching directory ' + dir_name
+            
+        for file_or_dir in entry_list_by_date(dir_name):
+            parse_directory(file_or_dir, query)
+            continue
+    else:
+        parse_file(dir_name, query, args.regexp)
+
+
+parser = argparse.ArgumentParser(description='Searches logs for a string or expression')
+parser.add_argument('-v', help='enables verbose mode', action='store_true', dest='verbose')
+parser.add_argument('-E', help='use a regular expression', action='store_true', dest='regexp')
+parser.add_argument('query', help='Search query')
+parser.add_argument('-B', metavar='N', help='show N lines before matched line', type=int, dest='before')
+parser.add_argument('-A', metavar='N', help='show N lines after matched line', type=int, default=0, dest='after')
+
+args = parser.parse_args()
+dirs = get_dirs()
+
+if (args.regexp):
+    try:
+        query = re.compile(args.query)
+        if query == None:
+            print 'NOTE: Could not convert query "' + args.query + '" to a regular expression'
+            if args.verbose:
+                print sys.exc_info()[0]
+            sys.exit(1)
+    except:
+        print 'NOTE: Could not convert query "' + args.query + '" to a regular expression'
+        if args.verbose:
+            print sys.exc_info()[0]
+        sys.exit(1)
+
+for dir_name in dirs:
+    if os.path.isdir(dir_name) != True:
+        if args.verbose:
+            print 'WARN: Directory ' + dir_name + ' does not exist, skipping'
+        continue
+
+    if args.verbose:
+        print 'NOTE: Searching directory ' + dir_name
+
+    files = entry_list_by_date(dir_name)
+    for file_or_dir in files:
+        parse_directory(file_or_dir, args.query)
+
+# kate: indent-width 4; tab-width 4;
