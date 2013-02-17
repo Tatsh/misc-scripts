@@ -9,14 +9,30 @@ from datetime import datetime
 
 cookies_txt = sys.argv[1]
 home = os.environ['HOME']
-sqlite_file =  home + '/.config/chromium/Default/Cookies'
+sqlite_file = home + '/.config/chromium/Default/Cookies'
 conn = sqlite3.connect(sqlite_file,
                        detect_types=sqlite3.PARSE_COLNAMES)
 c = conn.cursor()
-regex = r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+)\t(?P<name>.*)\t(?P<value>.*)\n?'
-creation_utc = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
-columns = ['creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc', 'secure', 'httponly', 'has_expires', 'persistent', 'last_access_utc']
 i = 0
+
+regex = r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)\t' +
+'(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+)\t(?P<name>.*)\t(?P<value>.*)\n?'
+creation_utc = int((datetime.utcnow() -
+                    datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
+
+columns = [
+    'creation_utc',
+    'host_key',
+    'name',
+    'value',
+    'path',
+    'expires_utc',
+    'secure',
+    'httponly',
+    'has_expires',
+    'persistent',
+    'last_access_utc'
+]
 
 with open(cookies_txt) as f:
     lines = f.readlines()
@@ -48,7 +64,8 @@ with open(cookies_txt) as f:
         else:
             dic['secure'] = 0
 
-        query = 'DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?'
+        query = 'DELETE FROM cookies WHERE host_key = ? AND name = ? ' +
+        'AND path = ?'
         c.execute(query, (dic['host_key'], dic['name'], dic['path'],))
 
         query = ('INSERT INTO cookies (%s) VALUES(%s)' %
@@ -64,7 +81,7 @@ with open(cookies_txt) as f:
              has_expires,
              persistent,
              creation_utc
-            )
+             )
 
         c.execute(query, t)
         i = i + 1
