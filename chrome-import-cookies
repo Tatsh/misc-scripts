@@ -1,0 +1,73 @@
+#!/usr/bin/env python
+
+import os
+import sqlite3
+import sys
+import re
+from urllib.parse import unquote as urldecode
+from datetime import datetime
+
+cookies_txt = sys.argv[1]
+home = os.environ['HOME']
+sqlite_file =  home + '/.config/chromium/Default/Cookies'
+conn = sqlite3.connect(sqlite_file,
+                       detect_types=sqlite3.PARSE_COLNAMES)
+c = conn.cursor()
+regex = r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+)\t(?P<name>.*)\t(?P<value>.*)\n?'
+creation_utc = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
+columns = ['creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc', 'secure', 'httponly', 'has_expires', 'persistent', 'last_access_utc']
+i = 0
+
+with open(cookies_txt) as f:
+    lines = f.readlines()
+    for line in lines:
+        match = re.match(regex, line)
+
+        if match is None:
+            print('Skipping line: %s' % line)
+            continue
+
+        dic = match.groupdict()
+        dic['expires_utc'] = int(dic['expires_utc']) * (10 ** 7)
+        dic['value'] = urldecode(dic['value'])
+        dic['path'] = urldecode(dic['path'])
+
+        has_expires = persistent = 1
+
+        if dic['expires_utc'] == 0:
+            has_expires = 0
+            persist = 0
+
+        if dic['httponly'] == 'TRUE':
+            dic['httponly'] = 1
+        else:
+            dic['httponly'] = 0
+
+        if dic['secure'] == 'TRUE':
+            dic['secure'] = 1
+        else:
+            dic['secure'] = 0
+
+        query = 'DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?'
+        c.execute(query, (dic['host_key'], dic['name'], dic['path'],))
+
+        query = ('INSERT INTO cookies (%s) VALUES(%s)' %
+                (','.join(columns), ('?,' * len(columns))[:-1]))
+        t = (creation_utc + i,
+             dic['host_key'],
+             dic['name'],
+             dic['value'],
+             dic['path'],
+             dic['expires_utc'],
+             dic['secure'],
+             dic['httponly'],
+             has_expires,
+             persistent,
+             creation_utc
+            )
+
+        c.execute(query, t)
+        i = i + 1
+
+conn.commit()
+conn.close()
