@@ -7,7 +7,11 @@ import re
 from urllib.parse import unquote as urldecode
 from datetime import datetime
 
-cookies_txt = sys.argv[1]
+try:
+    cookies_txt = sys.argv[1]
+except IndexError:
+    print('Usage: %s COOKIES_TXT_FILE' % sys.argv[0])
+    sys.exit(1)
 home = os.environ['HOME']
 sqlite_file = home + '/.config/chromium/Default/Cookies'
 conn = sqlite3.connect(sqlite_file,
@@ -15,8 +19,9 @@ conn = sqlite3.connect(sqlite_file,
 c = conn.cursor()
 i = 0
 
-regex = r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)\t' +
-'(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+)\t(?P<name>.*)\t(?P<value>.*)\n?'
+regex = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
+         r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
+         r'\t(?P<name>.*)\t(?P<value>.*)\n?')
 creation_utc = int((datetime.utcnow() -
                     datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
 
@@ -40,11 +45,11 @@ with open(cookies_txt) as f:
         match = re.match(regex, line)
 
         if match is None:
-            print('Skipping line: %s' % line)
+            print('Skipping line: %s' % line.strip())
             continue
 
         dic = match.groupdict()
-        dic['expires_utc'] = int(dic['expires_utc']) * (10 ** 7)
+        dic['expires_utc'] = int(float(dic['expires_utc'])) * (10 ** 7)
         dic['value'] = urldecode(dic['value'])
         dic['path'] = urldecode(dic['path'])
 
@@ -64,8 +69,9 @@ with open(cookies_txt) as f:
         else:
             dic['secure'] = 0
 
-        query = 'DELETE FROM cookies WHERE host_key = ? AND name = ? ' +
-        'AND path = ?'
+        query = '''
+DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?
+'''
         c.execute(query, (dic['host_key'], dic['name'], dic['path'],))
 
         query = ('INSERT INTO cookies (%s) VALUES(%s)' %
