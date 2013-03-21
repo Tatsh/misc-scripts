@@ -8,6 +8,12 @@ Imports cookies from a file in Netscape 'cookies.txt' format into Chromium's (Ch
 
 Usage: `./chrome-import-cookies COOKIES_TXT_FILE`
 
+## curl2php
+
+Converts a simple `curl` command to PHP code. Only `-H`, `--header`, and `--data` are supported. This command is intended to be used in conjunction with Chrome's 'Copy as Curl' feature (Network tab).
+
+Usage: `./curl2php [-H "header: value-of-header",] [--data "url-encoded+POST+data"] URL`
+
 ## linkshare-dec
 
 Given a Linkshare affilate URL, this decodes the target URL and displays it.
