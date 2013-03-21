@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+
+# NOTE This is for Python 3 only for the moment.
+
+import argparse
+import sys
+
+from urllib.parse import urlparse
+from urllib.request import urlopen, Request
+
+headers = {}
+
+class CollectHeaders(argparse.Action):
+    def __call__(self, parser, namespace, values, option_strings=None):
+        pieces = list(map(str.strip, values.split(':')))
+
+        if pieces[0].lower() == 'accept-encoding':
+            return
+
+        headers[pieces[0]] = pieces[1]
+
+parser = argparse.ArgumentParser(description='Generate equivalent Python code for cURL command')
+
+parser.add_argument('-H', '--header', help='Header', dest='header', action=CollectHeaders)
+parser.add_argument('--data', default=False, help='POST data')
+
+argv = sys.argv
+
+# Chrome puts URL first unfortunately; detect that
+first_is_url = False
+url = False
+try:
+    parsed_dict = urlparse(argv[1])
+    first_is_url = parsed_dict.netloc != ''
+    url = argv[1]
+except IndexError:
+    sys.exit(1)
+
+if first_is_url:
+    argv = argv[2:]
+else:
+    parser.add_argument('url', metavar='URL', help='URL to fetch', nargs=1)
+
+options = parser.parse_args(argv)
+post_data = options.data
+
+if url is False:
+    url = options.url
+
+# Generation of code starts here
+print("""#!/usr/bin/env python
+from urllib.request import urlopen, Request
+
+headers = %(headers)s""" % {'headers': headers})
+
+if post_data is not False:
+    print('req = Request("%(url)s", "%(post_data)s".encode(\'utf-8\'), headers)' % {'url': url, 'post_data': post_data})
+else:
+    print('req = Request("%(url)s", None, headers)' % {'url': url})
+
+print("""response = urlopen(req)
+content = response.read()
+# content = str(content)
+# print(content)""")
