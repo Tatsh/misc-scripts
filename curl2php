@@ -99,6 +99,6 @@ curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 <?php if ($postData): ?>
 curl_setopt($ch, CURLOPT_POSTFIELDS, "<?php print $postData; ?>");
 <?php endif; ?>
-curl_setopt($ch, CURLOPT_HEADER, true);
+// curl_setopt($ch, CURLOPT_HEADER, true);
 $data = curl_exec($ch);
 print $data."\n";
