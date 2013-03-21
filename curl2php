@@ -1,0 +1,104 @@
+#!/usr/bin/env php
+<?php
+$headers = array();
+$cookie = '';
+$url = null;
+$isHeaderPos = false;
+$lastWasHeaderPos = $lastWasDataPos = false;
+$errorMessage = null;
+$stripAcceptEncodingHeader = true;
+$postData = '';
+
+array_shift($argv);
+
+// Only -H, --header, and --data are supported
+foreach ($argv as $i => $arg) {
+  if ($lastWasHeaderPos) {
+    $lastWasHeaderPos = false;
+    continue;
+  }
+
+  if ($lastWasDataPos) {
+    $lastWasDataPos = false;
+    continue;
+  }
+
+  $isHeaderPos = $arg === '-H' || $arg === '--header';
+  $isDataPos = $arg === '--data';
+
+  if ($isHeaderPos) {
+    if (isset($argv[$i + 1])) {
+      $parts = explode(':', $argv[$i + 1], 2);
+
+      if (count($parts) !== 2) {
+        $errorMessage = 'Invalid header argument. Header must be of format: "Header-Name: EncodedValue"';
+        break;
+      }
+
+      $parts[0] = strtolower($parts[0]);
+
+      if ($stripAcceptEncodingHeader && $parts[0] === 'accept-encoding') {
+        continue;
+      }
+
+      if ($parts[0] === 'cookie') {
+        $cookie = $parts[1];
+        continue;
+      }
+
+      $headers[] = $parts[0].':'.$parts[1];
+    }
+
+    $lastWasHeaderPos = true;
+    continue;
+  }
+
+  if ($isDataPos) {
+    if (isset($argv[$i + 1])) {
+      $postData = $argv[$i + 1];
+    }
+  }
+
+  if ($url === null) {
+    $url = filter_var($arg, FILTER_VALIDATE_URL, FILTER_NULL_ON_FAILURE);
+  }
+}
+
+if ($errorMessage) {
+  print $errorMessage."\n";
+  exit(1);
+}
+
+if ($url === null) {
+  print 'No URL was given'."\n";
+  exit(1);
+}
+
+function printArray($arr) {
+  $ret = json_encode($arr);
+  $ret = str_replace('\\/', '/', $ret); // stay compatible with older PHP versions
+  $ret = str_replace('","', "\",\n  \"", $ret);
+
+  $ret = "\n".'  '.substr($ret, 1, -1)."\n";
+
+  $ret = 'array('.$ret.')';
+
+  print $ret;
+}
+
+print "<?php\n";
+?>
+$ch = curl_init("<?php print $url; ?>");
+<?php if ($cookie): ?>
+curl_setopt($ch, CURLOPT_COOKIE, "<?php print $cookie; ?>");
+<?php endif; ?>
+<?php if (!empty($headers)): ?>
+curl_setopt($ch, CURLOPT_HTTPHEADER, <?php printArray($headers); ?>);
+<?php endif; ?>
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+<?php if ($postData): ?>
+curl_setopt($ch, CURLOPT_POSTFIELDS, "<?php print $postData; ?>");
+<?php endif; ?>
+curl_setopt($ch, CURLOPT_HEADER, true);
+$data = curl_exec($ch);
+print $data."\n";
