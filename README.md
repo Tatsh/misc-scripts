@@ -28,6 +28,12 @@ Given a Linkshare affilate URL, this decodes the target URL and displays it.
 
 Usage: `./linkshare-dec URL`
 
+## mozcookie2chrome
+
+Given a domain, inserts/replaces cookies in Chromium's database with ones from Firefox. The argument is placed in a `LIKE` statement wrapped in `%` so anything is usable.
+
+Usage: `mozcookie2chrome DOMAIN`
+
 ## smv
 
 Like `scp` but deletes the files after copying (secure move). Accepts all the arguments that `scp` accepts.
