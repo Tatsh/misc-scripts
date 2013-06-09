@@ -1,0 +1,8 @@
+#!/usr/bin/env php
+<?php
+if (!isset($argv[1])) {
+    printf("Usage: %s STRING\n", $argv[0]);
+    return 1;
+}
+
+print strtotime($argv[1])."\n";
