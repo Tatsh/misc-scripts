@@ -23,7 +23,7 @@ def verbose_print(message):
 
 def crc_check_with_sfv(sfv_filename):
     cwd = os.getcwd()
-    sfv_dir = os.path.dirname(sfv_filename)
+    sfv_dir = os.path.dirname(os.path.abspath(sfv_filename))
     args = ['cksfv', '-f', shell_quote(sfv_filename)]
 
     if verbose is False:
