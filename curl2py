@@ -10,6 +10,7 @@ from urllib.request import urlopen, Request
 
 headers = {}
 
+
 class CollectHeaders(argparse.Action):
     def __call__(self, parser, namespace, values, option_strings=None):
         pieces = list(map(str.strip, values.split(':')))
@@ -19,9 +20,11 @@ class CollectHeaders(argparse.Action):
 
         headers[pieces[0]] = pieces[1]
 
-parser = argparse.ArgumentParser(description='Generate equivalent Python code for cURL command')
+parser = argparse.ArgumentParser(description='Generate equivalent Python code'
+                                 ' for cURL command')
 
-parser.add_argument('-H', '--header', help='Header', dest='header', action=CollectHeaders)
+parser.add_argument('-H', '--header', help='Header', dest='header',
+                    action=CollectHeaders)
 parser.add_argument('--data', default=False, help='POST data')
 
 argv = sys.argv
@@ -54,7 +57,8 @@ from urllib.request import urlopen, Request
 headers = %(headers)s""" % {'headers': headers})
 
 if post_data is not False:
-    print('req = Request("%(url)s", "%(post_data)s".encode(\'utf-8\'), headers)' % {'url': url, 'post_data': post_data})
+    print('req = Request("%(url)s", "%(post_data)s".encode(\'utf-8\'),'
+          ' headers)' % {'url': url, 'post_data': post_data})
 else:
     print('req = Request("%(url)s", None, headers)' % {'url': url})
 

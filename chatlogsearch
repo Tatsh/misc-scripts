@@ -28,29 +28,29 @@ def get_dirs():
         try:
             with open(global_conf_name, 'r') as global_conf:
                 if args.verbose:
-                    print 'NOTE: Using global configuration file ' + local_conf_name
+                    print('NOTE: Using global configuration file ' + local_conf_name)
                 add_to_dirs(global_conf)
         except IOError:
             if args.verbose:
-                print 'WARN: Global configuration ' + global_conf_name + ' not found'
+                print('WARN: Global configuration ' + global_conf_name + ' not found')
         except:
             if args.verbose:
-                print 'WARN: Unknown exception occurred while reading global configuration file ' + global_conf_name
-        
+                print('WARN: Unknown exception occurred while reading global configuration file ' + global_conf_name)
+
     try:
         with open(local_conf_name, 'r') as local_conf:
             if args.verbose:
-                print 'NOTE: Using configuration file ' + local_conf_name + '.'
+                print('NOTE: Using configuration file ' + local_conf_name + '.')
             add_to_dirs(local_conf)
     except IOError:
         if args.verbose:
-            print 'ERROR: Local configuration' + local_conf_name + ' not found'
+            print('ERROR: Local configuration' + local_conf_name + ' not found')
         sys.exit(1)
 
     if args.verbose:
-        print 'NOTE: Search directories:'
+        print('NOTE: Search directories:')
         for dir_name in dirs:
-            print '    ' + dir_name
+            print('    ' + dir_name)
 
     return dirs
 
@@ -60,7 +60,7 @@ def search_file_contents(content, query, is_regexp=False, before=0, after=0, fil
 
     for line in lines:
         should_print = False
-        
+
         if is_regexp:
             match = re.search(query, line)
             should_print = match != None
@@ -69,25 +69,25 @@ def search_file_contents(content, query, is_regexp=False, before=0, after=0, fil
 
         if should_print:
             if args.verbose:
-                print 'Found match on line %(index)d in "%(name)s"' % {"index": current_index, "name": filename}
-            
+                print('Found match on line %(index)d in "%(name)s"' % {"index": current_index, "name": filename})
+
             if before:
                 start = current_index - before
                 end = current_index - 1
-                
+
                 if start < 0:
                     start = 0
                 if end < 0:
                     end = 0
-                
+
                 for i in range(start, end):
                     try:
-                        print lines[i]
+                        print(lines[i])
                         i +=1
                     except IndexError:
                         pass
 
-            print line
+            print(line)
 
             if after:
                 start = current_index + 1
@@ -95,12 +95,12 @@ def search_file_contents(content, query, is_regexp=False, before=0, after=0, fil
 
                 for i in range(start, end):
                     try:
-                        print lines[i]
+                        print(lines[i])
                         i +=1
                     except IndexError:
                         pass
-                
-            
+
+
         current_index += 1
 
         # Debug
@@ -111,7 +111,7 @@ def parse_file(filename, query, is_regexp=False):
     content = ''
     if is_regexp == False:
         query = query.lower()
-    
+
     if re.search(r'\.(?:log|txt)\-[0-9]{8}\.gz$', filename):
         content = gzip.open(filename, 'rb').read()
     elif filename.endswith('.log') or filename.endswith('.txt'):
@@ -120,7 +120,7 @@ def parse_file(filename, query, is_regexp=False):
         return
 
     if args.verbose:
-        print 'NOTE: Searching ' + filename
+        print('NOTE: Searching ' + filename)
 
     search_file_contents(content, query, is_regexp, args.before, args.after, filename)
 
@@ -145,11 +145,11 @@ def entry_list_by_date(dir_name, glob_arg='*'):
 
     return ret
 
-def parse_directory(dir_name, query):    
+def parse_directory(dir_name, query):
     if os.path.isdir(dir_name):
         if args.verbose:
-            print 'NOTE: Recursively Searching directory ' + dir_name
-            
+            print('NOTE: Recursively Searching directory ' + dir_name)
+
         for file_or_dir in entry_list_by_date(dir_name):
             parse_directory(file_or_dir, query)
             continue
@@ -171,24 +171,24 @@ if (args.regexp):
     try:
         query = re.compile(args.query)
         if query == None:
-            print 'NOTE: Could not convert query "' + args.query + '" to a regular expression'
+            print('NOTE: Could not convert query "' + args.query + '" to a regular expression')
             if args.verbose:
-                print sys.exc_info()[0]
+                print(sys.exc_info()[0])
             sys.exit(1)
     except:
-        print 'NOTE: Could not convert query "' + args.query + '" to a regular expression'
+        print('NOTE: Could not convert query "' + args.query + '" to a regular expression')
         if args.verbose:
-            print sys.exc_info()[0]
+            print(sys.exc_info()[0])
         sys.exit(1)
 
 for dir_name in dirs:
     if os.path.isdir(dir_name) != True:
         if args.verbose:
-            print 'WARN: Directory ' + dir_name + ' does not exist, skipping'
+            print('WARN: Directory ' + dir_name + ' does not exist, skipping')
         continue
 
     if args.verbose:
-        print 'NOTE: Searching directory ' + dir_name
+        print('NOTE: Searching directory ' + dir_name)
 
     files = entry_list_by_date(dir_name)
     for file_or_dir in files:

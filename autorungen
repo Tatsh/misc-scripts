@@ -4,19 +4,11 @@ function usage {
   echo "Usage: $0 <exe file> <icon> <icon index>"
 }
 
-if [ "$1" = "" ]; then
-  usage
-elif [ "$2" = "" ]; then
-  usage
-elif [ "$3" = "" ]; then
-  usage
-else
+(test -z "$1" || test -z "$2" || test -z "$3") && usage && exit 1
 
-  EXE="$1"
-  ICO="$2"
-  ICO_INDEX="$3"
+EXE="$1"
+ICO="$2"
+ICO_INDEX="$3"
 
-  printf "[Autorun]\nopen=$EXE\nicon=$EXE,$ICO_INDEX\n" >> Autorun.inf
-  unix2dos Autorun.inf
-fi
-
+printf "[Autorun]\nopen=$EXE\nicon=$EXE,$ICO_INDEX\n" > Autorun.inf
+unix2dos Autorun.inf &> /dev/null

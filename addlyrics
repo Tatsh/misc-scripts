@@ -1,16 +1,15 @@
 #!/bin/bash
-# kate: replace-tabs false;
 
-if [ "$1" = "" ]; then
-	echo "USAGE: $0 FILE LANGUAGE LYRICS_FILE [DESCRIPTION] [ENCODING]"
-	echo
-	echo "LANGUAGE should be 3 characters long. Examples: 'eng', 'ara'."
-	echo "LYRICS_FILE is not a synced file."
-	echo "DESCRIPTION is optional but will be set to 'lyrics' if not specified. It cannot have any spaces."
-	echo "ENCODING is one of: 'latin1', 'utf8', 'utf16-BE', 'utf16-LE'."
-	echo
-	echo "NOTE: DO NOT USE THIS WITH RTL LANGUAGES! (ARABIC)"
-	exit 1
+if [ -z "$1" ]; then
+  echo "USAGE: $0 FILE LANGUAGE LYRICS_FILE [DESCRIPTION] [ENCODING]"
+  echo
+  echo "LANGUAGE should be 3 characters long. Examples: 'eng', 'ara'."
+  echo "LYRICS_FILE is not a synced file."
+  echo "DESCRIPTION is optional but will be set to 'lyrics' if not specified. It cannot have any spaces."
+  echo "ENCODING is one of: 'latin1', 'utf8', 'utf16-BE', 'utf16-LE'."
+  echo
+  echo "NOTE: DO NOT USE THIS WITH RTL LANGUAGES! (ARABIC)"
+  exit 1
 fi
 
 FILE="$1"
