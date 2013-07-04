@@ -1,89 +1,251 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
+import argparse
 import glob
-import subprocess
+import os
+import subprocess as sp
 import sys
 
-# Debugging
-# skip = True
-norartest = True
-skip = False
-r = 0
+try:
+    from shlex import quote as shell_quote
+except:
+    from pipes import quote as shell_quote
 
-# Check if SFV file is present and check SFV if so
-p = "*.sfv"
-if glob.glob(p):
-	print 'Found SFV file, verifying...'
-	if skip != True:
-		r = subprocess.call(['cksfv', '-f', glob.glob(p)[0]])
-	if r != 0:
-		print 'Check errors above.'
-		sys.exit(1)
-else:
-	print 'Could not find any SFV files. Skipping CRC32 verification.'
+verbose = False
 
-# Test extraction before burning
-p = "*.rar"
-if glob.glob(p):
-	print 'Testing extraction...'
-	f = glob.glob(p)
-	q = "*.part01.rar"
-	if glob.glob(q):
-		f = glob.glob(q)
-	s = "*.part001.rar"
-	if glob.glob(s):
-		f = glob.glob(s)
-	if skip != True and norartest != True:
-		r = subprocess.call(['unrar', 't', f[0]])
-	if r != 0:
-		print 'Check errors above.'
-		sys.exit(1)
-else:
-	print 'No RARs found.'
-	sys.exit(1)
 
-# Find if there is an ISO within the RAR f
-work = list(['', ''])
-r = subprocess.Popen(['unrar', 'l', f[0]], stdout=subprocess.PIPE)
-for line in r.stdout:
-	if 'iso' in line or 'ISO' in line:
-		work = line.split()
-		break
-r.wait()
+def verbose_print(message):
+    if verbose is False:
+        return
 
-# Handle spaces in ISO file name
-fn = work[0]
-if 'iso' not in fn and 'ISO' not in fn:
-	fn = ''
-	i = 0
-	for iso in work:
-		if 'iso' in iso or 'ISO' in iso:
-			fn += iso
-			i += 1
-			break
-		fn += iso + ' '
-		i += 1
+    print(message)
 
-if 'iso' not in fn and 'ISO' not in fn:
-	print 'No ISO file found.'
-	sys.exit(1)
 
-if 'iso' in work[0] or 'ISO' in work[0]:
-	i = 1
+def crc_check_with_sfv(sfv_filename):
+    cwd = os.getcwd()
+    sfv_dir = os.path.dirname(sfv_filename)
+    args = ['cksfv', '-f', shell_quote(sfv_filename)]
 
-tsize = work[i]
+    if verbose is False:
+        args.append('&>/dev/null')
 
-print 'Command:'
-print '  unrar p -inul ' + f[0] + ' ' + '"' + fn + '"' + ' | wodim speed=8 driveropts=burnfree tsize=' + tsize + ' -dao -eject -v -'
+    args = ' '.join(args)
 
-if len(fn) > 0:
-	r1 = subprocess.Popen(['unrar', 'p', '-inul', f[0], fn], stdout=subprocess.PIPE, close_fds=True)
-	r2 = subprocess.Popen(['wodim', 'speed=8', 'driveropts=burnfree', 'tsize=' + tsize, '-dao', '-eject', '-v', '-'], stdin=r1.stdout, close_fds=True)
+    verbose_print(args)
+    os.chdir(sfv_dir)
 
-r1.stdout.close()
-r2.wait()
-r1.wait()
+    r = sp.call(args, shell=True)
 
-#if r1 != 0:
-#	print 'An error occurred. Check above.'
-#	sys.exit(1)
+    os.chdir(cwd)
+
+    if r == 0:
+        return True
+
+    return False
+
+
+def test_extraction(rar_filename):
+    test_arg = 't'
+
+    if verbose is False:
+        test_arg = 't -inul'
+
+    args = ' '.join(['unrar', test_arg, shell_quote(rar_filename)])
+
+    verbose_print(args)
+
+    r = sp.call(args, shell=True)
+
+    if r == 0:
+        return True
+
+    return False
+
+
+def find_iso_in_rar(rar_filename):
+    # Find if there is an ISO within the RAR f
+    work = list(['', ''])
+    r = sp.Popen(['unrar', 'l', rar_filename], stdout=sp.PIPE)
+    for line in r.stdout:
+        line_str = str(line, encoding='utf8')
+        if 'iso' in line_str or 'ISO' in line_str:
+            work = line.split()
+            break
+    r.wait()
+
+    # Handle spaces in ISO file name
+    fn = str(work[0], encoding='utf8')
+    if 'iso' not in fn and 'ISO' not in fn:
+        fn = ''
+        i = 0
+        for iso in work:
+            if 'iso' in iso or 'ISO' in iso:
+                fn += iso
+                i += 1
+                break
+            fn += iso + ' '
+            i += 1
+
+    if 'iso' not in fn and 'ISO' not in fn:
+        return (False, False)
+
+    work_str = str(work[0], encoding='utf8')
+    if 'iso' in work_str or 'ISO' in work_str:
+        i = 1
+
+    tsize = work[i]
+
+    return (fn, int(tsize))
+
+
+def unrar_wodim_pipe(rar_filename, iso_filename, tsize, speed=8,
+                     device_name=None):
+    unrar_args = [
+        'unrar',
+        'p',
+        '-inul',
+        shell_quote(rar_filename),
+        shell_quote(iso_filename),
+    ]
+    wodim_args = [
+        'wodim',
+        ('speed=%d' % speed),
+        'driveropts=burnfree',
+        ('tsize=%d' % tsize),
+    ]
+
+    if device_name is not None:
+        wodim_args.append('dev=%s' % (shell_quote(str(device_name))))
+
+    wodim_args.extend(['-dao', '-eject', '-'])
+
+    if verbose:
+        wodim_args.append('-v')
+
+    verbose_print('Command: %s | %s' %
+                  (' '.join(unrar_args), ' '.join(wodim_args)))
+
+    r1 = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
+    r2 = sp.Popen(wodim_args, stdin=r1.stdout, close_fds=True)
+
+    r1.stdout.close()
+    r2.wait()
+    r1.wait()
+
+    if r1.returncode != 0 or r2.returncode != 0:
+        return False
+
+    return True
+
+
+def check_requirements(skip_crc):
+    try:
+        sp.check_output('which unrar &> /dev/null', shell=True)
+        if skip_crc is False:
+            sp.check_output('which cksfv &> /dev/null', shell=True)
+        sp.check_output('which wodim &> /dev/null', shell=True)
+    except sp.CalledProcessError as e:
+        command_needed = e.cmd \
+                          .replace('which ', '') \
+                          .replace(' &> /dev/null', '')
+
+        print('Your system is missing "%s" (or it is not in PATH)' %
+              (command_needed))
+
+        apps_to_gentoo_packages = {
+            'unrar': ['app-arch/unrar', 'app-arch/unrar-gpl'],
+            'cksfv': ['app-arch/cksfv'],
+            'wodim': ['app-cdr/cdrkit'],
+        }
+
+        if len(apps_to_gentoo_packages[command_needed]) == 1:
+            print('If you are using Gentoo or a derivative with Gentoo\'s '
+                  'Portage tree, you can find "%s" in package %s' %
+                  (command_needed, apps_to_gentoo_packages[command_needed][0]))
+        else:
+            print('If you are using Gentoo or a derivative with Gentoo\'s '
+                  'Portage tree, you can find "%s" in packages %s' %
+                  (command_needed, ', '.join(
+                      apps_to_gentoo_packages[command_needed]
+                  )))
+
+        return False
+
+    return True
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Burns an ISO found in a RAR'
+                                     'file without extracting')
+
+    parser.add_argument('-v', help='enables verbose mode', action='store_true',
+                        dest='verbose')
+    parser.add_argument('--no-crc-check', help='Disable CRC check',
+                        action='store_true', dest='crc_test')
+    parser.add_argument('--test-extraction', help='Enable extraction test',
+                        action='store_true', dest='rar_test')
+    parser.add_argument('-s', type=int, dest='speed', help='Write speed',
+                        default=8)
+    parser.add_argument('-d', dest='device', default=None,
+                        help='Device name (no argument means default)')
+    parser.add_argument('rar_filename', help='Base RAR file name')
+
+    args = parser.parse_args()
+    verbose = args.verbose
+    rar_filename = os.path.realpath(args.rar_filename)
+
+    if check_requirements(args.crc_test) is False:
+        sys.exit(1)
+
+    iso, tsize = find_iso_in_rar(rar_filename)
+
+    if tsize is False:
+        print('Unable to find ISO in RAR "%s"' % (args.rar_filename))
+        sys.exit(1)
+    else:
+        verbose_print('Found ISO "%s" with tsize %d' % (iso, tsize))
+
+    if args.crc_test is False:
+        # See if file without .rar/.001/etc exists first
+        filename_without_ext, _ = os.path.splitext(args.rar_filename)
+        sfv_filenames = [
+            filename_without_ext + '.sfv',
+            filename_without_ext + '.SFV',
+        ]
+        sfv_filename = None
+
+        for name in sfv_filenames:
+            if os.path.exists(name):
+                sfv_filename = name
+                verbose_print('Found SFV file: "%s"' %
+                              (os.path.basename(name)))
+
+        if sfv_filename is None:
+            globbed = glob.glob('*.sfv')
+
+            if len(globbed):
+                sfv_filename = globbed[0]
+                verbose_print('Found SFV file via globbing: "%s"' %
+                              (os.path.basename(globbed)))
+
+        if sfv_filename is None:
+            print('Cannot find SFV file to verify with '
+                  '(you can run with --no-crc-check)')
+            sys.exit(1)
+
+        if crc_check_with_sfv(sfv_filename) is False:
+            print('SFV verification failed')
+            sys.exit(1)
+
+    if args.rar_test is True:
+        print('Testing extraction ...')
+        if test_extraction(rar_filename) is False:
+            print('Extraction test failed')
+            sys.exit(1)
+        else:
+            verbose_print('Extraction test succeeded')
+
+    if unrar_wodim_pipe(rar_filename, iso, tsize, args.speed, args.device) is \
+            not True:
+        print('Write failed!')
+        sys.exit(1)
