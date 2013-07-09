@@ -1,4 +1,4 @@
-#!/usr/bin/env perl -w
+#!/usr/bin/perl -w
 ##############################################################################
 ##
 ##  Written by: Jared Cheney <jared.cheney@gmail.com>
