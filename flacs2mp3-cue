@@ -17,6 +17,7 @@ except:
 
 MERGED_WAV_OUTPUT_FILENAME = 'out.wav'
 
+
 class SystemRequirementsError(Exception):
     pass
 
@@ -42,19 +43,23 @@ def check_requirements(list_of_bins, path=None):
 
         for (binary, boolean) in found.items():
             if boolean is False:
-                raise SystemRequirementsError('%s was not found in given paths: %s' % (binary, path))
+                raise SystemRequirementsError(
+                    '%s was not found in given paths: %s' % (binary, path))
 
         return
 
     for binary in list_of_bins:
         try:
-            sp.check_output('which %s &> /dev/null' % (shell_quote(binary)), shell=True)
+            sp.check_output('which %s &> /dev/null' %
+                            (shell_quote(binary)), shell=True)
         except sp.CalledProcessError as e:
-            raise SystemRequirementsError('%s was not found in $PATH: %s' % (binary, path))
+            raise SystemRequirementsError(
+                '%s was not found in $PATH: %s' % (binary, path))
 
 
 def escape_quotes(path):
     return path.replace('"', r'\"')
+
 
 def convert_flac_to_wav(flac_file):
     sp.check_output('flac -f -d %s' % (shell_quote(flac_file)), shell=True)
@@ -85,12 +90,16 @@ def merge_audio(list_of_files):
 
 
 def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
-    sp.check_output('lame %s %s %s' % (lame_options, shell_quote(wav_filename), shell_quote(output_filename)), shell=True)
+    sp.check_output('lame %s %s %s' %
+                    (lame_options, shell_quote(wav_filename),
+                     shell_quote(output_filename)), shell=True)
 
 
 def get_flac_tag(flac_filename, tag_name):
     tag_name = tag_name.upper()
-    output = sp.check_output('metaflac --show-tag=%s %s' % (shell_quote(tag_name), shell_quote(flac_filename)), shell=True)
+    output = sp.check_output('metaflac --show-tag=%s %s' %
+                             (shell_quote(tag_name),
+                              shell_quote(flac_filename)), shell=True)
     output = output.decode('utf-8').strip()
 
     return re.split('^%s=' % (tag_name), output, maxsplit=1)[1]
@@ -99,9 +108,12 @@ def get_flac_tag(flac_filename, tag_name):
 if __name__ == '__main__':
     check_requirements(['lame', 'sox', 'metaflac'])
 
-    parser = argparse.ArgumentParser(description='Takes a set of split FLACs and converts back to a mixed MP3/CUE')
+    parser = argparse.ArgumentParser(
+        description='Takes a set of split FLACs and converts back to a mixed '
+                    'MP3/CUE')
 
-    parser.add_argument('flac_filenames', metavar='FLAC', nargs='+', help='FLAC files to merge in order')
+    parser.add_argument('flac_filenames', metavar='FLAC',
+                        nargs='+', help='FLAC files to merge in order')
     parser.add_argument('-t', help='Title of album', required=True)
     parser.add_argument('-a', help='Artist of album', required=True)
     parser.add_argument('-o', help='Output file name for MP3', required=True)
@@ -120,7 +132,8 @@ if __name__ == '__main__':
             wav_filename = convert_flac_to_wav(flac_filename)
             data[wav_filename] = {
                 'TITLE': escape_quotes(get_flac_tag(flac_filename, 'TITLE')),
-                'PERFORMER': escape_quotes(get_flac_tag(flac_filename, 'ARTIST')),
+                'PERFORMER': escape_quotes(
+                    get_flac_tag(flac_filename, 'ARTIST')),
             }
 
             wavs.append(wav_filename)
@@ -132,7 +145,8 @@ if __name__ == '__main__':
             acculumated_frames += frames
             rate = f.getframerate()
             acculumated_duration = acculumated_frames / float(rate)
-            acculumated_time = time.strftime('%M:%S', time.gmtime(acculumated_duration))
+            acculumated_time = time.strftime(
+                '%M:%S', time.gmtime(acculumated_duration))
 
             if acculumated_duration > 3600:
                 minutes = int(acculumated_time[:2]) + 60
@@ -141,7 +155,8 @@ if __name__ == '__main__':
             # add extra frames (75 frames per second in Red Book)
             extra_seconds = acculumated_duration % 1
             extra_frames = extra_seconds * 75
-            acculumated_time += ':%s' % (str(int(math.ceil(extra_frames))).rjust(2, '0'))
+            acculumated_time += ':%s' % (
+                str(int(math.ceil(extra_frames))).rjust(2, '0'))
 
             tracks.append({
                 'TITLE': data[wav]['TITLE'],
