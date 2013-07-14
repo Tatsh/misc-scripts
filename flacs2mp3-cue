@@ -102,7 +102,10 @@ def get_flac_tag(flac_filename, tag_name):
                               shell_quote(flac_filename)), shell=True)
     output = output.decode('utf-8').strip()
 
-    return re.split('^%s=' % (tag_name), output, maxsplit=1)[1]
+    try:
+        return re.split('^%s=' % (tag_name), output, maxsplit=1)[1]
+    except IndexError:
+        return ''
 
 
 if __name__ == '__main__':
