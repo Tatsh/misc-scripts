@@ -186,12 +186,19 @@ if __name__ == '__main__':
 
         track_no = 1
         for track_data in tracks:
-            cue_file_lines.extend([
+            extension = [
                 '  TRACK %s AUDIO' % (str(track_no).rjust(2, '0')),
-                '    TITLE "%s"' % (track_data['TITLE']),
-                '    PERFORMER "%s"' % (track_data['PERFORMER']),
-                '    INDEX 01 %s' % (track_data['INDEX 01']),
-            ])
+            ]
+
+            if track_data['TITLE']:
+                extension.append('    TITLE "%s"' % (track_data['TITLE']))
+
+            if track_data['PERFORMER']:
+                extension.append('    PERFORMER "%s"' % (track_data['PERFORMER']))
+
+            extension.append('    INDEX 01 %s' % (track_data['INDEX 01']))
+
+            cue_file_lines.extend(extension)
 
             track_no += 1
 
