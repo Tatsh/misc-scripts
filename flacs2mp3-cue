@@ -1,0 +1,181 @@
+#!/usr/bin/env python
+
+import argparse
+import contextlib
+import math
+import os
+import re
+import subprocess as sp
+import sys
+import time
+import wave
+
+try:
+    from shlex import quote as shell_quote
+except:
+    from pipes import quote as shell_quote
+
+MERGED_WAV_OUTPUT_FILENAME = 'out.wav'
+
+class SystemRequirementsError(Exception):
+    pass
+
+
+def check_requirements(list_of_bins, path=None):
+    if path is not None:
+        found = {}
+
+        for binary in list_of_bins:
+            found[binary] = False
+
+        for p in path.split(os.pathsep):
+            for binary in list_of_bins:
+                if found[binary]:
+                    continue
+                else:
+                    try:
+                        with open(os.path.join(p, binary)):
+                            found[binary] = True
+                            pass
+                    except IOError:
+                        pass
+
+        for (binary, boolean) in found.items():
+            if boolean is False:
+                raise SystemRequirementsError('%s was not found in given paths: %s' % (binary, path))
+
+        return
+
+    for binary in list_of_bins:
+        try:
+            sp.check_output('which %s &> /dev/null' % (shell_quote(binary)), shell=True)
+        except sp.CalledProcessError as e:
+            raise SystemRequirementsError('%s was not found in $PATH: %s' % (binary, path))
+
+
+def escape_quotes(path):
+    return path.replace('"', r'\"')
+
+def convert_flac_to_wav(flac_file):
+    sp.check_output('flac -f -d %s' % (shell_quote(flac_file)), shell=True)
+    filename_without_ext, _ = os.path.splitext(flac_file)
+
+    return filename_without_ext + '.wav'
+
+
+def merge_audio(list_of_files):
+    shell_quoted = []
+
+    try:
+        with open(MERGED_WAV_OUTPUT_FILENAME):
+            os.remove(MERGED_WAV_OUTPUT_FILENAME)
+    except IOError:
+        pass
+
+    for wav_file in list_of_files:
+        shell_quoted.append(shell_quote(wav_file))
+
+    wav_files = ' '.join(shell_quoted)
+    sox_cmd = 'sox %s %s' % (wav_files, MERGED_WAV_OUTPUT_FILENAME)
+
+    print(sox_cmd)
+    sp.check_output(sox_cmd, shell=True)
+
+    return MERGED_WAV_OUTPUT_FILENAME
+
+
+def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
+    sp.check_output('lame %s %s %s' % (lame_options, shell_quote(wav_filename), shell_quote(output_filename)), shell=True)
+
+
+def get_flac_tag(flac_filename, tag_name):
+    tag_name = tag_name.upper()
+    output = sp.check_output('metaflac --show-tag=%s %s' % (shell_quote(tag_name), shell_quote(flac_filename)), shell=True)
+    output = output.decode('utf-8').strip()
+
+    return re.split('^%s=' % (tag_name), output, maxsplit=1)[1]
+
+
+if __name__ == '__main__':
+    check_requirements(['lame', 'sox', 'metaflac'])
+
+    parser = argparse.ArgumentParser(description='Takes a set of split FLACs and converts back to a mixed MP3/CUE')
+
+    parser.add_argument('flac_filenames', metavar='FLAC', nargs='+', help='FLAC files to merge in order')
+    parser.add_argument('-t', help='Title of album', required=True)
+    parser.add_argument('-a', help='Artist of album', required=True)
+    parser.add_argument('-o', help='Output file name for MP3', required=True)
+
+    args = parser.parse_args()
+    wavs = []
+    tracks = []
+    acculumated_frames = 0
+    mp3_without_ext, _ = os.path.splitext(args.o)
+    cue_filename = mp3_without_ext + '.cue'
+    data = {}
+    mp3_filename = args.o
+
+    for flac_filename in args.flac_filenames:
+        with open(flac_filename):
+            wav_filename = convert_flac_to_wav(flac_filename)
+            data[wav_filename] = {
+                'TITLE': escape_quotes(get_flac_tag(flac_filename, 'TITLE')),
+                'PERFORMER': escape_quotes(get_flac_tag(flac_filename, 'ARTIST')),
+            }
+
+            wavs.append(wav_filename)
+
+    last_acculumated_time = '00:00:00'
+    for wav in wavs:
+        with contextlib.closing(wave.open(wav, 'r')) as f:
+            frames = f.getnframes()
+            acculumated_frames += frames
+            rate = f.getframerate()
+            acculumated_duration = acculumated_frames / float(rate)
+            acculumated_time = time.strftime('%M:%S', time.gmtime(acculumated_duration))
+
+            if acculumated_duration > 3600:
+                minutes = int(acculumated_time[:2]) + 60
+                acculumated_time = '%s:%s' % (minutes, acculumated_time[3:])
+
+            # add extra frames (75 frames per second in Red Book)
+            extra_seconds = acculumated_duration % 1
+            extra_frames = extra_seconds * 75
+            acculumated_time += ':%s' % (str(int(math.ceil(extra_frames))).rjust(2, '0'))
+
+            tracks.append({
+                'TITLE': data[wav]['TITLE'],
+                'PERFORMER': data[wav]['PERFORMER'],
+                'INDEX 01': last_acculumated_time,
+            })
+
+            last_acculumated_time = acculumated_time
+
+    merged_wav = merge_audio(wavs)
+
+    for wav in wavs:
+        os.remove(wav)
+
+    with open(merged_wav):
+        encode_wav_to_mp3(merged_wav, mp3_filename)
+        os.remove(merged_wav)
+
+        cue_file_lines = [
+            'PERFORMER "%s"' % (args.a),
+            'TITLE "%s"' % (args.t),
+            'FILE "%s" MP3' % (mp3_filename)
+        ]
+
+        track_no = 1
+        for track_data in tracks:
+            cue_file_lines.extend([
+                '  TRACK %s AUDIO' % (str(track_no).rjust(2, '0')),
+                '    TITLE "%s"' % (track_data['TITLE']),
+                '    PERFORMER "%s"' % (track_data['PERFORMER']),
+                '    INDEX 01 %s' % (track_data['INDEX 01']),
+            ])
+
+            track_no += 1
+
+        with open(cue_filename, 'w') as f:
+            f.write('\n'.join(cue_file_lines))
