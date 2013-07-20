@@ -111,7 +111,10 @@ if __name__ == '__main__':
     if lame_args == '':
         lame_args = '-V 0'
 
+    original_lame_args = lame_args
+
     for filename in args.flac_filenames:
+        lame_args = original_lame_args
         filename_without_ext, _ = os.path.splitext(filename)
         wav_filename = convert_flac_to_wav(filename)
         output_filename = filename_without_ext + '.mp3'
