@@ -1,0 +1,150 @@
+#!/usr/bin/env python
+
+import argparse
+import contextlib
+import math
+import os
+import re
+import subprocess as sp
+import sys
+import time
+
+try:
+    from shlex import quote as shell_quote
+except:
+    from pipes import quote as shell_quote
+
+class SystemRequirementsError(Exception):
+    pass
+
+
+def get_flac_tag(flac_filename, tag_name):
+    tag_name = tag_name.upper()
+    output = sp.check_output('metaflac --show-tag=%s %s' %
+                             (shell_quote(tag_name),
+                              shell_quote(flac_filename)), shell=True)
+    output = output.decode('utf-8').strip()
+
+    try:
+        return re.split('^%s=' % (tag_name), output, maxsplit=1, flags=re.IGNORECASE)[1]
+    except IndexError:
+        print('ERROR: Could not read %s tag' % tag_name, file=sys.stderr)
+        return ''
+
+def check_requirements(list_of_bins, path=None):
+    if path is not None:
+        found = {}
+
+        for binary in list_of_bins:
+            found[binary] = False
+
+        for p in path.split(os.pathsep):
+            for binary in list_of_bins:
+                if found[binary]:
+                    continue
+                else:
+                    try:
+                        with open(os.path.join(p, binary)):
+                            found[binary] = True
+                            pass
+                    except IOError:
+                        pass
+
+        for (binary, boolean) in found.items():
+            if boolean is False:
+                raise SystemRequirementsError(
+                    '%s was not found in given paths: %s' % (binary, path))
+
+        return
+
+    for binary in list_of_bins:
+        try:
+            sp.check_output('which %s &> /dev/null' %
+                            (shell_quote(binary)), shell=True)
+        except sp.CalledProcessError as e:
+            raise SystemRequirementsError(
+                '%s was not found in $PATH: %s' % (binary, path))
+
+def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
+    cmd = 'lame %s %s %s' % \
+        (lame_options,
+         shell_quote(wav_filename),
+         shell_quote(output_filename))
+
+    print(cmd, file=sys.stderr)
+    sp.check_output(cmd, shell=True)
+
+def convert_flac_to_wav(flac_file):
+    sp.check_output('flac -f -d %s' % (shell_quote(flac_file)), shell=True)
+    filename_without_ext, _ = os.path.splitext(flac_file)
+
+    return filename_without_ext + '.wav'
+
+if __name__ == '__main__':
+    check_requirements(['flac', 'lame', 'metaflac'])
+
+    parser = argparse.ArgumentParser(
+        description='Convert a FLAC file to MP3')
+
+    parser.add_argument('flac_filenames', metavar='FLAC_FILES',
+                        nargs='+', help='FLAC file(s) to convert')
+    parser.add_argument('-o', '--output', help='If only one FLAC file is being converted, a custom output MP3 filename can be used')
+    parser.add_argument('lame_args', metavar='LAME_ARGS', nargs=argparse.REMAINDER, help='LAME arguments. All are supported except for -o')
+
+    args = parser.parse_args()
+
+    if len(args.flac_filenames) > 1 and args.output != None:
+        print('Output filename can only be specified if one FLAC file is given', file=sys.stderr)
+        sys.exit(1)
+
+    lame_args = args.lame_args
+
+    # Remove -o as it is for something else in LAME and remove the adjacement right-most argument
+    for (index, arg) in enumerate(lame_args):
+        if arg == '-o':
+            del lame_args[index]
+            del lame_args[index]
+            break
+
+    lame_args = ' '.join(lame_args)
+
+    for filename in args.flac_filenames:
+        filename_without_ext, _ = os.path.splitext(filename)
+        wav_filename = convert_flac_to_wav(filename)
+        output_filename = filename_without_ext + '.mp3'
+
+        title = get_flac_tag(filename, 'TITLE')
+        artist = get_flac_tag(filename, 'ARTIST')
+        album = get_flac_tag(filename, 'ALBUM')
+        year = int(get_flac_tag(filename, 'DATE'))
+        genre = get_flac_tag(filename, 'GENRE')
+        track = int(get_flac_tag(filename, 'TRACKNUMBER'))
+        has_tags = False
+
+        if title:
+            has_tags = True
+            lame_args += ' --tt %s' % (shell_quote(title))
+        if artist:
+            has_tags = True
+            lame_args += ' --ta %s' % (shell_quote(artist))
+        if album:
+            has_tags = True
+            lame_args += ' --tl %s' % (shell_quote(album))
+        if year:
+            has_tags = True
+            lame_args += ' --ty %d' % (year)
+        if genre:
+            has_tags = True
+            lame_args += ' --tg %s' % (shell_quote(genre))
+        if track:
+            has_tags = True
+            lame_args += ' --tn %d' % (track)
+
+        if has_tags:
+            lame_args += ' --add-id3v2'
+
+        if args.output:
+            output_filename = args.output
+
+        encode_wav_to_mp3(wav_filename, output_filename, lame_args)
+        os.remove(wav_filename)
