@@ -6,6 +6,8 @@ chrome-import-cookies;www-misc
 curl2php;net-misc
 curl2py;net-misc
 extract-sql;dev-db
+flac2mp3;media-sound
+flacs2mp3-cue;media-sound
 linkshare-dec;www-misc
 mount-chroot;sys-fs
 mozcookie2chrome;www-misc
