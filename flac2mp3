@@ -28,7 +28,7 @@ def get_flac_tag(flac_filename, tag_name):
     try:
         return re.split('^%s=' % (tag_name), output, maxsplit=1, flags=re.IGNORECASE)[1]
     except IndexError:
-        print('ERROR: Could not read %s tag' % tag_name, file=sys.stderr)
+        print('Could not read %s tag' % tag_name, file=sys.stderr)
         return ''
 
 def check_requirements(list_of_bins, path=None):
@@ -122,9 +122,17 @@ if __name__ == '__main__':
         title = get_flac_tag(filename, 'TITLE')
         artist = get_flac_tag(filename, 'ARTIST')
         album = get_flac_tag(filename, 'ALBUM')
-        year = int(get_flac_tag(filename, 'DATE'))
         genre = get_flac_tag(filename, 'GENRE')
-        track = int(get_flac_tag(filename, 'TRACKNUMBER'))
+
+        try:
+            year = int(get_flac_tag(filename, 'DATE'))
+        except ValueError:
+            year = None
+        try:
+            track = int(get_flac_tag(filename, 'TRACKNUMBER'))
+        except ValueError:
+            track = None
+
         has_tags = False
 
         if title:
