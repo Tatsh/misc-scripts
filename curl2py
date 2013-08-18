@@ -64,5 +64,5 @@ else:
 
 print("""response = urlopen(req)
 content = response.read()
-# content = str(content)
-# print(content)""")
+content = content.decode('utf-8')
+print(content)""")
