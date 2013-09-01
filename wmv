@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+
+import argparse
+import subprocess as sp
+import sys
+
+try:
+    from shlex import quote as shell_quote
+except:
+    from pipes import quote as shell_quote
+
+tr_map = [
+    ('　', ' '),
+    ('！', '!'),
+    ('？', '?'),
+    ('～', '~'),
+    ('（', '('),
+    ('）', ')'),
+    ('＂', '"'),
+    ('＃', '#'),
+    ('＄', '$'),
+    ('％', '%'),
+    ('＆', '&'),
+    ('＇', "'"),
+    ('＊', '*'),
+    ('，', ','),
+    ('－', '-'),
+    ('．', '.'),
+    ('／', '/'),
+    ('０', '0'),
+    ('１', '1'),
+    ('２', '2'),
+    ('３', '3'),
+    ('４', '4'),
+    ('５', '5'),
+    ('６', '6'),
+    ('７', '7'),
+    ('８', '8'),
+    ('９', '9'),
+    ('：', ':'),
+    ('；', ';'),
+    ('＜', '<'),
+    ('＝', '='),
+    ('＞', '>'),
+    ('？', '?'),
+    ('＠', '@'),
+    ('Ａ', 'A'),
+    ('Ｂ', 'B'),
+    ('Ｃ', 'C'),
+    ('Ｄ', 'D'),
+    ('Ｅ', 'E'),
+    ('Ｆ', 'F'),
+    ('Ｇ', 'G'),
+    ('Ｈ', 'H'),
+    ('Ｉ', 'I'),
+    ('Ｊ', 'J'),
+    ('Ｋ', 'K'),
+    ('Ｌ', 'L'),
+    ('Ｍ', 'M'),
+    ('Ｎ', 'N'),
+    ('Ｏ', 'O'),
+    ('Ｐ', 'P'),
+    ('Ｑ', 'Q'),
+    ('Ｒ', 'R'),
+    ('Ｓ', 'S'),
+    ('Ｔ', 'T'),
+    ('Ｕ', 'U'),
+    ('Ｖ', 'V'),
+    ('Ｗ', 'W'),
+    ('Ｘ', 'X'),
+    ('Ｙ', 'Y'),
+    ('Ｚ', 'Z'),
+    ('［', '['),
+    ('＼', '\\'),
+    ('］', ']'),
+    ('＾', '^'),
+    ('＿', '_'),
+    ('｀', '`'),
+    ('ａ', 'a'),
+    ('ｂ', 'b'),
+    ('ｃ', 'c'),
+    ('ｄ', 'd'),
+    ('ｅ', 'e'),
+    ('ｆ', 'f'),
+    ('ｇ', 'g'),
+    ('ｈ', 'h'),
+    ('ｉ', 'i'),
+    ('ｊ', 'j'),
+    ('ｋ', 'k'),
+    ('ｌ', 'l'),
+    ('ｍ', 'm'),
+    ('ｎ', 'n'),
+    ('ｏ', 'o'),
+    ('ｐ', 'p'),
+    ('ｑ', 'q'),
+    ('ｒ', 'r'),
+    ('ｓ', 's'),
+    ('ｔ', 't'),
+    ('ｕ', ''),
+    ('ｖ', 'v'),
+    ('ｗ', 'w'),
+    ('ｘ', 'x'),
+    ('ｙ', 'y'),
+    ('ｚ', 'z'),
+    ('｛', '{'),
+    ('｜', '|'),
+    ('｝', '}'),
+    ('｟', '⸨'),
+    ('｠', '⸩'),
+    ('￠', '¢'),
+    ('￡', '£'),
+    ('￢', '¬'),
+    ('￣', '‾'),
+    ('￤', '|'),
+    ('￥', '¥'),
+    ('￦', '₩'),
+]
+
+def make_target(filename):
+    for (find, replace) in tr_map:
+        filename = filename.replace(find, replace)
+
+    return filename
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Renames file names with full-width characters to normal width name')
+    parser.add_argument('file', metavar='SOURCE',
+                        nargs=1, help='Source')
+    parser.add_argument('mv_args', metavar='MV_ARGS', nargs=argparse.REMAINDER, help='mv arguments. Most things should work')
+
+    args = parser.parse_args()
+
+    target = shell_quote(make_target(args.file[0]))
+    mv_args = []
+
+    for mv_arg in args.mv_args:
+        if mv_arg[0] == '-':
+            if '=' in mv_arg:
+                flag, value = mv_arg.split('=')
+                value = shell_quote(value)
+                mv_args.append('%s=%s' % (flag, value))
+            else:
+                mv_args.append(shell_quote(mv_arg))
+
+    command = 'mv %s %s %s' % (' '.join(mv_args), shell_quote(args.file[0]), target)
+    print(command)
+
+    status, output = sp.getstatusoutput(command)
+
+    if status:
+        print(output)
+        sys.exit(status)
+    elif '-v' in mv_args or '--verbose' in mv_args:
+        print(output)
