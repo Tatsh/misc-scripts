@@ -63,7 +63,7 @@ SRC="${BASH_ARGV[1]}"
 DEST=$BASH_ARGV
 RMARGS=""
 
-if [ ! $SRC ]; then
+if [ ! "$SRC" ]; then
   scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
   exit 1
 fi
@@ -71,5 +71,5 @@ fi
 [ RMVERBOSE ] && RMARGS="-v"
 [ RMRECURSIVE ] && RMARGS="${RMARGS}R"
 
-scp $DASHARG $c $F $i $l $o $P $S $SRC $DEST
+scp $DASHARG $c $F $i $l $o $P $S "$SRC" "$DEST"
 [ $? -eq 0 ] && rm "$RMARGS" "$SRC"
