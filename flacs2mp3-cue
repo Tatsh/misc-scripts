@@ -194,7 +194,8 @@ if __name__ == '__main__':
                 extension.append('    TITLE "%s"' % (track_data['TITLE']))
 
             if track_data['PERFORMER']:
-                extension.append('    PERFORMER "%s"' % (track_data['PERFORMER']))
+                extension.append('    PERFORMER "%s"' %
+                                 (track_data['PERFORMER']))
 
             extension.append('    INDEX 01 %s' % (track_data['INDEX 01']))
 

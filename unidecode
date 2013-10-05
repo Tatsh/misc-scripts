@@ -5,4 +5,3 @@ from unidecode import unidecode
 
 for val in sys.argv[1:]:
     print(unidecode(val))
-

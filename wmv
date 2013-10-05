@@ -117,6 +117,7 @@ tr_map = [
     ('￦', '₩'),
 ]
 
+
 def make_target(filename):
     for (find, replace) in tr_map:
         filename = filename.replace(find, replace)
@@ -125,10 +126,14 @@ def make_target(filename):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Renames file names with full-width characters to normal width name')
+    parser = argparse.ArgumentParser(
+        description='Renames file names with full-width characters to normal '
+                    'width name')
     parser.add_argument('file', metavar='SOURCE',
                         nargs=1, help='Source')
-    parser.add_argument('mv_args', metavar='MV_ARGS', nargs=argparse.REMAINDER, help='mv arguments. Most things should work')
+    parser.add_argument('mv_args', metavar='MV_ARGS',
+                        nargs=argparse.REMAINDER,
+                        help='mv arguments. Most things should work')
 
     args = parser.parse_args()
 
@@ -144,7 +149,9 @@ if __name__ == '__main__':
             else:
                 mv_args.append(shell_quote(mv_arg))
 
-    command = 'mv %s %s %s' % (' '.join(mv_args), shell_quote(args.file[0]), target)
+    command = 'mv %s %s %s' % (' '.join(mv_args),
+                               shell_quote(args.file[0]),
+                               target)
     print(command)
 
     status, output = sp.getstatusoutput(command)

@@ -14,6 +14,7 @@ try:
 except:
     from pipes import quote as shell_quote
 
+
 class SystemRequirementsError(Exception):
     pass
 
@@ -26,10 +27,12 @@ def get_flac_tag(flac_filename, tag_name):
     output = output.decode('utf-8').strip()
 
     try:
-        return re.split('^%s=' % (tag_name), output, maxsplit=1, flags=re.IGNORECASE)[1]
+        return re.split('^%s=' % (tag_name), output,
+                        maxsplit=1, flags=re.IGNORECASE)[1]
     except IndexError:
         print('Could not read %s tag' % tag_name, file=sys.stderr)
         return ''
+
 
 def check_requirements(list_of_bins, path=None):
     if path is not None:
@@ -65,6 +68,7 @@ def check_requirements(list_of_bins, path=None):
             raise SystemRequirementsError(
                 '%s was not found in $PATH: %s' % (binary, path))
 
+
 def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
     cmd = 'lame %s %s %s' % \
         (lame_options,
@@ -74,11 +78,13 @@ def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
     print(cmd, file=sys.stderr)
     sp.check_output(cmd, shell=True)
 
+
 def convert_flac_to_wav(flac_file):
     sp.check_output('flac -f -d %s' % (shell_quote(flac_file)), shell=True)
     filename_without_ext, _ = os.path.splitext(flac_file)
 
     return filename_without_ext + '.wav'
+
 
 if __name__ == '__main__':
     check_requirements(['flac', 'lame', 'metaflac'])
@@ -88,18 +94,25 @@ if __name__ == '__main__':
 
     parser.add_argument('flac_filenames', metavar='FLAC_FILES',
                         nargs='+', help='FLAC file(s) to convert')
-    parser.add_argument('-o', '--output', help='If only one FLAC file is being converted, a custom output MP3 filename can be used')
-    parser.add_argument('lame_args', metavar='LAME_ARGS', nargs=argparse.REMAINDER, help='LAME arguments. All are supported except for -o')
+    parser.add_argument('-o', '--output',
+                        help='If only one FLAC file is being converted, a '
+                             'custom output MP3 filename can be used')
+    parser.add_argument('lame_args', metavar='LAME_ARGS',
+                        nargs=argparse.REMAINDER,
+                        help='LAME arguments. All are supported except '
+                             'for -o')
 
     args = parser.parse_args()
 
-    if len(args.flac_filenames) > 1 and args.output != None:
-        print('Output filename can only be specified if one FLAC file is given', file=sys.stderr)
+    if len(args.flac_filenames) > 1 and args.output is not None:
+        print('Output filename can only be specified if one FLAC file is '
+              'given', file=sys.stderr)
         sys.exit(1)
 
     lame_args = args.lame_args
 
-    # Remove -o as it is for something else in LAME and remove the adjacement right-most argument
+    # Remove -o as it is for something else in LAME and remove the adjacement
+    #   right-most argument
     for (index, arg) in enumerate(lame_args):
         if arg == '-o':
             del lame_args[index]
