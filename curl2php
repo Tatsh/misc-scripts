@@ -74,21 +74,21 @@ if ($url === null) {
   exit(1);
 }
 
-function printArray($arr) {
+function printArray(array $arr) {
   $ret = json_encode($arr);
   $ret = str_replace('\\/', '/', $ret); // stay compatible with older PHP versions
   $ret = str_replace('","', "\",\n  \"", $ret);
 
   $ret = "\n".'  '.substr($ret, 1, -1)."\n";
 
-  $ret = 'array('.$ret.')';
+  $ret = 'array('.str_replace('"', "'", $ret).')';
 
   print $ret;
 }
 
 print "<?php\n";
 ?>
-$ch = curl_init("<?php print $url; ?>");
+$ch = curl_init('<?php print $url; ?>');
 <?php if ($cookie): ?>
 curl_setopt($ch, CURLOPT_COOKIE, "<?php print $cookie; ?>");
 <?php endif; ?>
