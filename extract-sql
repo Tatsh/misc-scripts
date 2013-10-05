@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 ##############################################################################
 ##
 ##  Written by: Jared Cheney <jared.cheney@gmail.com>
@@ -54,6 +54,7 @@
 
 ## FIXME's:
 
+use warnings;
 use strict;
 
 
