@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+# This is based on calcbpp which comes with mplayer tools (but not
+# mplayer2 on Gentoo)
+
+from math import floor
+import argparse
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Searches logs for a string or expression')
+    parser.add_argument(
+        'unscaled_resolution', metavar='UNSCALED_RES',
+        help='Unscaled resolution in X:Y format')
+    parser.add_argument(
+        'aspect_ratio', metavar='AR', help='Aspect ratio in X:Y format')
+    parser.add_argument(
+        'video_bitrate', metavar='VIDEO_BITRATE', help='Video bitrate in bps')
+    parser.add_argument('fps', metavar='FPS', help='Frames per second')
+    parser.add_argument('-r', '--raw-ar', metavar='RAW_AR',
+                        default='720:480',
+                        help='Raw aspect ratio in X:Y format')
+
+    args = parser.parse_args()
+
+    unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
+    raw_aspect_width, raw_aspect_height = [
+        int(x) for x in args.raw_ar.split(':')]
+    bps, fps = (args.video_bitrate, args.fps,)
+    raw_aspect = raw_aspect_width / raw_aspect_height
+    encoded_at = args.aspect_ratio
+
+    if ':' in encoded_at:
+        encoded_at = [int(x) for x in encoded_at.split(':')]
+        encoded_at = encoded_at[0] / encoded_at[1]
+
+    scaled_width = float(unscaled_width) * (encoded_at / raw_aspect)
+    scaled_height = unscaled_height
+    picture_ar = float(scaled_width) / float(scaled_height)
+
+    print('Prescaled picture: %dx%d, AR %.2f' %
+          (int(scaled_width), int(scaled_height), float(picture_ar)))
+
+    width = 720
+    while width >= 320:
+        height = 16 * round(width / picture_ar / 16)
+        diff = width / picture_ar - height
+
+        if diff < 0 and diff % 0.5 == 0:
+            diff = floor(diff) + 1
+        else:
+            diff = round(diff)
+
+        new_ar = width / height
+        picture_ar_error = abs(100 - picture_ar / new_ar * 100)
+
+        args = (
+            width,
+            height,
+            diff,
+            new_ar,
+            picture_ar_error,
+            width,
+            height,
+            (int(bps) * 1000) / (width * height * float(fps)),
+        )
+
+        print('%dx%d, diff %3d, new AR %.2f, AR error %.2f%% scale=%d:%d '
+              'bpp: %.3f' % args)
+
+        width -= 16
