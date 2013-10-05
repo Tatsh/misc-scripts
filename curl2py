@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser(description='Generate equivalent Python code'
 parser.add_argument('-H', '--header', help='Header', dest='header',
                     action=CollectHeaders)
 parser.add_argument('--data', default=False, help='POST data')
+parser.add_argument('--compressed', default=False, action='store_true', help='Ignored')
 
 argv = sys.argv
 
