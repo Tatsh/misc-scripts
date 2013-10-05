@@ -1,5 +1,13 @@
 #!/usr/bin/env php
 <?php
+/**
+ * Shell front-end to strtotimne. Exits with status 1 on failure.
+ *
+ * @author  Andrew Udvare <audvare@gmail.com>
+ * @license MIT http://opensource.org/licenses/MIT
+ * @link    https://github.com/Tatsh/misc-scripts
+ */
+
 if (!isset($argv[1])) {
     printf("Usage: %s STRING\n", $argv[0]);
     return 1;
