@@ -122,6 +122,9 @@ arabic_stops = [
 
 names = {
     'S3RL': 'S3RL',
+    'mcdonald': 'McDonald',
+    'mcdonald\'s': 'McDonald\'s',
+    'mcdonalds': 'McDonald\'s',
 }
 mode_map = {
     ENGLISH_MODE: stop_words,
