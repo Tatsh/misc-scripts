@@ -143,6 +143,13 @@ def get_name(word):
 
     return None
 
+def is_roman_numeral(string):
+    if len(string) == 0:
+        return False
+
+    # http://stackoverflow.com/questions/267399/how-do-you-match-only-valid-roman-numerals-with-a-regular-expression
+    return re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string, re.I) is not None
+
 
 def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
                ampersands=False):
@@ -165,6 +172,9 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
         title = [fix_apostrophes(original_words[0])]
     else:
         title = [fix_apostrophes(words[0])]
+
+    if is_roman_numeral(title[0]):
+        title = [title[0].upper()]
 
     last_index = len(original_words) - 1
 
@@ -207,6 +217,9 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 
             if "'" in word:
                 word = fix_apostrophes(word)
+
+            if is_roman_numeral(word):
+                word = word.upper()
 
             word = '%s%s%s' % (begin, word, end)
 
