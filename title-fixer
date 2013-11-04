@@ -50,6 +50,15 @@ stop_words = [
     'without',
 ]
 
+# English abbreviations for period removal
+english_abbrev = [
+    'feat',
+    'mr',
+    'mrs',
+    'ms',
+    'vs',
+]
+
 # Only really common ones
 japanese_particles = [
     'de',
@@ -143,6 +152,7 @@ def get_name(word):
 
     return None
 
+
 def is_roman_numeral(string):
     if len(string) == 0:
         return False
@@ -191,16 +201,18 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
                         title.append(name)
                     continue
 
+            # Detect an upper-case word not to change
             if original_words[index] == word.upper() and \
                     not re.match('[^\w]', word):
+
+                # Detect I (not Roman numeral necessarily)
+                if mode == ENGLISH_MODE and word == 'I':
+                    pass
                 # ???
-                if index == last_index and \
+                elif index == last_index and \
                         re.match(r'[A-Z0-9]+', original_words[index]):
-                    try:
-                        title[index] = original_words[index]
-                    except IndexError:
-                        title.append(original_words[index])
-                continue
+                    title.append(original_words[index])
+                    continue
 
             begin = end = ''
 
@@ -220,6 +232,9 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 
             if is_roman_numeral(word):
                 word = word.upper()
+
+            if mode == ENGLISH_MODE and word.lower() in english_abbrev:
+                end = ''
 
             word = '%s%s%s' % (begin, word, end)
 
