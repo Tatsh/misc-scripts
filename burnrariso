@@ -108,7 +108,7 @@ def unrar_wodim_pipe(rar_filename, iso_filename, tsize, speed=8,
         shell_quote(iso_filename),
     ]
     wodim_args = [
-        'wodim',
+        'cdrecord',
         ('speed=%d' % speed),
         'driveropts=burnfree',
         ('tsize=%d' % tsize),
@@ -143,7 +143,7 @@ def check_requirements(skip_crc):
         sp.check_output('which unrar &> /dev/null', shell=True)
         if skip_crc is False:
             sp.check_output('which cksfv &> /dev/null', shell=True)
-        sp.check_output('which wodim &> /dev/null', shell=True)
+        sp.check_output('which cdrecord &> /dev/null', shell=True)
     except sp.CalledProcessError as e:
         command_needed = e.cmd \
                           .replace('which ', '') \
@@ -155,7 +155,7 @@ def check_requirements(skip_crc):
         apps_to_gentoo_packages = {
             'unrar': ['app-arch/unrar', 'app-arch/unrar-gpl'],
             'cksfv': ['app-arch/cksfv'],
-            'wodim': ['app-cdr/cdrkit'],
+            'cdrecord': ['app-cdr/cdrtools'],
         }
 
         if len(apps_to_gentoo_packages[command_needed]) == 1:
