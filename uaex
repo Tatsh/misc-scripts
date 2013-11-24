@@ -1,0 +1,74 @@
+#!/usr/bin/env python
+
+# Based on http://www.zoneofgames.ru/forum/index.php?showtopic=27641&st=0&p=419607&#entry419607
+# Copied here: https://gist.github.com/Tatsh/7623045
+
+from os.path import realpath, getsize, basename, join as path_join
+import os
+import struct
+import sys
+
+if __name__ == '__main__':
+    try:
+        path = realpath(sys.argv[1])
+    except IndexError:
+        print('Unity Asset Extractor')
+        print('Usage: %s FILE')
+        sys.exit(1)
+
+    filename = realpath(sys.argv[1])
+    endian = '>'
+    filesize = getsize(filename)
+
+    #types_not_wanted = [
+        #21,
+        #28,
+        #48,
+        #49,
+        #74,
+    #]
+
+    out_path = basename(sys.argv[1])
+    os.makedirs('./%s' % out_path)
+
+    with open(filename, 'rb') as f:
+        f.seek(0xc)
+        bias = struct.unpack('<L', f.read(4))[0]
+
+        if bias != 0:
+            f.seek(0x28)
+            no_files = struct.unpack('<L', f.read(4))[0]
+        else:
+            f.seek(0x0)
+            info_size = struct.unpack('<L', f.read(4))
+            info = struct.unpack('<L', f.read(4)) # actual file size
+            info -= info_size
+            info += 0x15
+            f.seek(info)
+            no_files = struct.unpack('<L', f.read(4))[0]
+
+        for i in range(1, no_files):
+            skip = False
+            ext = fname = wname = ''
+
+            fid = struct.unpack('<L', f.read(4))[0]
+            offset = struct.unpack('<L', f.read(4))[0]
+            offset += bias
+            size = struct.unpack('<L', f.read(4))[0]
+            ftype = struct.unpack('<L', f.read(4))[0]
+            dummy = struct.unpack('<L', f.read(4))[0]
+
+            #if ftype in types_not_wanted:
+                #continue
+
+            last = f.tell()
+            f.seek(offset)
+            contents = f.read(size)
+            f.seek(last)
+
+            if len(contents) == 0:
+                continue
+
+            with open(path_join('%s' % (out_path), '%d-%d' % (ftype, fid), 'wb')) as new:
+                new.write(contents)
+                print(fid, fname, offset, size, ftype, dummy)
