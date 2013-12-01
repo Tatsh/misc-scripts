@@ -69,6 +69,6 @@ if __name__ == '__main__':
             if len(contents) == 0:
                 continue
 
-            with open(path_join('%s' % (out_path), '%d-%d' % (ftype, fid), 'wb')) as new:
+            with open(path_join('%s' % (out_path), '%d-%d' % (ftype, fid)), 'wb') as new:
                 new.write(contents)
                 print(fid, fname, offset, size, ftype, dummy)
