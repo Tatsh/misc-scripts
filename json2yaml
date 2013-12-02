@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+
+import json
+import sys
+import yaml
+
+status = 0
+
+def yaml_dump(s):
+    return yaml.dump(s, default_flow_style=False, indent=4)
+
+# argv mode
+if len(sys.argv) >= 2:
+    for arg in sys.argv[1:]:
+        try:
+            with open(arg, 'rb') as f:
+                print(yaml_dump(json.loads(f.read().strip())))
+        except IOError:
+            pass
+
+    sys.exit(status)
+
+# stdin mode
+[print(yaml_dump(json.loads(arg.strip()))) for arg in sys.stdin.readlines()]
