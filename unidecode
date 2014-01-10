@@ -3,5 +3,12 @@
 import sys
 from unidecode import unidecode
 
-for val in sys.argv[1:]:
-    print(unidecode(val))
+# argv mode
+if len(sys.argv) >= 2:
+    for arg in sys.argv[1:]:
+        print(unidecode(arg.strip()))
+    sys.exit()
+
+# stdin mode
+for arg in sys.stdin.readlines():
+    print(unidecode(arg.strip()))
