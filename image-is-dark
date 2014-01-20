@@ -6,7 +6,7 @@ fi
 
 infile="$1"
 failed=0
-threshold=${2:-50}
+threshold=${2:-40}
 
 convert_output=$(convert "$infile" -colorspace hsb -resize 1x1 txt:-)
 
