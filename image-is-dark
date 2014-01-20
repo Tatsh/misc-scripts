@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+if [ -z "$1" ]; then
+    echo "Usage: $0 FILE [THRESHOLD]"
+fi
+
+infile="$1"
+failed=0
+threshold=${2:-50}
+
+convert_output=$(convert "$infile" -colorspace hsb -resize 1x1 txt:-)
+
+if ! echo "$convert_output" | grep -q 'hsb'; then
+    echo 'Error reading file' >&2
+    exit 1
+fi
+
+value=$(echo "$convert_output" | tail -n 1 | \
+    perl -pe 's/.*\s+hsb\([0-9]+(?:\.[0-9]+)?%,[0-9]+(?:\.[0-9]+)?%,([0-9]+(\.[0-9]+))?%\)/$1/' | \
+    awk '{print int($1+0.5)}')
+
+if [ "$value" -lt "$threshold" ]; then
+    exit
+fi
+
+exit 1
