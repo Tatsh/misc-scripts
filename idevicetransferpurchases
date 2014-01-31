@@ -1,0 +1,113 @@
+#!/usr/bin/env python2.7
+# -*- coding: utf-8 -*-
+
+from __future__ import unicode_literals
+from os import remove as rm, rename
+from os.path import basename, dirname, expanduser, join as path_join, realpath, splitext
+from osext.filesystem import isfile
+from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip
+import argparse
+import plist
+import re
+import sys
+
+verbose = False
+
+
+class ConfigurationException(Exception):
+    pass
+
+
+def vprint(str, stderr=False):
+    global verbose
+
+    if verbose:
+        print(str)
+
+
+
+if __name__ == '__main__':
+    devices = []
+    device_list = []
+    parser = argparse.ArgumentParser()
+    default_device = None
+
+    try:
+        with open('~/.ios-devices') as f:
+            devices = yaml.load(f.read())
+
+            if type(devices) is not list:
+                print('File ~/.ios-devices must be a set of tuples in YAML format with device name first and UDID second')
+                sys.exit(1)
+
+            devices = set(devices)
+    except IOError:
+        pass
+
+    for udid in idevice_id('-l', _iter=True):
+        udid = udid.strip()
+        name = None
+
+        for line in ideviceinfo(['-u', udid], _iter=True):
+            if re.match('^DeviceName\: ', line):
+                name = line.strip()[12:]
+
+        device_list.append((name.strip(), udid.strip(),))
+
+        if len(device_list) == 1:
+            default_device = device_list[0][0]
+
+    parser.add_argument('-d', '--device', default=default_device, metavar='DEVICE_NAME', help='Device name (case sensitive)')
+    parser.add_argument('-v', '--verbose', action='store_true')
+
+    args = parser.parse_args()
+    verbose = args.verbose
+    udid = None
+
+    if args.device is None:
+        print('You must pick a device to use (multiple ones are plugged in or are in the configuration file)')
+        for (name, udid) in devices:
+            print('%s (%s)' % (name, udid,))
+        sys.exit(1)
+
+    udid = None
+    for (name, u) in device_list:
+        if name == args.device:
+            udid = u
+            break
+
+    if not udid:
+        print('Could not find UDID for %s' % (args.device,))
+        sys.exit(1)
+
+    vprint('Working with device "%s"' % (args.device,))
+
+    full_info = plist.from_xml(ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8'))
+
+    for app_info in full_info:
+        keys = app_info.keys()
+
+        if args.verbose:
+            keys.sort()
+
+            for key in keys:
+                try:
+                    vprint('%s: %s' % (key, app_info[key],))
+                except UnicodeEncodeError:
+                    pass
+
+        try:
+            name = app_info['CFBundleDisplayName']
+        except KeyError:
+            name = app_info['CFBundleName']
+        try:
+            version = app_info['CFBundleShortVersionString']
+        except:
+            version = app_info['CFBundleVersion']
+        try:
+            output_fn = '%s %s.ipa' % (name, version,)
+        except UnicodeEncodeError:
+            print('UnicodeEncodeError with name or version key')
+            sys.exit(1)
+
+        print(output_fn)
