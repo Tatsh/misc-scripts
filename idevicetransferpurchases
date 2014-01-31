@@ -1,9 +1,9 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 from os import remove as rm, rename
-from os.path import basename, dirname, expanduser, join as path_join, realpath, splitext
+from os.path import basename, dirname, expanduser, isdir, join as path_join, realpath, splitext
 from osext.filesystem import isfile
 from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip
 import argparse
@@ -21,8 +21,15 @@ class ConfigurationException(Exception):
 def vprint(str, stderr=False):
     global verbose
 
+    which = sys.stdout
+    if stderr:
+        which = sys.stderr
+
     if verbose:
-        print(str)
+        try:
+            print(str, file=which)
+        except UnicodeEncodeError:
+            sys.stderr.write(str.encode('utf-8') + '\n')
 
 
 
@@ -58,11 +65,17 @@ if __name__ == '__main__':
             default_device = device_list[0][0]
 
     parser.add_argument('-d', '--device', default=default_device, metavar='DEVICE_NAME', help='Device name (case sensitive)')
+    parser.add_argument('-t', '--target', required=True)
     parser.add_argument('-v', '--verbose', action='store_true')
 
     args = parser.parse_args()
     verbose = args.verbose
     udid = None
+    target_dir = realpath(args.target)
+
+    if not isdir(target_dir):
+        print('Target directory must exist')
+        sys.exit(1)
 
     if args.device is None:
         print('You must pick a device to use (multiple ones are plugged in or are in the configuration file)')
@@ -84,6 +97,9 @@ if __name__ == '__main__':
 
     full_info = plist.from_xml(ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8'))
 
+    # TODO Test unzip ability to ensure the file is completely completely
+    #   copied. Do this for the existing file and after copying over.
+    #   Ovewrite the existing file if the unzip operation cannot run successfully.
     for app_info in full_info:
         keys = app_info.keys()
 
@@ -91,23 +107,45 @@ if __name__ == '__main__':
             keys.sort()
 
             for key in keys:
-                try:
-                    vprint('%s: %s' % (key, app_info[key],))
-                except UnicodeEncodeError:
-                    pass
+                vprint('    %s: %s' % (key, app_info[key].get_value(),))
 
         try:
-            name = app_info['CFBundleDisplayName']
+            name = app_info['CFBundleDisplayName'].get_value().encode('utf-8')
+
+            if len(name) == 0:
+                raise KeyError
         except KeyError:
-            name = app_info['CFBundleName']
+            name = app_info['CFBundleName'].get_value().encode('utf-8')
         try:
             version = app_info['CFBundleShortVersionString']
         except:
             version = app_info['CFBundleVersion']
         try:
+            name = unicode(name, 'utf-8', errors='strict')
             output_fn = '%s %s.ipa' % (name, version,)
+            output_fn = output_fn.encode('utf-8')
         except UnicodeEncodeError:
             print('UnicodeEncodeError with name or version key')
             sys.exit(1)
 
-        print(output_fn)
+        full_path = path_join(target_dir, output_fn)
+        if isfile(full_path):
+            vprint(u'%s already exists, skipping' % (output_fn.decode('utf-8')))
+            continue
+
+        print(u'Name: "%s", version: %s -> "%s"' % (name, version, output_fn.decode('utf-8'),))
+
+        bundle_name = app_info['CFBundleIdentifier'].get_value().encode('utf-8')
+
+        vprint('Removing archive if it already exists')
+        ideviceinstaller(['-R', bundle_name])
+
+        cmd = ['-u', udid, '-a', bundle_name, '-o', 'app_only', '-o remove', '-o', 'copy=%s' % (target_dir)]
+        output = ideviceinstaller(cmd)
+        current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
+
+        vprint(output.strip())
+
+        assert(isfile(current_ipa_name))
+
+        rename(current_ipa_name, full_path)
