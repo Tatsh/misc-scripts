@@ -145,9 +145,16 @@ if __name__ == '__main__':
 
         device_families = app_info['UIDeviceFamily']
         if len(device_families) == 1:
-            if device_families[0] == 2:
+            family = device_families[0]
+
+            # Sometimes these values are not longs, but instead strings
+            # (NSString of course)
+            if isinstance(family, plist.String):
+                family = int(family.get_value())
+
+            if family == 2:
                 device_family = 'ipad'
-            elif device_families[0] == 1:
+            elif family == 1:
                 device_family = 'iphone'  # iPhone/iPod Touch only app
             else:
                 print('What do you have plugged in? An Apple TV? Skipping this app', file=sys.stderr)
@@ -162,7 +169,7 @@ if __name__ == '__main__':
             os.makedirs(device_family_dir)
 
         if isfile(full_path) and can_unzip(full_path):
-            vprint(u'%s already exists, skipping' % (output_fn.decode('utf-8')))
+            print(u'%s already exists, skipping' % (output_fn.decode('utf-8')))
             continue
 
         name_version_str = u'Name: "%s", version: %s -> "%s"' % (name, version, output_fn.decode('utf-8'),)
