@@ -1,10 +1,58 @@
 #!/usr/bin/env python
+from os.path import basename
 from sh import metaflac
 from pipes import quote as shell_quote
 import argparse
 import sys
 
 if __name__ == '__main__':
+    invoked_as = basename(sys.argv[0])
+
+    try:
+        if invoked_as != 'flacted' and sys.argv[1]:
+            tag_requested = invoked_as.split('-')[1]
+            possible = [
+                tag_requested.title(),
+                tag_requested.upper(),
+                tag_requested.lower(),
+            ]
+
+            unfiltered_files = sys.argv[1:]
+            files = []
+
+            for file in unfiltered_files:
+                try:
+                    with open(file) as f:
+                        files.append(file)
+                except IOError as e:
+                    pass
+
+            show_filename = len(files) > 1
+
+            for filename in files:
+                for tag in possible:
+                    val = metaflac(['--show-tag=%s' % (tag), filename]).strip()
+                    val = val[len(tag) + 1:].splitlines()[0].strip()
+
+                    if val:
+                        if tag_requested.lower() == 'track':
+                            try:
+                                val = int(val)
+                                val = '%02d' % (val,)
+                            except TypeError:
+                                val = ''
+
+                        if show_filename:
+                            print('%s: %s' % (filename, val,))
+                        else:
+                            print(val)
+
+                        break
+
+            sys.exit()
+    except IndexError:
+        pass
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument('-t', '--title')
