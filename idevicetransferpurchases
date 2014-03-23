@@ -1,9 +1,8 @@
-#!/usr/bin/env python2.7
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# TODO Revise all unicode handling.
-
 from __future__ import print_function, unicode_literals
+from multiprocessing import Manager, Process
 from os import makedirs, remove as rm, rename
 from os.path import basename, dirname, expanduser, isdir, join as path_join, realpath, splitext
 from osext.filesystem import isfile
@@ -15,8 +14,11 @@ import sys
 
 verbose = False
 
+class AppNameOrVersionError(Exception):
+    pass
 
-class ConfigurationException(Exception):
+
+class AppPropertyError(Exception):
     pass
 
 
@@ -41,23 +43,134 @@ def can_unzip(filename):
     return True
 
 
+def get_app_name(app_info):
+    try:
+        name = app_info['CFBundleDisplayName'].get_value().strip()
+
+        if len(name) == 0:
+            raise KeyError
+
+        return name
+    except KeyError:
+        return app_info['CFBundleName'].get_value().strip()
+
+    raise AppNameOrVersionError('get_app_name()')
+
+
+def get_app_version(app_info):
+    try:
+        val = app_info['CFBundleShortVersionString'].get_value().strip()
+
+        if val:
+            return val
+    except KeyError:
+        val = app_info['CFBundleVersion'].get_value().strip()
+
+        if val:
+            return val
+
+    raise AppNameOrVersionError('get_app_version()')
+
+
+def get_device_family(app_info):
+    device_families = app_info['UIDeviceFamily']
+    if len(device_families) == 1:
+        family = device_families[0]
+
+        # Sometimes these values are not longs, but instead strings
+        # (NSString of course)
+        if isinstance(family, plist.String):
+            family = int(family.get_value())
+
+        if family == 2:
+            device_family = 'ipad'
+        elif family == 1:
+            device_family = 'iphone'  # iPhone/iPod Touch only app
+        else:
+            print('What do you have plugged in? An Apple TV? Skipping this app', file=sys.stderr)
+            raise AppPropertyError('get_device_family()')
+    else:
+        device_family = 'universal'
+
+    return device_family
+
+
+def get_output_filename(app_info):
+    try:
+        return '%s %s.ipa' % (get_app_name(app_info), get_app_version(app_info),)
+    except UnicodeEncodeError as e:
+        print('UnicodeEncodeError with name or version key (%s)' (app_info['CFBundleIdentifier'].get_value(),))
+        raise e
+
+    raise AppNameOrVersionError('get_output_filename()')
+
+
+def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
+    name = get_app_name(app_info)
+    device_family = get_device_family(app_info)
+    bundle_name = app_info['CFBundleIdentifier'].get_value()
+    device_family_dir = path_join(target_dir, device_family)
+    full_path = path_join(device_family_dir, output_fn)
+    version = get_app_version(app_info)
+
+    if verbose:
+        keys = app_info.keys()
+        keys.sort()
+
+        for key in keys:
+            vprint('    %s: %s' % (key, app_info[key].get_value(),))
+
+    vprint('%s: Removing archive if it already exists' % (bundle_name,))
+    ideviceinstaller(['-R', bundle_name])
+
+    if isfile(full_path) and can_unzip(full_path):
+        print('%s already exists, skipping' % (output_fn))
+        return
+
+    if not isdir(device_family_dir):
+        os.mkdir(device_family_dir)
+
+    name_version_str = 'Name: "%s", version: %s -> "%s"' % (name, version, output_fn,)
+    print(name_version_str)
+
+    current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
+    cmd = ['-u', udid, '-a', bundle_name, '-o', 'app_only', '-o remove', '-o', 'copy=%s' % (target_dir)]
+    print('Copying')
+    try:
+        output = ideviceinstaller(cmd)
+    except KeyboardInterrupt:
+        print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
+        if isfile(current_ipa_name):
+            rm(current_ipa_name)
+            return
+
+    vprint(output.strip())
+
+    try:
+        assert(isfile(current_ipa_name))
+    except AssertionError:
+        failed_to_copy_arr.append(name_version_str)
+        return
+
+    print('Verifying')
+    try:
+        if not can_unzip(current_ipa_name):
+            print('Failed to transfer application with bundle name: %s' % (bundle_name,))
+            rm(current_ipa_name)
+            return
+    except KeyboardInterrupt:
+        print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
+        if isfile(current_ipa_name):
+            rm(current_ipa_name)
+            return
+
+    rename(current_ipa_name, full_path)
+
 if __name__ == '__main__':
     devices = []
     device_list = []
     parser = argparse.ArgumentParser()
     default_device = None
-
-    try:
-        with open('~/.ios-devices') as f:
-            devices = yaml.load(f.read())
-
-            if type(devices) is not list:
-                print('File ~/.ios-devices must be a set of tuples in YAML format with device name first and UDID second')
-                sys.exit(1)
-
-            devices = set(devices)
-    except IOError:
-        pass
 
     for udid in idevice_id('-l', _iter=True):
         udid = udid.strip()
@@ -106,109 +219,14 @@ if __name__ == '__main__':
 
     full_info = plist.from_xml(ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8'))
 
-    # TODO Test unzip ability to ensure the file is completely completely
-    #   copied. Do this for the existing file and after copying over.
-    #   Ovewrite the existing file if the unzip operation cannot run successfully.
+    manager = Manager()
+    failed_to_copy_arr = manager.list()
+
     for app_info in full_info:
-        keys = app_info.keys()
-        device_family = 'iphone'
+        output_fn = get_output_filename(app_info)
+        Process(target=get_ipa, args=(target_dir, app_info, output_fn, failed_to_copy_arr), name=output_fn).start()
 
-        if args.verbose:
-            keys.sort()
-
-            for key in keys:
-                vprint('    %s: %s' % (key, app_info[key].get_value(),))
-
-        bundle_name = app_info['CFBundleIdentifier'].get_value().encode('utf-8')
-
-        vprint('Removing archive if it already exists')
-        ideviceinstaller(['-R', bundle_name])
-
-        try:
-            name = app_info['CFBundleDisplayName'].get_value().encode('utf-8')
-
-            if len(name) == 0:
-                raise KeyError
-        except KeyError:
-            name = app_info['CFBundleName'].get_value().encode('utf-8')
-        try:
-            version = app_info['CFBundleShortVersionString']
-        except:
-            version = app_info['CFBundleVersion']
-        try:
-            name = unicode(name, 'utf-8', errors='strict')
-            output_fn = '%s %s.ipa' % (name, version,)
-            output_fn = output_fn.encode('utf-8')
-        except UnicodeEncodeError:
-            print('UnicodeEncodeError with name or version key (%s)' (app_info['CFBundleIdentifier'].get_value(),))
-            continue
-
-        device_families = app_info['UIDeviceFamily']
-        if len(device_families) == 1:
-            family = device_families[0]
-
-            # Sometimes these values are not longs, but instead strings
-            # (NSString of course)
-            if isinstance(family, plist.String):
-                family = int(family.get_value())
-
-            if family == 2:
-                device_family = 'ipad'
-            elif family == 1:
-                device_family = 'iphone'  # iPhone/iPod Touch only app
-            else:
-                print('What do you have plugged in? An Apple TV? Skipping this app', file=sys.stderr)
-                continue
-        else:
-            device_family = 'universal'
-
-        device_family_dir = path_join(target_dir, device_family)
-        full_path = path_join(device_family_dir, output_fn.decode('utf-8'))
-
-        if not isdir(device_family_dir):
-            os.makedirs(device_family_dir)
-
-        if isfile(full_path) and can_unzip(full_path):
-            print(u'%s already exists, skipping' % (output_fn.decode('utf-8')))
-            continue
-
-        name_version_str = u'Name: "%s", version: %s -> "%s"' % (name, version, output_fn.decode('utf-8'),)
-        print(name_version_str)
-
-        current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
-        cmd = ['-u', udid, '-a', bundle_name, '-o', 'app_only', '-o remove', '-o', 'copy=%s' % (target_dir)]
-        print('Copying')
-        try:
-            output = ideviceinstaller(cmd)
-        except KeyboardInterrupt:
-            print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
-            if isfile(current_ipa_name):
-                rm(current_ipa_name)
-                break
-
-        vprint(output.strip())
-
-        try:
-            assert(isfile(current_ipa_name))
-        except AssertionError:
-            failed_to_copy.append(name_version_str)
-            continue
-
-        print('Verifying')
-        try:
-            if not can_unzip(current_ipa_name):
-                print('Failed to transfer application with bundle name: %s' % (bundle_name,))
-                rm(current_ipa_name)
-                continue
-        except KeyboardInterrupt:
-            print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
-            if isfile(current_ipa_name):
-                rm(current_ipa_name)
-                break
-
-        rename(current_ipa_name, full_path)
-
-    if len(failed_to_copy):
+    if len(failed_to_copy_arr):
         print('\nThe following failed to copy!')
         for line in failed_to_copy:
             print(line)
