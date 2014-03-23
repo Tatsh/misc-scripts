@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, unicode_literals
-from multiprocessing import Manager, Process
-from os import makedirs, remove as rm, rename
+from multiprocessing import Lock, Manager, Process
+from os import mkdir, remove as rm, rename
 from os.path import basename, dirname, expanduser, isdir, join as path_join, \
     realpath, splitext
 from osext.filesystem import isfile
@@ -113,7 +113,7 @@ def get_output_filename(app_info):
     raise AppNameOrVersionError('get_output_filename()')
 
 
-def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
+def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
     name = get_app_name(app_info)
     device_family = get_device_family(app_info)
     bundle_name = app_info['CFBundleIdentifier'].get_value()
@@ -136,28 +136,29 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
         return
 
     if not isdir(device_family_dir):
-        os.mkdir(device_family_dir)
+        mkdir(device_family_dir)
 
-    name_version_str = 'Name: "%s", version: %s -> "%s"' % (
-        name, version,
-        output_fn,
-    )
-    print(name_version_str)
+    with lock:
+        name_version_str = 'Name: "%s", version: %s -> "%s"' % (
+            name, version,
+            output_fn,
+        )
+        print(name_version_str)
 
-    current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
-    cmd = ['-u', udid,
-           '-a', bundle_name,
-           '-o', 'app_only',
-           '-o remove',
-           '-o', 'copy=%s' % (target_dir)]
-    print('Copying')
-    try:
-        output = ideviceinstaller(cmd)
-    except KeyboardInterrupt:
-        print('Caught interrupt. Deleting %s if it exists' %
-              (current_ipa_name,), file=sys.stderr)
-        if isfile(current_ipa_name):
-            rm(current_ipa_name)
+        current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
+        cmd = ['-u', udid,
+            '-a', bundle_name,
+            '-o', 'app_only',
+            '-o remove',
+            '-o', 'copy=%s' % (target_dir)]
+        print('Copying %s' % (bundle_name,))
+        try:
+            output = ideviceinstaller(cmd)
+        except KeyboardInterrupt:
+            print('Caught interrupt. Deleting %s if it exists' %
+                (current_ipa_name,), file=sys.stderr)
+            if isfile(current_ipa_name):
+                rm(current_ipa_name)
             return
 
     vprint(output.strip())
@@ -168,7 +169,7 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
         failed_to_copy_arr.append(name_version_str)
         return
 
-    print('Verifying')
+    print('Verifying %s' % (current_ipa_name,))
     try:
         if not can_unzip(current_ipa_name):
             print('Failed to transfer application with bundle name: %s' % (
@@ -181,7 +182,7 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
               (current_ipa_name,), file=sys.stderr)
         if isfile(current_ipa_name):
             rm(current_ipa_name)
-            return
+        return
 
     rename(current_ipa_name, full_path)
 
@@ -240,8 +241,9 @@ if __name__ == '__main__':
     vprint('Working with device "%s"' % (args.device,))
 
     full_info = plist.from_xml(
-        ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8')
+        ideviceinstaller(['-u', udid, '-l', '-o', 'xml']).strip().encode('utf-8')
     )
+    lock = Lock()
 
     manager = Manager()
     failed_to_copy_arr = manager.list()
@@ -249,7 +251,13 @@ if __name__ == '__main__':
     for app_info in full_info:
         output_fn = get_output_filename(app_info)
         Process(target=get_ipa,
-                args=(target_dir, app_info, output_fn, failed_to_copy_arr),
+                args=(
+                    target_dir,
+                    app_info,
+                    output_fn,
+                    failed_to_copy_arr,
+                    lock,
+                ),
                 name=output_fn).start()
 
     if len(failed_to_copy_arr):
