@@ -4,7 +4,8 @@
 from __future__ import print_function, unicode_literals
 from multiprocessing import Manager, Process
 from os import makedirs, remove as rm, rename
-from os.path import basename, dirname, expanduser, isdir, join as path_join, realpath, splitext
+from os.path import basename, dirname, expanduser, isdir, join as path_join, \
+    realpath, splitext
 from osext.filesystem import isfile
 from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip
 import argparse
@@ -13,6 +14,7 @@ import re
 import sys
 
 verbose = False
+
 
 class AppNameOrVersionError(Exception):
     pass
@@ -87,7 +89,8 @@ def get_device_family(app_info):
         elif family == 1:
             device_family = 'iphone'  # iPhone/iPod Touch only app
         else:
-            print('What do you have plugged in? An Apple TV? Skipping this app', file=sys.stderr)
+            print('What do you have plugged in? An Apple TV? Skipping this '
+                  'app', file=sys.stderr)
             raise AppPropertyError('get_device_family()')
     else:
         device_family = 'universal'
@@ -97,9 +100,14 @@ def get_device_family(app_info):
 
 def get_output_filename(app_info):
     try:
-        return '%s %s.ipa' % (get_app_name(app_info), get_app_version(app_info),)
+        return '%s %s.ipa' % (
+            get_app_name(app_info),
+            get_app_version(app_info),
+        )
     except UnicodeEncodeError as e:
-        print('UnicodeEncodeError with name or version key (%s)' (app_info['CFBundleIdentifier'].get_value(),))
+        print('UnicodeEncodeError with name or version key (%s)' % (
+            app_info['CFBundleIdentifier'].get_value(),
+        ))
         raise e
 
     raise AppNameOrVersionError('get_output_filename()')
@@ -130,16 +138,24 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
     if not isdir(device_family_dir):
         os.mkdir(device_family_dir)
 
-    name_version_str = 'Name: "%s", version: %s -> "%s"' % (name, version, output_fn,)
+    name_version_str = 'Name: "%s", version: %s -> "%s"' % (
+        name, version,
+        output_fn,
+    )
     print(name_version_str)
 
     current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
-    cmd = ['-u', udid, '-a', bundle_name, '-o', 'app_only', '-o remove', '-o', 'copy=%s' % (target_dir)]
+    cmd = ['-u', udid,
+           '-a', bundle_name,
+           '-o', 'app_only',
+           '-o remove',
+           '-o', 'copy=%s' % (target_dir)]
     print('Copying')
     try:
         output = ideviceinstaller(cmd)
     except KeyboardInterrupt:
-        print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
+        print('Caught interrupt. Deleting %s if it exists' %
+              (current_ipa_name,), file=sys.stderr)
         if isfile(current_ipa_name):
             rm(current_ipa_name)
             return
@@ -155,11 +171,14 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr):
     print('Verifying')
     try:
         if not can_unzip(current_ipa_name):
-            print('Failed to transfer application with bundle name: %s' % (bundle_name,))
+            print('Failed to transfer application with bundle name: %s' % (
+                bundle_name,
+            ))
             rm(current_ipa_name)
             return
     except KeyboardInterrupt:
-        print('Caught interrupt. Deleting %s if it exists' % (current_ipa_name,), file=sys.stderr)
+        print('Caught interrupt. Deleting %s if it exists' %
+              (current_ipa_name,), file=sys.stderr)
         if isfile(current_ipa_name):
             rm(current_ipa_name)
             return
@@ -185,7 +204,9 @@ if __name__ == '__main__':
         if len(device_list) == 1:
             default_device = device_list[0][0]
 
-    parser.add_argument('-d', '--device', default=default_device, metavar='DEVICE_NAME', help='Device name (case sensitive)')
+    parser.add_argument('-d', '--device', default=default_device,
+                        metavar='DEVICE_NAME',
+                        help='Device name (case sensitive)')
     parser.add_argument('-t', '--target', required=True)
     parser.add_argument('-v', '--verbose', action='store_true')
 
@@ -200,7 +221,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     if args.device is None:
-        print('You must pick a device to use (multiple ones are plugged in or are in the configuration file)')
+        print('You must pick a device to use (multiple ones are '
+              'plugged in or are in the configuration file)')
         for (name, udid) in devices:
             print('%s (%s)' % (name, udid,))
         sys.exit(1)
@@ -217,14 +239,18 @@ if __name__ == '__main__':
 
     vprint('Working with device "%s"' % (args.device,))
 
-    full_info = plist.from_xml(ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8'))
+    full_info = plist.from_xml(
+        ideviceinstaller(['-l', '-o', 'xml']).strip().encode('utf-8')
+    )
 
     manager = Manager()
     failed_to_copy_arr = manager.list()
 
     for app_info in full_info:
         output_fn = get_output_filename(app_info)
-        Process(target=get_ipa, args=(target_dir, app_info, output_fn, failed_to_copy_arr), name=output_fn).start()
+        Process(target=get_ipa,
+                args=(target_dir, app_info, output_fn, failed_to_copy_arr),
+                name=output_fn).start()
 
     if len(failed_to_copy_arr):
         print('\nThe following failed to copy!')
