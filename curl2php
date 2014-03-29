@@ -124,6 +124,9 @@ class Curl2PhpMain
 
         $format[] = "// curl_setopt(\$ch, CURLOPT_HEADER, true);\n";
         $format[] = "\$data = curl_exec(\$ch);\n";
+        $format[] = "if (\$data[strlen($data) - 1] != \"\\n\") {";
+        $format[] = "    \$data .= \"\\n\";";
+        $format[] = "}";
         $format[] = "print(\$data);\n";
 
         vprintf(join("\n", $format), $args);
