@@ -5,8 +5,12 @@
 import argparse
 import sys
 
-from urllib.parse import urlparse
-from urllib.request import urlopen, Request
+try:
+    from urllib.parse import urlparse
+    from urllib.request import urlopen, Request
+except ImportError:
+    from urllib2 import urlopen, Request
+    from urlparse import urlparse
 
 headers = {}
 
@@ -54,7 +58,10 @@ if url is False:
 
 # Generation of code starts here
 print("""#!/usr/bin/env python
-from urllib.request import urlopen, Request
+try:
+    from urllib.request import urlopen, Request
+except ImportError:
+    from urllib2 import urlopen, Request
 
 headers = %(headers)s""" % {'headers': headers})
 
