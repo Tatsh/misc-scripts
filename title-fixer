@@ -33,6 +33,7 @@ stop_words = [
     'on',
     'or',
     'per',
+    'por', # Spanish
     #'so',
     'te',  # Spanish/French
     #'than',
