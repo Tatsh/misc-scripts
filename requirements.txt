@@ -1,0 +1,16 @@
+PyYAML
+sh
+Unidecode
+
+# For idevicetransferpurchases:
+# - libplist with Python bindings enabled (There is no good way to get this other than standard clone, ./configure and make install)
+# - libimobiledevice with utilities installed (idevice_id, ideviceinfo)
+# - ideviceinstaller
+# - unzip
+
+# For things using commands:
+# - burnrariso requires cksfv, unrar (GPL version works too), and cdrecord
+# - flac-* scripts require metaflac
+# - flac2mp3 requires flac, lame, and metaflac
+# - flacs2mp3-cue requires recent versions sox, lame, and metaflac
+# - GNU mv is expected with wmv (comes with GNU coreutils)
