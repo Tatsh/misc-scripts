@@ -2,6 +2,20 @@
 
 Random scripts I make and might still use.
 
+## Using virtualenv
+
+I recommend using [virtualenvwrapper](http://virtualenvwrapper.readthedocs.org/en/latest/). You can still use virtualenv though:
+
+```bash
+virtualenv misc-scripts-env
+cd misc-scripts-env
+. bin/activate
+git clone git@github.com:Tatsh/misc-scripts.git
+pip install -r misc-scripts/requirements.txt
+```
+
+Now all scripts using Python should work. See `requirements.txt` for details on command line applications required.
+
 ## chrome-import-cookies
 
 Imports cookies from a file in Netscape 'cookies.txt' format into Chromium's (Chrome) 'Default' user database. For Linux only at the moment.
