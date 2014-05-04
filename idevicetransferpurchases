@@ -9,7 +9,7 @@ from os.path import basename, dirname, expanduser, isdir, join as path_join, \
 from osext.filesystem import isfile
 from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip
 import argparse
-import plist
+import plistlib
 import re
 import sys
 
@@ -47,26 +47,26 @@ def can_unzip(filename):
 
 def get_app_name(app_info):
     try:
-        name = app_info['CFBundleDisplayName'].get_value().strip()
+        name = app_info['CFBundleDisplayName'].strip()
 
         if len(name) == 0:
             raise KeyError
 
         return name
     except KeyError:
-        return app_info['CFBundleName'].get_value().strip()
+        return app_info['CFBundleName'].strip()
 
     raise AppNameOrVersionError('get_app_name()')
 
 
 def get_app_version(app_info):
     try:
-        val = app_info['CFBundleShortVersionString'].get_value().strip()
+        val = app_info['CFBundleShortVersionString'].strip()
 
         if val:
             return val
     except KeyError:
-        val = app_info['CFBundleVersion'].get_value().strip()
+        val = app_info['CFBundleVersion'].strip()
 
         if val:
             return val
@@ -81,8 +81,8 @@ def get_device_family(app_info):
 
         # Sometimes these values are not longs, but instead strings
         # (NSString of course)
-        if isinstance(family, plist.String):
-            family = int(family.get_value())
+        if isinstance(family, str):
+            family = int(family)
 
         if family == 2:
             device_family = 'ipad'
@@ -106,7 +106,7 @@ def get_output_filename(app_info):
         )
     except UnicodeEncodeError as e:
         print('UnicodeEncodeError with name or version key (%s)' % (
-            app_info['CFBundleIdentifier'].get_value(),
+            app_info['CFBundleIdentifier'],
         ))
         raise e
 
@@ -116,17 +116,14 @@ def get_output_filename(app_info):
 def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
     name = get_app_name(app_info)
     device_family = get_device_family(app_info)
-    bundle_name = app_info['CFBundleIdentifier'].get_value()
+    bundle_name = app_info['CFBundleIdentifier']
     device_family_dir = path_join(target_dir, device_family)
     full_path = path_join(device_family_dir, output_fn)
     version = get_app_version(app_info)
 
     if verbose:
-        keys = app_info.keys()
-        keys.sort()
-
-        for key in keys:
-            vprint('    %s: %s' % (key, app_info[key].get_value(),))
+        for key in sorted(app_info.keys()):
+            vprint('    %s: %s' % (key, app_info[key],))
 
     vprint('%s: Removing archive if it already exists' % (bundle_name,))
     ideviceinstaller(['-R', bundle_name])
@@ -240,7 +237,7 @@ if __name__ == '__main__':
 
     vprint('Working with device "%s"' % (args.device,))
 
-    full_info = plist.from_xml(
+    full_info = plistlib.readPlistFromBytes(
         ideviceinstaller(['-u', udid, '-l', '-o', 'xml']).strip().encode('utf-8')
     )
     lock = Lock()

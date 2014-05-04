@@ -2,12 +2,6 @@ PyYAML
 sh
 Unidecode
 
-# For idevicetransferpurchases:
-# - libplist with Python bindings enabled (There is no good way to get this other than standard clone, ./configure and make install)
-# - libimobiledevice with utilities installed (idevice_id, ideviceinfo)
-# - ideviceinstaller
-# - unzip
-
 # For things using commands:
 # - burnrariso requires cksfv, unrar (GPL version works too), and cdrecord
 # - flac-* scripts require metaflac
