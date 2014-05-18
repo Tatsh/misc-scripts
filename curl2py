@@ -79,7 +79,7 @@ if __name__ == '__main__':
         except TypeError:
             userpw = '%s:%s' % (options.user, passwd,)
         userpw = b64encode(userpw)
-        headers['Auth'] = 'Basic: %s' % (userpw.decode('utf-8'),)
+        headers['Authorization'] = 'Basic: %s' % (userpw.decode('utf-8'),)
 
     method = options.request.upper()
 
