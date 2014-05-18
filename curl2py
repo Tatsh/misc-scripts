@@ -26,8 +26,8 @@ class CollectHeaders(argparse.Action):
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Generate equivalent Python code'
-                                    ' for cURL command')
+    parser = argparse.ArgumentParser(description='Generate equivalent Python '
+                                                 ' code for cURL command')
 
     parser.add_argument('-H', '--header', help='Header', dest='header',
                         action=CollectHeaders)
@@ -39,7 +39,8 @@ if __name__ == '__main__':
     parser.add_argument('-u', '--user', help='User name for authentication')
     parser.add_argument('-p', '--password')
     parser.add_argument('--user-agent', help='User agent')
-    parser.add_argument('--basic', help='Basic authentication', action='store_true')
+    parser.add_argument('--basic', help='Basic authentication',
+                        action='store_true')
 
     argv = sys.argv
     headers = {}
@@ -74,7 +75,8 @@ if __name__ == '__main__':
         passwd = getpass()
 
     if options.basic and options.user and passwd:
-        userpw = b64encode(bytes('%s:%s' % (options.user, passwd,), encoding='utf8'))
+        userpw = bytes('%s:%s' % (options.user, passwd,), encoding='utf8')
+        userpw = b64encode(userpw)
         headers['Auth'] = 'Basic: %s' % (userpw.decode('utf-8'),)
 
     method = options.request.upper()
@@ -90,7 +92,11 @@ headers = %(headers)s""" % {'headers': headers})
 
     if post_data is not False:
         print('req = Request("%(url)s", "%(post_data)s".encode(\'utf-8\'),'
-            ' headers, method=\'%(method)s\')' % {'url': url, 'post_data': post_data, 'method': method})
+              ' headers, method=\'%(method)s\')' % {
+                  'url': url,
+                  'post_data': post_data,
+                  'method': method
+              })
     else:
         print('req = Request("%(url)s", None, headers)' % {'url': url})
 
