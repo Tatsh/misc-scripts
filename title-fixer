@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from __future__ import print_function
 import argparse
 import re
 import sys
@@ -162,17 +163,18 @@ def is_roman_numeral(string):
     return re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string, re.I) is not None
 
 
+def fix_apostrophes(word):
+    if "'" not in word:
+        return word
+
+    return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
+                    lambda mo: mo.group(0)[0].upper() +
+                    mo.group(0)[1:].lower(),
+                    word)
+
+
 def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
                ampersands=False):
-    def fix_apostrophes(word):
-        if word.upper() == word:  # ignore upper-case words
-            return word
-
-        return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                      lambda mo: mo.group(0)[0].upper() +
-                      mo.group(0)[1:].lower(),
-                      word)
-
     original_words = words.strip().split()
     words = words.strip().title().split()
     name = get_name(words[0])
@@ -188,6 +190,7 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
         title = [title[0].upper()]
 
     last_index = len(original_words) - 1
+    ignore_roman = ['mix']
 
     for mode in modes:
         to_lower_case_array = mode_map[mode]
@@ -231,7 +234,9 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
             if "'" in word:
                 word = fix_apostrophes(word)
 
-            if is_roman_numeral(word):
+            # MIX is a roman numeral but is more typically used in a sequence
+            # like 'Extended Mix', so do not capitalise it
+            if is_roman_numeral(word) and word.lower() not in ignore_roman:
                 word = word.upper()
 
             if mode == ENGLISH_MODE and word.lower() in english_abbrev:
