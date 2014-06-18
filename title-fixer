@@ -10,6 +10,8 @@ JAPANESE_MODE = 0x10
 CHINESE_MODE = 0x100
 ARABIC_MODE = 0x1000
 
+english_ordinal_regex = r'(\d+)(st|nd|rd|th)'
+
 # non-strict, not including words like below, forms of to be, forms of
 #   you/he/etc, or words like 'call'
 stop_words = [
@@ -241,6 +243,13 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 
             if mode == ENGLISH_MODE and word.lower() in english_abbrev:
                 end = ''
+
+            ordinal_match = re.match(english_ordinal_regex, word, flags=re.I)
+            if mode == ENGLISH_MODE and ordinal_match is not None:
+                word = '%s%s' % (
+                    ordinal_match.group(1),
+                    ordinal_match.group(2).lower(),
+                )
 
             word = '%s%s%s' % (begin, word, end)
 
