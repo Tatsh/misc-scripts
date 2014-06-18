@@ -72,9 +72,9 @@ def check_requirements(list_of_bins, path=None):
 
 def encode_wav_to_mp3(wav_filename, output_filename, lame_options='-V 0'):
     cmd = 'lame %s %s %s' % \
-        (lame_options,
-         shell_quote(wav_filename),
-         shell_quote(output_filename))
+          (lame_options,
+           shell_quote(wav_filename),
+           shell_quote(output_filename))
 
     print(cmd, file=sys.stderr)
     sp.check_output(cmd, shell=True)
