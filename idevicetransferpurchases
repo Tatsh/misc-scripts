@@ -46,17 +46,29 @@ def can_unzip(filename):
 
 
 def get_app_name(app_info):
-    try:
-        name = app_info['CFBundleDisplayName'].strip()
+    keys = (
+        'CFBundleDisplayName',
+        'CFBundleName',
+        'CFBundleExecutable',
+        'CFBundleIdentifier',
+    )
+    name = None
 
-        if len(name) == 0:
-            raise KeyError
+    for key in keys:
+        if key not in app_info:
+            continue
 
-        return name
-    except KeyError:
-        return app_info['CFBundleName'].strip()
+        name = app_info[key].strip()
 
-    raise AppNameOrVersionError('get_app_name()')
+        if not name:
+            continue
+        else:
+            break
+
+    if not name:
+        raise AppNameOrVersionError('Unable to get an application name %s' % (app_info,))
+
+    return name
 
 
 def get_app_version(app_info):
