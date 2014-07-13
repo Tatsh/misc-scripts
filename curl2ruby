@@ -1,0 +1,110 @@
+#!/usr/bin/env ruby
+require 'base64'
+require 'io/console'
+require 'optparse'
+# TODO Pretty print the headers in the output code
+#require 'pp'
+
+uri = nil
+
+for item in ARGV
+  if not uri and item.start_with?('http')
+    uri = item
+    break
+  end
+end
+
+if not uri then
+  p 'No URI found'
+end
+
+$compressed = false
+$request = 'GET'
+$headers_raw = []
+$data = nil
+$user = nil
+$password = nil
+$user_agent = nil
+
+optparse = OptionParser.new do |o|
+  o.banner = 'Generate equivalent Ruby code for a cURL comamnd'
+
+  o.on('-H HEADER_VALUE', '--header HEADER_VALUE', 'Header value') { |header| $headers_raw.push(header) }
+  o.on('--data DATA', 'POST data') { |data| $data = data }
+  o.on('--compressed', 'Enable compression') { |compressed| $compressed = true }
+  o.on('-X METHOD', '--request METHOD', 'Request method') { |request| $request = request }
+  o.on('-u USER', '--user USER', 'User name for authentication') { |user| $user = user }
+  o.on('-p PASSWORD', '--password PASSWORD', 'Password') { |password| $password = password }
+  o.on('--user-agent USER_AGENT', 'User agent') { |user_agent| $user_agent = user_agent }
+
+  o.parse!
+end
+
+basic_auth = false
+if $user and not $password then
+  print 'Password: '
+  $password = STDIN.noecho(&:gets).chomp
+  basic_auth = true
+end
+
+method = $request.upcase
+sub_class = method.downcase.capitalize
+
+headers = {}
+
+if $user_agent then
+  $headers_raw.push('User-Agent: ' + $user_agent)
+end
+
+for header in $headers_raw
+  name, value = header.split(':', 2)
+  value = value.strip()
+  headers[name] = value
+end
+
+# http://www.rubyinside.com/nethttp-cheat-sheet-2940.html
+# http://ruby-doc.org/stdlib-2.0.0/libdoc/net/http/rdoc/Net/HTTP.html
+# Generation of code starts here
+print """#!/usr/bin/env ruby
+require 'net/http'
+require 'uri'
+require 'zlib'
+
+url = '%{uri}'
+headers = %{headers}
+
+parsed_uri = URI.parse(url)
+
+http = Net::HTTP.new(parsed_uri.host, parsed_uri.port)
+if parsed_uri.scheme == 'https' then
+  http.use_ssl = true
+end
+
+request = Net::HTTP::%{sub}.new(parsed_uri.request_uri, headers)
+""" % {
+  :uri => uri,
+  :headers => headers,
+  :sub => sub_class,
+}
+
+if basic_auth then
+  print "request.basic_auth('%{user}', '%{password}')\n" % {
+    :user => $user,
+    :password => $password,
+  }
+end
+
+print """response = http.request(request)
+body = response.body
+
+if response.header['Content-Encoding'] == 'gzip' then
+  sio = StringIO.new(body)
+  gz = Zlib::GzipReader.new(sio)
+  body = gz.read()
+end
+
+print body
+print \"\\n\"
+"""
+
+# kate: tab-width 2; indent-width 2; replace-tabs on; eol unix
