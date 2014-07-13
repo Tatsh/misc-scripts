@@ -15,7 +15,8 @@ for item in ARGV
 end
 
 if not uri then
-  p 'No URI found'
+  $stderr.puts 'No URI found'
+  exit 1
 end
 
 $compressed = false
