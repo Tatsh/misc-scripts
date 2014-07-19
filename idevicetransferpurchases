@@ -7,7 +7,8 @@ from os import mkdir, remove as rm, rename
 from os.path import basename, dirname, expanduser, isdir, join as path_join, \
     realpath, splitext
 from osext.filesystem import isfile
-from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip
+from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip, \
+    ErrorReturnCode_255
 import argparse
 import plistlib
 import re
@@ -201,18 +202,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     default_device = None
 
-    for udid in idevice_id('-l', _iter=True):
-        udid = udid.strip()
-        name = None
+    try:
+        for udid in idevice_id('-l', _iter=True):
+            udid = udid.strip()
+            name = None
 
-        for line in ideviceinfo(['-u', udid], _iter=True):
-            if re.match('^DeviceName\: ', line):
-                name = line.strip()[12:]
+            for line in ideviceinfo(['-u', udid], _iter=True):
+                if re.match('^DeviceName\: ', line):
+                    name = line.strip()[12:]
 
-        device_list.append((name.strip(), udid.strip(),))
+            device_list.append((name.strip(), udid.strip(),))
 
-        if len(device_list) == 1:
-            default_device = device_list[0][0]
+            if len(device_list) == 1:
+                default_device = device_list[0][0]
+    except ErrorReturnCode_255:
+        pass
 
     parser.add_argument('-d', '--device', default=default_device,
                         metavar='DEVICE_NAME',
