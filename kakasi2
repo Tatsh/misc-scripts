@@ -16,6 +16,22 @@ import sys
 
 KAKASI_HELP_LOOK_FOR = 'KAKASI - Kanji Kana Simple Inverter  Version 2.3.4'
 
+# NOTE For anything not here, use unidecode
+JIS_ASCII_MAP = (
+    (u' 、', ','),
+    (u'、', ','),
+    (u' 。', '.'),
+    (u'・', ''),
+    (u'「 ', " '"),
+    (u' 」', "'"),
+    (u' ！', '!'),
+    (u'！', '!'),
+    (u'（ ', '('),
+    (u' ）', ')'),
+    (u'☆', '*'),
+    (u' ：', ':'),
+)
+
 
 def find_bin(name, look_for, help_cmd='--help'):
     for path in env['PATH'].split(os.pathsep):
@@ -61,6 +77,9 @@ if __name__ == '__main__':
 
     parser.add_argument('words', nargs='*')
     parser.add_argument('-k', '--keep-long',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('--allow-non-ascii',
                         action='store_true',
                         default=False)
 
@@ -125,5 +144,9 @@ if __name__ == '__main__':
         final = final.decode('utf-8')
         if not args.keep_long:
             final = final.replace('^', '')
+
+        if not args.allow_non_ascii:
+            for find, repl in JIS_ASCII_MAP:
+                final = final.replace(find, repl)
 
         print(final)
