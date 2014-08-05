@@ -53,8 +53,10 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('words', nargs='*')
+    parser.add_argument('-k', '--keep-long', action='store_true', default=False)
 
-    words = parser.parse_args().words
+    args = parser.parse_args()
+    words = args.words
     iconv_to_args = [
         iconv,
         '-t', 'SJIS',
@@ -83,4 +85,8 @@ if __name__ == '__main__':
         iconv_from_sjis = sp.Popen(iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         final, err = iconv_from_sjis.communicate(out)
 
-        print(final.decode('utf-8'))
+        final = final.decode('utf-8')
+        if not args.keep_long:
+            final = final.replace('^', '')
+
+        print(final)
