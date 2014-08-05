@@ -81,6 +81,13 @@ if __name__ == '__main__':
     ]
 
     words = [x.strip() for x in words]
+    words = [x for x in words if len(x) > 0]
+
+    # stdin
+    stdin_words = [x.strip() for x in sys.stdin.readlines()]
+    stdin_words = [x for x in stdin_words if len(x) > 0]
+    words += stdin_words
+
     if sys.version_info.major == 3:
         words = [x.encode('utf-8') for x in words]
 
