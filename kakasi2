@@ -1,0 +1,86 @@
+#!/usr/bin/env python
+# Compatibility script for KAKASI.
+# KAKASI was written in 1999 and supports various JIS encodings but does not
+# support Unicode. This script uses iconv to bridge as much as possible with
+# the SJIS encoding scheme. Note that not every kanji is in the Shift-JIS
+# encoding.
+
+from __future__ import print_function
+from copy import copy
+from os import environ as env
+from os.path import join as path_join
+import argparse
+import os
+import subprocess as sp
+import sys
+
+KAKASI_HELP_LOOK_FOR = 'KAKASI - Kanji Kana Simple Inverter  Version 2.3.4'
+
+def find_bin(name, look_for, help_cmd='--help'):
+    for path in env['PATH'].split(os.pathsep):
+        candidate = path_join(path, name)
+        try:
+            with open(candidate, 'rb') as f:
+                if os.access(f.name, os.X_OK):
+                    r = sp.Popen([candidate, help_cmd], stdout=sp.PIPE, stderr=sp.PIPE)
+                    r.wait()
+
+                    for line in r.stderr.read().splitlines() + r.stdout.read().splitlines():
+                        line = line.decode('utf-8').strip()
+                        if look_for in line:
+                            return candidate
+        except IOError:
+            pass
+
+def find_kakasi():
+    return find_bin('kakasi', KAKASI_HELP_LOOK_FOR)
+
+
+def find_iconv():
+    return find_bin('iconv', 'SJIS', '--list')
+
+if __name__ == '__main__':
+    kakasi = find_kakasi()
+    iconv = find_iconv()
+
+    if not kakasi:
+        print('No valid `kakasi` binary found.', file=sys.stderr)
+        sys.exit(1)
+    if not iconv:
+        print('No valid `iconv` binary found (must support SJIS conversion).', file=sys.stderr)
+        sys.exit(1)
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('words', nargs='*')
+
+    words = parser.parse_args().words
+    iconv_to_args = [
+        iconv,
+        '-t', 'SJIS',
+    ]
+    iconv_from_args = copy(iconv_to_args)
+    iconv_from_args[1] = '-f'
+    kakasi_args = [
+        kakasi,
+        '-s',
+        '-Ja',
+        '-Ha',
+        '-Ka',
+    ]
+
+    words = [x.strip() for x in words]
+    if sys.version_info.major == 3:
+        words = [x.encode('utf-8') for x in words]
+
+    for word in words:
+        iconv_to_sjis = sp.Popen(iconv_to_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        out, err = iconv_to_sjis.communicate(word)
+
+        kakasi = sp.Popen(kakasi_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        out, err = kakasi.communicate(out)
+
+        iconv_from_sjis = sp.Popen(iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        final, err = iconv_from_sjis.communicate(out)
+
+        print(final.decode('utf-8'))
