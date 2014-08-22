@@ -68,29 +68,29 @@ def find_iso_in_rar(rar_filename):
     r = sp.Popen(['unrar', 'l', rar_filename], stdout=sp.PIPE)
     for line in r.stdout:
         line_str = str(line, encoding='utf8')
-        if 'iso' in line_str or 'ISO' in line_str:
+        if 'iso' in line_str.lower():
             work = line.split()
             break
     r.wait()
 
     # Handle spaces in ISO file name
     fn = str(work[0], encoding='utf8')
-    if 'iso' not in fn and 'ISO' not in fn:
+    if 'iso' not in fn.lower():
         fn = ''
         i = 0
         for iso in work:
-            if 'iso' in iso or 'ISO' in iso:
+            if 'iso' in iso.lower():
                 fn += iso
                 i += 1
                 break
             fn += iso + ' '
             i += 1
 
-    if 'iso' not in fn and 'ISO' not in fn:
+    if 'iso' not in fn.lower():
         return (False, False)
 
     work_str = str(work[0], encoding='utf8')
-    if 'iso' in work_str or 'ISO' in work_str:
+    if 'iso' in work_str.lower():
         i = 1
 
     tsize = work[i]
@@ -199,7 +199,7 @@ if __name__ == '__main__':
 
     iso, tsize = find_iso_in_rar(rar_filename)
 
-    if tsize is False:
+    if not tsize:
         print('Unable to find ISO in RAR "%s"' % (args.rar_filename))
         sys.exit(1)
     else:
