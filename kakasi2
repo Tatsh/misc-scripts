@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+#coding: utf-8
 # Compatibility script for KAKASI.
 # KAKASI was written in 1999 and supports various JIS encodings but does not
 # support Unicode. This script uses iconv to bridge as much as possible with
