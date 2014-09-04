@@ -7,12 +7,19 @@ from os import mkdir, remove as rm, rename
 from os.path import basename, dirname, expanduser, isdir, join as path_join, \
     realpath, splitext
 from osext.filesystem import isfile
-from sh import idevice_id, ideviceinfo, ideviceinstaller, unzip, \
-    ErrorReturnCode_255
 import argparse
 import plistlib
 import re
 import sys
+
+from sh import (
+    idevice_id,
+    ideviceinfo,
+    ideviceinstaller,
+    unzip,
+    ErrorReturnCode_255,
+    ErrorReturnCode_128,
+)
 
 verbose = False
 
@@ -139,7 +146,12 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
             vprint('    %s: %s' % (key, app_info[key],))
 
     vprint('%s: Removing archive if it already exists' % (bundle_name,))
-    ideviceinstaller(['-R', bundle_name])
+    try:
+        ideviceinstaller(['-R', bundle_name])
+    except ErrorReturnCode_128 as e:
+        # As of 2014-08-20, ab04a35 of ideviceinstaller
+        if 'APIInternalError' not in e.stdout.decode('utf-8'):
+            raise e
 
     if isfile(full_path) and can_unzip(full_path):
         print('%s already exists, skipping' % (output_fn))
