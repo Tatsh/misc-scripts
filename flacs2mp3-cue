@@ -103,7 +103,7 @@ def get_flac_tag(flac_filename, tag_name):
     output = output.decode('utf-8').strip()
 
     try:
-        return re.split(r'^(?:%s|%s)=' % (tag_name, tag_name.title()), output, maxsplit=1)[1]
+        return re.split(r'^(?:%s|%s|%s)=' % (tag_name, tag_name.title(), tag_name.lower()), output, maxsplit=1)[1]
     except IndexError:
         return ''
 
