@@ -265,11 +265,38 @@ if __name__ == '__main__':
 
     vprint('Working with device "%s"' % (args.device,))
 
-    full_info = plistlib.readPlistFromBytes(
-        ideviceinstaller(['-u', udid, '-l', '-o', 'xml']).strip().encode('utf-8')
-    )
-    lock = Lock()
+    old_lines = ideviceinstaller(['-u', udid, '-l', '-o', 'xml']).strip().splitlines()
+    lines = []
+    skip_next = False
 
+    # This may be an iOS 8 issue with ideviceinstaller, where this key
+    # NSContactsUsageDescription appears twice in some dictionaries or has an
+    # invalid value
+    for line in old_lines:
+        if skip_next:
+            skip_next = False
+            continue
+        if '<key>NSContactsUsageDescription</key>' in line:
+            skip_next = True
+            continue
+        lines.append(line)
+
+    lines = '\n'.join(lines)
+
+    try:
+        full_info = plistlib.readPlistFromBytes(lines.encode('utf-8'))
+    except ValueError as e:
+        if 'unexpected element at line' in e.args[0]:
+            bad_line = int(re.sub(r'^unexpected element at line (\d+)', r'\1', e.args[0]))
+            for (i, line) in enumerate(lines.splitlines()[0:bad_line + 5]):
+                if i == bad_line:
+                    print('ERROR %d:%s' % (i, line,))
+                print('%d:%s' % (i, line,))
+            sys.exit(1)
+        else:
+            raise e
+
+    lock = Lock()
     manager = Manager()
     failed_to_copy_arr = manager.list()
 
