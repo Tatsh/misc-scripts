@@ -103,7 +103,9 @@ def get_flac_tag(flac_filename, tag_name):
     output = output.decode('utf-8').strip()
 
     try:
-        return re.split(r'^(?:%s|%s|%s)=' % (tag_name, tag_name.title(), tag_name.lower()), output, maxsplit=1)[1]
+        return re.split(r'^(?:%s|%s|%s)=' %
+                        (tag_name, tag_name.title(), tag_name.lower()),
+                        output, maxsplit=1)[1]
     except IndexError:
         return ''
 
@@ -203,5 +205,21 @@ if __name__ == '__main__':
 
             track_no += 1
 
-        with open(cue_filename, 'w') as f:
-            f.write('\n'.join(cue_file_lines))
+    with open(cue_filename, 'w') as f:
+        try:
+            cue_file_lines = '\n'.join(cue_file_lines)
+
+            if isinstance(cue_file_lines, unicode):
+                cue_file_lines = cue_file_lines.encode('utf-8')
+
+            f.write(cue_file_lines)
+        except UnicodeEncodeError as e:
+            print(u'Caught UnicodeEncodeError')
+            print(u'    Encoding: %s' % (e.encoding,))
+            print(u'    Reason: %s' % (e.reason,))
+            print(u'    Object: %s' % (e.object,))
+            print(u'    Object type: %s' % (type(e.object),))
+            print(u'    Start: %d, character: %s' % (
+                e.start, e.object[e.start]
+            ))
+            print(u'    End: %d, character: %s' % (e.end, e.object[e.end],))
