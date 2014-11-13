@@ -1,8 +1,7 @@
-#!/bin/sh
-#
+#!/usr/bin/env bash
 # usage:  import-cert.sh remote.host.name [port]
-#
-function usage() {
+
+usage() {
   echo "Usage: $0 HOST [PORT]"
 }
 

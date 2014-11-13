@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ -z "$1" ]; then
   echo "USAGE: $0 FILE LANGUAGE LYRICS_FILE [DESCRIPTION] [ENCODING]"
