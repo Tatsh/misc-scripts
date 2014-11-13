@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 MEMSIZE=8192M
 mounted=false
- 
+
 . /etc/init.d/functions.sh
- 
+
 mounttmpfs() {
      mount -t tmpfs tmpfs -o size=$MEMSIZE /var/tmp/portage
      mounted="true"
@@ -31,7 +31,7 @@ fi
 eend $?
 
 compile ${*}
- 
+
 if [ -n "$mounted" ]
 then
      unmount
