@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 usage() {
-  echo "Usage: $0 <exe file> <icon> <icon index>"
+    echo "Usage: $0 <exe file> <icon> <icon index>"
 }
 
 (test -z "$1" || test -z "$2" || test -z "$3") && usage && exit 1

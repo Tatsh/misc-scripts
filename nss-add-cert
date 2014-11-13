@@ -2,12 +2,12 @@
 # usage:  import-cert.sh remote.host.name [port]
 
 usage() {
-  echo "Usage: $0 HOST [PORT]"
+    echo "Usage: $0 HOST [PORT]"
 }
 
 if [ -z "$1" ]; then
-  usage $0
-  exit 1
+    usage $0
+    exit 1
 fi
 
 REMHOST=$1
