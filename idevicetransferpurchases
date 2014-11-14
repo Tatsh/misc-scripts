@@ -77,7 +77,8 @@ def get_app_name(app_info):
             break
 
     if not name:
-        raise AppNameOrVersionError('Unable to get an application name %s' % (app_info,))
+        raise AppNameOrVersionError('Unable to get an application name %s' %
+                                    (app_info,))
 
     return name
 
@@ -176,16 +177,16 @@ def get_ipa(*args):
 
     current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
     cmd = ['-u', udid,
-        '-a', bundle_name,
-        '-o', 'app_only',
-        '-o remove',
-        '-o', 'copy=%s' % (target_dir)]
+           '-a', bundle_name,
+           '-o', 'app_only',
+           '-o remove',
+           '-o', 'copy=%s' % (target_dir)]
     print('Copying %s' % (bundle_name,), file=sys.stderr)
     try:
         output = ideviceinstaller(cmd)
     except KeyboardInterrupt:
         print('Caught interrupt. Deleting %s if it exists' %
-            (current_ipa_name,), file=sys.stderr)
+              (current_ipa_name,), file=sys.stderr)
         if isfile(current_ipa_name):
             rm(current_ipa_name)
         return
@@ -272,7 +273,8 @@ if __name__ == '__main__':
 
     vprint('Working with device "%s"' % (args.device,))
 
-    old_lines = ideviceinstaller(['-u', udid, '-l', '-o', 'xml']).strip().splitlines()
+    old_lines = ideviceinstaller(['-u', udid, '-l', '-o', 'xml'])
+    old_lines = old_lines.strip().splitlines()
     lines = []
     skip_next = False
 
@@ -294,7 +296,8 @@ if __name__ == '__main__':
         full_info = readPlistFromBytes(lines.encode('utf-8'))
     except ValueError as e:
         if 'unexpected element at line' in e.args[0]:
-            bad_line = int(re.sub(r'^unexpected element at line (\d+)', r'\1', e.args[0]))
+            bad_line = int(re.sub(r'^unexpected element at line (\d+)', r'\1',
+                                  e.args[0]))
             for (i, line) in enumerate(lines.splitlines()[0:bad_line + 5]):
                 if i == bad_line:
                     print('ERROR %d:%s' % (i, line,), file=sys.stderr)
