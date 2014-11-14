@@ -2,13 +2,16 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import print_function, unicode_literals
-from multiprocessing import Lock, Manager, Process
+from multiprocessing import Manager, Pool, Process
 from os import mkdir, remove as rm, rename
 from os.path import basename, dirname, expanduser, isdir, join as path_join, \
     realpath, splitext
 from osext.filesystem import isfile
+try:
+    from plistlib import readPlistFromBytes
+except ImportError:
+    from biplist import readPlistFromString as readPlistFromBytes
 import argparse
-import plistlib
 import re
 import sys
 
@@ -127,14 +130,19 @@ def get_output_filename(app_info):
     except UnicodeEncodeError as e:
         print('UnicodeEncodeError with name or version key (%s)' % (
             app_info['CFBundleIdentifier'],
-        ))
+        ), file=sys.stderr)
         raise e
 
     raise AppNameOrVersionError('get_output_filename()')
 
 
-def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
+def get_ipa(*args):
+    kwargs = args[0]
+    app_info = kwargs.pop('app_info')
+    failed_to_copy_arr = kwargs.pop('failed_to_copy_array')
+
     name = get_app_name(app_info)
+    output_fn = get_output_filename(app_info)
     device_family = get_device_family(app_info)
     bundle_name = app_info['CFBundleIdentifier']
     device_family_dir = path_join(target_dir, device_family)
@@ -154,34 +162,33 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
             raise e
 
     if isfile(full_path) and can_unzip(full_path):
-        print('%s already exists, skipping' % (output_fn))
+        print('%s already exists, skipping' % (output_fn), file=sys.stderr)
         return
 
     if not isdir(device_family_dir):
         mkdir(device_family_dir)
 
-    with lock:
-        name_version_str = 'Name: "%s", version: %s -> "%s"' % (
-            name, version,
-            output_fn,
-        )
-        print(name_version_str)
+    name_version_str = 'Name: "%s", version: %s -> "%s"' % (
+        name, version,
+        output_fn,
+    )
+    print(name_version_str, file=sys.stderr)
 
-        current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
-        cmd = ['-u', udid,
-            '-a', bundle_name,
-            '-o', 'app_only',
-            '-o remove',
-            '-o', 'copy=%s' % (target_dir)]
-        print('Copying %s' % (bundle_name,))
-        try:
-            output = ideviceinstaller(cmd)
-        except KeyboardInterrupt:
-            print('Caught interrupt. Deleting %s if it exists' %
-                (current_ipa_name,), file=sys.stderr)
-            if isfile(current_ipa_name):
-                rm(current_ipa_name)
-            return
+    current_ipa_name = path_join(target_dir, bundle_name + '.ipa')
+    cmd = ['-u', udid,
+        '-a', bundle_name,
+        '-o', 'app_only',
+        '-o remove',
+        '-o', 'copy=%s' % (target_dir)]
+    print('Copying %s' % (bundle_name,), file=sys.stderr)
+    try:
+        output = ideviceinstaller(cmd)
+    except KeyboardInterrupt:
+        print('Caught interrupt. Deleting %s if it exists' %
+            (current_ipa_name,), file=sys.stderr)
+        if isfile(current_ipa_name):
+            rm(current_ipa_name)
+        return
 
     vprint(output.strip())
 
@@ -191,12 +198,12 @@ def get_ipa(target_dir, app_info, output_fn, failed_to_copy_arr, lock):
         failed_to_copy_arr.append(name_version_str)
         return
 
-    print('Verifying %s' % (current_ipa_name,))
+    print('Verifying %s' % (current_ipa_name,), file=sys.stderr)
     try:
         if not can_unzip(current_ipa_name):
             print('Failed to transfer application with bundle name: %s' % (
                 bundle_name,
-            ))
+            ), file=sys.stderr)
             rm(current_ipa_name)
             return
     except KeyboardInterrupt:
@@ -243,7 +250,7 @@ if __name__ == '__main__':
     failed_to_copy = []
 
     if not isdir(target_dir):
-        print('Target directory must exist')
+        print('Target directory must exist', file=sys.stderr)
         sys.exit(1)
 
     if args.device is None:
@@ -260,7 +267,7 @@ if __name__ == '__main__':
             break
 
     if not udid:
-        print('Could not find UDID for %s' % (args.device,))
+        print('Could not find UDID for %s' % (args.device,), file=sys.stderr)
         sys.exit(1)
 
     vprint('Working with device "%s"' % (args.device,))
@@ -284,36 +291,33 @@ if __name__ == '__main__':
     lines = '\n'.join(lines)
 
     try:
-        full_info = plistlib.readPlistFromBytes(lines.encode('utf-8'))
+        full_info = readPlistFromBytes(lines.encode('utf-8'))
     except ValueError as e:
         if 'unexpected element at line' in e.args[0]:
             bad_line = int(re.sub(r'^unexpected element at line (\d+)', r'\1', e.args[0]))
             for (i, line) in enumerate(lines.splitlines()[0:bad_line + 5]):
                 if i == bad_line:
-                    print('ERROR %d:%s' % (i, line,))
-                print('%d:%s' % (i, line,))
+                    print('ERROR %d:%s' % (i, line,), file=sys.stderr)
+                print('%d:%s' % (i, line,), file=sys.stderr)
             sys.exit(1)
         else:
             raise e
 
-    lock = Lock()
+    pool = Pool()
     manager = Manager()
     failed_to_copy_arr = manager.list()
+    arg_set = []
 
     for app_info in full_info:
-        output_fn = get_output_filename(app_info)
-        Process(target=get_ipa,
-                args=(
-                    target_dir,
-                    app_info,
-                    output_fn,
-                    failed_to_copy_arr,
-                    lock,
-                ),
-                name=output_fn).start()
+        arg_set.append(dict(
+            target_dir=target_dir,
+            app_info=app_info,
+            failed_to_copy_array=failed_to_copy_arr,
+        ))
+    pool.map(get_ipa, arg_set)
 
     if len(failed_to_copy_arr):
-        print('\nThe following failed to copy!')
+        print('\nThe following failed to copy!', file=sys.stderr)
         for line in failed_to_copy:
-            print(line)
+            print(line, file=sys.stderr)
         sys.exit(1)
