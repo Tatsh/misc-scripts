@@ -1,0 +1,114 @@
+#!/usr/bin/env python
+from os.path import expanduser, realpath
+from logging.handlers import SysLogHandler
+import argparse
+import logging
+import signal
+import sys
+
+from sh import speedtest
+
+LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
+
+logfh = None
+syslogh = None
+
+
+def cleanup():
+    global logfh, syslogh
+
+    if logfh:
+        logfh.close()
+    if syslogh:
+        syslogh.close()
+
+    logging.shutdown()
+
+
+def cleanup_and_exit(status=0):
+    cleanup()
+    sys.exit(status)
+
+
+def ctrl_c(signum, frame):
+    cleanup()
+    raise SystemExit('Signal raised')
+
+
+if __name__ == '__main__':
+    logger = logging.getLogger('speedtest')
+    logger.setLevel(logging.INFO)
+
+    signal.signal(signal.SIGINT, ctrl_c)
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-d', '--download-threshold', default=50, type=float)
+    parser.add_argument('-u', '--upload-threshold', default=5, type=float)
+    parser.add_argument('-p', '--ping-threshold', default=30, type=float)
+    parser.add_argument('-s', '--syslog', action='store_true')
+    parser.add_argument('-l', '--log-file', help='Debug log')
+    parser.add_argument('-v', '--verbose', action='store_true')
+
+    args = parser.parse_args()
+    ping = dl = ul = share = None
+    failed = False
+
+    if args.log_file:
+        logfh = open(realpath(args.log_file), 'a+')
+        channel = logging.StreamHandler(logfh)
+
+        channel.setFormatter(LOG_FORMATTER)
+        channel.setLevel(logging.DEBUG)
+        logger.addHandler(channel)
+
+    if args.syslog:
+        syslogh = SysLogHandler(address='/dev/log')
+
+        syslogh.setFormatter(LOG_FORMATTER)
+        syslogh.setLevel(logging.INFO)
+        logger.addHandler(syslogh)
+
+    if args.verbose:
+        channel = logging.StreamHandler(sys.stdout)
+
+        channel.setFormatter(LOG_FORMATTER)
+        channel.setLevel(logging.INFO)
+        logger.addHandler(channel)
+
+    logger.info('Running `speedtest --share --simple`')
+
+    for line in speedtest(['--share', '--simple'], _iter=True):
+        if line.startswith('Ping: '):
+            ping = float(line.split(':')[1].strip().split(' ')[0].strip())
+        elif line.startswith('Download: '):
+            dl = float(line.split(':')[1].strip().split(' ')[0].strip())
+        elif line.startswith('Upload: '):
+            ul = float(line.split(':')[1].strip().split(' ')[0].strip())
+        elif line.startswith('Share results: '):
+            share = ':'.join(line.split(':')[1:]).strip()
+
+    if ping > args.ping_threshold:
+        logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; wanted at least {wanted:0.03f}'.format(ping=ping, wanted=args.ping_threshold))
+        failed = True
+    if dl < args.download_threshold:
+        logger.error('Download speed threshold lower than threshold. Got {speed:0.03f}, wanted at least {wanted:0.03f}'.format(speed=dl, wanted=args.download_threshold))
+        failed = True
+    if ul < args.upload_threshold:
+        logger.error('Upload speed threshold lower than threshold. Got {speed:0.03f}, wanted at least {wanted:0.03f}'.format(speed=dl, wanted=args.download_threshold))
+        failed = True
+
+    logger.info('Ping: {ping:0.03f} ms'.format(ping=ping))
+    logger.info('Download speed: {speed:0.02f} Mb/s'.format(speed=dl))
+    logger.info('Upload speed: {speed:0.02f} Mb/s'.format(speed=ul))
+    logger.info('Share URI: {uri!s}'.format(uri=share))
+
+    if True in [not x for x in (ping, dl, ul, share,)]:
+        logger.error('Output not as expected (other error)')
+        cleanup_and_exit(1)
+
+    if failed:
+        logger.error('Exiting with status 1')
+        cleanup_and_exit(status=1)
+
+    cleanup_and_exit()
