@@ -89,7 +89,7 @@ if __name__ == '__main__':
             share = ':'.join(line.split(':')[1:]).strip()
 
     if ping > args.ping_threshold:
-        logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; wanted at least {wanted:0.03f}'.format(ping=ping, wanted=args.ping_threshold))
+        logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; wanted at most {wanted:0.03f}'.format(ping=ping, wanted=args.ping_threshold))
         failed = True
     if dl < args.download_threshold:
         logger.error('Download speed threshold lower than threshold. Got {speed:0.03f}, wanted at least {wanted:0.03f}'.format(speed=dl, wanted=args.download_threshold))
