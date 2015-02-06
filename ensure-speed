@@ -119,7 +119,7 @@ if __name__ == '__main__':
     if ul < args.upload_threshold:
         logger.error('Upload speed threshold lower than threshold. Got '
                      '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(speed=dl,
+                     '{wanted:0.03f}'.format(speed=ul,
                                              wanted=args.download_threshold))
         failed = True
 
