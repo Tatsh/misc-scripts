@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from datetime import datetime
 from os.path import expanduser, realpath
 from logging.handlers import SysLogHandler
 import argparse
@@ -7,10 +8,13 @@ import signal
 import sys
 
 from sh import speedtest
+import yaml
+
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
 
 logfh = None
+logyamlfh = None
 syslogh = None
 
 
@@ -19,6 +23,8 @@ def cleanup():
 
     if logfh:
         logfh.close()
+    if logyamlfh:
+        logyamlfh.close()
     if syslogh:
         syslogh.close()
 
@@ -33,6 +39,13 @@ def cleanup_and_exit(status=0):
 def ctrl_c(signum, frame):
     cleanup()
     raise SystemExit('Signal raised')
+
+def log_yaml(**kwargs):
+    if logyamlfh:
+        kwargs['time'] = str(datetime.today())
+        logyamlfh.write(yaml.safe_dump([kwargs],
+                                       default_flow_style=False,
+                                       allow_unicode=True))
 
 
 if __name__ == '__main__':
@@ -55,7 +68,9 @@ if __name__ == '__main__':
     failed = False
 
     if args.log_file:
-        logfh = open(realpath(args.log_file), 'a+')
+        args.log_file = realpath(args.log_file)
+        logfh = open(args.log_file, 'a+')
+        logyamlfh = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(logfh)
 
         channel.setFormatter(LOG_FORMATTER)
@@ -102,6 +117,10 @@ if __name__ == '__main__':
     logger.info('Download speed: {speed:0.02f} Mb/s'.format(speed=dl))
     logger.info('Upload speed: {speed:0.02f} Mb/s'.format(speed=ul))
     logger.info('Share URI: {uri!s}'.format(uri=share))
+    log_yaml(ping=ping,
+             download=dl,
+             upload=ul,
+             share_uri=share)
 
     if True in [not x for x in (ping, dl, ul, share,)]:
         logger.error('Output not as expected (other error)')
