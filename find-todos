@@ -1,0 +1,209 @@
+#!/usr/bin/env python
+from configparser import SafeConfigParser as ConfigParser
+from math import floor
+from os import (
+    chdir,
+    getcwd,
+    listdir,
+    makedirs,
+    remove as rm,
+    stat,
+    utime as setfiletime,
+)
+from os.path import dirname, expanduser, isdir, join as path_join, realpath
+import argparse
+import logging
+import re
+import sys
+
+from osext.argparse_actions import (
+    ReadableDirectoryAction,
+    WritableDirectoryAction,
+)
+import magic
+
+
+log = logging.getLogger('find-todos')
+
+
+def _get_listing(newdir):
+    return sorted([realpath(path_join(newdir, x))
+                   for x in listdir(newdir)
+                   if not x.endswith('~')
+                   and not x.endswith('.svn-base')
+                   and x not in ('.git', '.svn', '.hg', 'CVS',)])
+
+
+def _handle_listing(listing, outdir, top):
+    for entry in listing:
+        if isdir(entry):
+            _handle_listing(_get_listing(entry), outdir, top)
+        else:
+            try:
+                file_info = magic.from_file(entry, mime=True)
+            except OSError as e:
+                log.error(e.strerror)
+                continue
+
+            log.debug('From magic: {info:s}'.format(
+                info=file_info.decode('utf-8')
+            ))
+            if (file_info == b'application/octet-stream' or
+                    (not file_info.startswith(b'text/') and
+                     not file_info.endswith(b'+xml'))):
+                continue
+
+            unix_ts = floor(stat(entry).st_mtime)
+
+            try:
+                with open(entry, 'rb') as f:
+                    dummy_log_fn = '.{fn:s}.txt'.format(
+                        fn=entry[len(top) + 1:]
+                    )
+                    dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
+
+                    try:
+                        with open(dummy_log_fn, 'r'):
+                            pass
+                        dummy_unix_ts = floor(stat(dummy_log_fn).st_mtime)
+                        if dummy_unix_ts == unix_ts:
+                            log.debug('Dummy file {name:s} found with same '
+                                      'date'.format(name=dummy_log_fn))
+                            continue
+                    except IOError:
+                        log.debug('Dummy file not found')
+                        pass
+
+                    log.info('Scanning {fn:s}'.format(fn=entry))
+                    found = None
+                    ctx_count = 0
+
+                    for i, line in enumerate(f.readlines()):
+                        try:
+                            line = line.decode('utf-8').rstrip()
+                        except UnicodeDecodeError:
+                            log.error('Caught UnicodeDecodeError on line '
+                                      '{number:d}, file: {fn!s}'.format(
+                                          number=i,
+                                          fn=entry))
+                            line = 'Could not decode line {number:d}'.format(
+                                number=i)
+
+                        if ctx_count > 0:
+                            _ = '{line:s}\n'.format(line=line).encode('utf-8')
+                            found.write(_)
+                            ctx_count -= 1
+
+                            if ctx_count == 0:
+                                found.write(b'\n')
+
+                        m = re.search(r'\b(@?todo|fixme|hack)\b',
+                                      line,
+                                      flags=re.I)
+
+                        if m:
+                            _ = entry[len(top) + 1:]
+                            log_fn = '{fn:s}.txt'.format(fn=_)
+                            log_fn = realpath(path_join(outdir, log_fn))
+
+                            try:
+                                last_unix_ts = floor(stat(log_fn).st_mtime)
+                                if last_unix_ts == unix_ts:
+                                    log.info('Not scanning '
+                                             '{entry:s}'.format(entry=entry))
+                                    break
+                            except FileNotFoundError:
+                                pass
+
+                            try:
+                                makedirs(dirname(log_fn))
+                            except FileExistsError:
+                                pass
+
+                            if not found:
+                                found = open(path_join(outdir, log_fn), 'wb+')
+                                log.info('Writing to '
+                                         '{log:s}'.format(log=found.name))
+
+                            _ = '{filename:s}:{number:d}\n'.format(
+                                filename=entry,
+                                number=i).encode('utf-8')
+                            found.write(_)
+                            _ = '{line:s}\n'.format(line=line).encode('utf-8')
+                            found.write(_)
+                            found.write('{space:s}{caret:s}\n'.format(
+                                space=' ' * m.start(),
+                                caret='^' * len(m.group(0))).encode('utf-8'))
+
+                            ctx_count = 5
+
+                    if found:
+                        fname = found.name
+                        found.close()
+
+                        setfiletime(fname, (unix_ts, unix_ts,))
+                        found = None
+
+                        try:
+                            with open(dummy_log_fn, 'r'):
+                                pass
+                            rm(dummy_log_fn)
+                        except IOError:
+                            pass
+                    else:
+                        _ = entry[len(top) + 1:]
+                        dummy_log_fn = '.{fn:s}.txt'.format(fn=_)
+                        dummy_log_fn = realpath(path_join(outdir,
+                                                          dummy_log_fn))
+
+                        try:
+                            makedirs(dirname(dummy_log_fn))
+                        except FileExistsError:
+                            pass
+
+                        with open(dummy_log_fn, 'w+') as f:
+                            f.write('Dummy\n')
+
+                        setfiletime(dummy_log_fn, (unix_ts, unix_ts,))
+
+                        log.debug('Created dummy {name:s}'.format(
+                            name=dummy_log_fn))
+            except PermissionError:
+                log.error('Denied access to {entry:s}'.format(entry=entry))
+            except FileNotFoundError as e:
+                log.error('Entry not found: {entry:s}'.format(entry=entry))
+            except OSError as e:
+                if e.errno == 40:
+                    log.error(e.strerror)
+                    continue
+                raise e
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('start',
+                        metavar='START_DIR',
+                        action=ReadableDirectoryAction)
+    parser.add_argument('target',
+                        metavar='TARGET',
+                        action=WritableDirectoryAction)
+    parser.add_argument('-v',
+                        '--verbose',
+                        action='store_true')
+    parser.add_argument('-d',
+                        '--debug',
+                        action='store_true')
+
+    args = parser.parse_args()
+
+    if args.verbose or args.debug:
+        log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        formatter = logging.Formatter(log_format)
+        channel = logging.StreamHandler(sys.stderr)
+
+        log.setLevel(logging.INFO if args.verbose else logging.DEBUG)
+        channel.setLevel(logging.INFO if args.verbose else logging.DEBUG)
+        channel.setFormatter(formatter)
+        log.addHandler(channel)
+
+    _handle_listing(_get_listing(args.start), args.target, args.start)
