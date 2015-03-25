@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from __future__ import print_function
+from copy import copy
 from os.path import basename
 from sh import metaflac
 from pipes import quote as shell_quote
@@ -71,7 +73,7 @@ if __name__ == '__main__':
         '--preserve-modtime',
         '--no-utf8-convert',
     ]
-    cleanup_args = metaflac_args.copy()
+    cleanup_args = copy(metaflac_args)
     destroy = args.delete_all_before
 
     cleanup_args.append('--remove-all-tags')
@@ -84,7 +86,12 @@ if __name__ == '__main__':
             continue
 
         val = val.strip()
-        flac_tag = '%s%s' % (key[0].upper(), key[1:])
+        if key == 'year':
+            flac_tag = 'Date'
+        elif key == 'track':
+            flac_tag = 'Tracknumber'
+        else:
+            flac_tag = '%s%s' % (key[0].upper(), key[1:])
         metaflac_args.append('--set-tag=%s' % ('%s=%s' % (flac_tag, val)))
 
     if args.picture:
