@@ -1,4 +1,5 @@
 PyYAML
+requests
 sh
 Unidecode
 
