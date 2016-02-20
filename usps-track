@@ -43,16 +43,14 @@ if __name__ == '__main__':
     args = parser.parse_args()
     phone_number = args.phone_number[0]
     log = logging.getLogger('requests.packages.urllib3')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - '
+                                  '%(levelname)s - %(message)s')
+    channel = logging.StreamHandler(sys.stderr)
 
-    if args.debug:
-        formatter = logging.Formatter('%(asctime)s - %(name)s - '
-                                      '%(levelname)s - %(message)s')
-        channel = logging.StreamHandler(sys.stderr)
-
-        log.setLevel(logging.DEBUG)
-        channel.setLevel(logging.DEBUG)
-        channel.setFormatter(formatter)
-        log.addHandler(channel)
+    log.setLevel(logging.DEBUG if args.debug else logging.ERROR)
+    channel.setLevel(logging.DEBUG if args.debug else logging.ERROR)
+    channel.setFormatter(formatter)
+    log.addHandler(channel)
 
     http_adapter = HTTPAdapter(max_retries=MAX_RETRIES)
     session = requests.Session()
