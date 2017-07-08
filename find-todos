@@ -112,12 +112,12 @@ def _handle_listing(listing, outdir, top):
                                     log.info('Not scanning '
                                              '{entry:s}'.format(entry=entry))
                                     break
-                            except FileNotFoundError:
+                            except OSError:
                                 pass
 
                             try:
                                 makedirs(dirname(log_fn))
-                            except FileExistsError:
+                            except OSError:
                                 pass
 
                             if not found:
@@ -158,7 +158,7 @@ def _handle_listing(listing, outdir, top):
 
                         try:
                             makedirs(dirname(dummy_log_fn))
-                        except FileExistsError:
+                        except OSError:
                             pass
 
                         with open(dummy_log_fn, 'w+') as f:
@@ -168,10 +168,6 @@ def _handle_listing(listing, outdir, top):
 
                         log.debug('Created dummy {name:s}'.format(
                             name=dummy_log_fn))
-            except PermissionError:
-                log.error('Denied access to {entry:s}'.format(entry=entry))
-            except FileNotFoundError as e:
-                log.error('Entry not found: {entry:s}'.format(entry=entry))
             except OSError as e:
                 if e.errno == 40:
                     log.error(e.strerror)
