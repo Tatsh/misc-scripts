@@ -13,11 +13,11 @@ def ffmpeg(args, **kwargs):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Convert any video file to GIF')
-    parser.add_argument('-ss', metavar='TIME_START')
-    parser.add_argument('-to', metavar='TIME_END')
-    parser.add_argument('-t', metavar='LENGTH_SPEC')
-    parser.add_argument('-w', '--width', type=int, default=640)
-    parser.add_argument('-r', '--fps', type=int, default=10)
+    parser.add_argument('-ss', metavar='TIME_START', help='Time start specification')
+    parser.add_argument('-to', metavar='TIME_END', help='Time end specification')
+    parser.add_argument('-t', metavar='LENGTH_SPEC', help='Length specification or number of seconds')
+    parser.add_argument('-w', '--width', type=int, default=640, help='Video width')
+    parser.add_argument('-r', '--fps', type=int, default=10, help='Framerate')
     parser.add_argument('-gifflags', help='See `ffmpeg -h encoder=gif`')
     parser.add_argument('video_file')
 
