@@ -1,0 +1,56 @@
+#!/usr/bin/env python
+from __future__ import print_function
+from argparse import ArgumentParser
+from os import close as close_fd, unlink
+from os.path import basename, dirname, join as path_join, realpath, splitext
+from tempfile import mkstemp
+import subprocess as sp
+import sys
+
+def ffmpeg(args, **kwargs):
+    sp.check_call(['ffmpeg'] + args, **kwargs)
+
+
+if __name__ == '__main__':
+    parser = ArgumentParser(description='Convert any video file to GIF')
+    parser.add_argument('-ss', metavar='TIME_START')
+    parser.add_argument('-to', metavar='TIME_END')
+    parser.add_argument('-t', metavar='LENGTH_SPEC')
+    parser.add_argument('-w', '--width', type=int, default=640)
+    parser.add_argument('-r', '--fps', type=int, default=10)
+    parser.add_argument('video_file')
+
+    args = parser.parse_args()
+    fd, palette_fn = mkstemp(prefix='a2gif-', suffix='.png')
+    input_video = realpath(args.video_file)
+    output_file = path_join(dirname(input_video), '{}.gif'.format(splitext(basename(input_video))[0]))
+    ffmpeg_args = ['-y']
+
+    palette_filter = 'fps={fps},scale={width}:-1:flags=lanczos,palettegen'.format(
+        width=args.width, fps=args.fps)
+    if args.to and args.t:
+        print('Cannot use -to and -t arguments at same time', file=sys.stderr)
+        sys.exit(1)
+    if args.ss:
+        ffmpeg_args += ['-ss', args.ss]
+    if args.to:
+        ffmpeg_args += ['-to', args.to]
+    if args.t:
+        ffmpeg_args += ['-t', args.t]
+    ffmpeg_args += ['-i', input_video, '-vf', palette_filter, palette_fn]
+    ffmpeg(ffmpeg_args)
+
+    video_filter = 'fps={fps},scale={width}:-1:flags=lanczos[x];[x][1:v]paletteuse'.format(
+        width=args.width, fps=args.fps)
+    ffmpeg_args = ['-y']
+    if args.ss:
+        ffmpeg_args += ['-ss', args.ss]
+    if args.to:
+        ffmpeg_args += ['-to', args.to]
+    if args.t:
+        ffmpeg_args += ['-t', args.t]
+    ffmpeg_args += ['-i', input_video, '-i', palette_fn, '-filter_complex', video_filter, output_file]
+    ffmpeg(ffmpeg_args)
+
+    close_fd(fd)
+    unlink(palette_fn)
