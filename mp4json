@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -exv
+set -e
 
 for i in "$@"; do
     if [ -f "${i%.*}.info.json" ]; then
