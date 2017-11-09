@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -exv
+
+for i in "$@"; do
+    if [ -f "${i%.*}.info.json" ]; then
+        AtomicParsley "$i" --overWrite --meta-uuid json "${i%.*}.info.json"
+        rm "${i%.*}.info.json"
+    fi
+done
