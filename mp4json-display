@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -e
+
+fn="$1"
+json_file="${fn%.*}-json-uuid.json"
+
+AtomicParsley "$1" --extract1uuid json out.json >/dev/null 2>&1
+cat "$json_file"
+rm "$json_file" >/dev/null 2>&1
