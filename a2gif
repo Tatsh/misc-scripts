@@ -46,13 +46,15 @@ if __name__ == '__main__':
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
         sys.exit(1)
+
+    ffmpeg_args += ['-i', input_video]
     if args.ss:
         ffmpeg_args += ['-ss', args.ss]
     if args.to:
         ffmpeg_args += ['-to', args.to]
     if args.t:
         ffmpeg_args += ['-t', args.t]
-    ffmpeg_args += ['-i', input_video, '-vf', palette_filter, palette_fn]
+    ffmpeg_args += ['-vf', palette_filter, palette_fn]
     ffmpeg(ffmpeg_args)
 
     video_filter = ('fps={fps},scale={width}:-1:flags=lanczos[x];'
