@@ -63,6 +63,8 @@ def set_date(path, json_str):
         upload_date = data['upload_date']
     except KeyError:
         return
+    if not isinstance(upload_date, str):
+        return
     seconds = datetime.strptime(upload_date, '%Y%m%d').timestamp()
     utime(path, times=(seconds, seconds,))
 
