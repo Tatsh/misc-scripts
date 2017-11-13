@@ -113,6 +113,7 @@ def id3ted_add_json(filename, json_filename):
     cmd[-2] = '{}:{}'.format(standard_b64encode(new_json).decode('utf-8'), TAG_DESCRIPTION)
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
+    set_date(filename, new_json)
 
 
 def isfile(path):
