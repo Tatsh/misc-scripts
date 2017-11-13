@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from base64 import standard_b64encode
 from datetime import datetime
+from enum import Enum, unique
 from hashlib import md5, sha256
 from hmac import compare_digest
 from os import unlink as rm, utime
@@ -46,20 +47,24 @@ ID3TED_WRITE_CMD_TEMPLATE = [
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
 
-class SubprocessKeywordArguments:
+@unique
+class SubprocessKeywordArguments(Enum):
     standard_output = 'stdout'
     standard_error = 'stderr'
 
 
-class StringEncodings:
+@unique
+class StringEncodings(Enum):
     utf8 = 'utf-8'
 
 
-class JSONDataKeys:
+@unique
+class JSONDataKeys(Enum):
     upload_date = 'upload_date'
 
 
-class FileModes:
+@unique
+class FileModes(Enum):
     readonly_binary = 'rb'
 
 
@@ -70,15 +75,15 @@ def get_digest(func, s):
 
 
 def quiet_subprocess_check_call(*args, **kwargs):
-    kwargs[SubprocessKeywordArguments.standard_output] = sp.PIPE
-    kwargs[SubprocessKeywordArguments.standard_error] = sp.PIPE
+    kwargs[SubprocessKeywordArguments.standard_output.value] = sp.PIPE
+    kwargs[SubprocessKeywordArguments.standard_error.value] = sp.PIPE
     sp.check_call(*args, **kwargs)
 
 
 def set_date(path, json_str):
-    data = json.loads(json_str.decode(StringEncodings.utf8))
+    data = json.loads(json_str.decode(StringEncodings.utf8.value))
     try:
-        upload_date = data[JSONDataKeys.upload_date]
+        upload_date = data[JSONDataKeys.upload_date.value]
     except KeyError:
         return
     if not isinstance(upload_date, str):
@@ -93,13 +98,13 @@ def atomicparsley_add_json(filename, json_filename):
     quiet_subprocess_check_call(cmd)
     expected_json_filename = '{}-json-uuid.json'.format(splitext(filename)[0])
     try:
-        with open(expected_json_filename, FileModes.readonly_binary) as f:
+        with open(expected_json_filename, FileModes.readonly_binary.value) as f:
             current_json = f.read()
         rm(expected_json_filename)
     except IOError:
         current_json = None
 
-    with open(json_filename, FileModes.readonly_binary) as f:
+    with open(json_filename, FileModes.readonly_binary.value) as f:
         new_json = f.read()
 
     if current_json:
@@ -128,10 +133,10 @@ def id3ted_add_json(filename, json_filename):
     quiet_subprocess_check_call(cmd)
 
     cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
-    with open(json_filename, FileModes.readonly_binary) as f:
+    with open(json_filename, FileModes.readonly_binary.value) as f:
         new_json = f.read()
 
-    encoded = standard_b64encode(new_json).decode(StringEncodings.utf8)
+    encoded = standard_b64encode(new_json).decode(StringEncodings.utf8.value)
     cmd[-2] = '{}:{}'.format(encoded, TAG_DESCRIPTION)
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
