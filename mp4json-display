@@ -4,6 +4,12 @@ set -e
 fn="$1"
 json_file="${fn%.*}-json-uuid.json"
 
-AtomicParsley "$1" --extract1uuid json out.json >/dev/null 2>&1
-cat "$json_file"
-rm "$json_file" >/dev/null 2>&1
+if [[ "$fn" = *.m4* ]] || [[ "$fn" = *.mp4 ]]; then
+    AtomicParsley "$fn" --extract1uuid json out.json >/dev/null 2>&1
+    cat "$json_file"
+    rm "$json_file" >/dev/null 2>&1
+elif [[ "$fn" = *.mp3 ]]; then
+    id3ted -l "$fn" | fgrep TXXX | cut -d ':' -f3- | tr -d ' ' | base64 -d
+else
+    exit 1
+fi

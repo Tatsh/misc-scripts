@@ -1,15 +1,141 @@
-#!/usr/bin/env bash
-set -e
+#!/usr/bin/env python
+from base64 import standard_b64encode
+from datetime import datetime
+from hashlib import md5, sha256
+from hmac import compare_digest
+from os import unlink as rm, utime
+from os.path import splitext
+import json
+import re
+import subprocess as sp
+import sys
 
-for i in "$@"; do
-    if [ -f "${i%.*}.info.json" ]; then
-        AtomicParsley "$i" --overWrite --meta-uuid json file "${i%.*}.info.json" >/dev/null 2>&1
-        if command -v jq >/dev/null 2>&1; then
-            date=$(jq -r .upload_date "${i%.*}.info.json")
-            if [[ "$date" != 'null' ]]; then
-                touch -d "$date" "$i"
-            fi
-        fi
-        rm "${i%.*}.info.json"
-    fi
-done
+CUSTOM_ATOM_NAME = 'json'
+MIMETYPE = 'application/json'
+
+TAG_DESCRIPTION = 'youtube-dl metadata'
+ATOMICPARSLEY_WRITE_CMD_TEMPLATE = [
+    'AtomicParsley',
+    None,  # MP4 filename
+    '--overWrite',
+    '--meta-uuid', CUSTOM_ATOM_NAME,
+    'file',
+    None,  # JSON filename
+    'description="{}"'.format(TAG_DESCRIPTION),
+    'mime-type="application/json"',
+]
+ATOMICPARSLEY_EXTRACT_JSON_CMD_TEMPLATE = [
+    'AtomicParsley',
+    None,
+    '--extract1uuid', CUSTOM_ATOM_NAME,
+]
+ID3_TEXT_FRAME = 'TXXX'
+ID3TED_REMOVE_FRAME_TEMPLATE = [
+    'id3ted',
+    '--preserve-times',
+    '--remove', ID3_TEXT_FRAME,
+    None,  # MP3 filename
+]
+ID3TED_WRITE_CMD_TEMPLATE = [
+    'id3ted',
+    '--preserve-times',
+    '-3',
+    '--TXXX', None,
+    None,
+]
+
+
+def get_digest(func, s):
+    h = func()
+    h.update(s)
+    return h.digest()
+
+
+def quiet_subprocess_check_call(*args, **kwargs):
+    kwargs['stdout'] = sp.PIPE
+    kwargs['stderr'] = sp.PIPE
+    sp.check_call(*args, **kwargs)
+
+
+def set_date(path, json_str):
+    data = json.loads(json_str.decode('utf-8'))
+    try:
+        upload_date = data['upload_date']
+    except KeyError:
+        return
+    seconds = datetime.strptime(upload_date, '%Y%m%d').timestamp()
+    utime(path, times=(seconds, seconds,))
+
+
+def atomicparsley_add_json(filename, json_filename):
+    cmd = list(ATOMICPARSLEY_EXTRACT_JSON_CMD_TEMPLATE)
+    cmd[1] = filename
+    quiet_subprocess_check_call(cmd)
+    expected_json_filename = '{}-json-uuid.json'.format(splitext(filename)[0])
+    try:
+        with open(expected_json_filename, 'rb') as f:
+            current_json = f.read()
+        rm(expected_json_filename)
+    except IOError:
+        current_json = None
+
+    with open(json_filename, 'rb') as f:
+        new_json = f.read()
+
+    if current_json:
+        current_json_md5_digest = get_digest(md5, current_json)
+        current_json_sha256_digest = get_digest(sha256, current_json)
+
+        new_json_md5_digest = get_digest(md5, new_json)
+        new_json_sha256_digest = get_digest(sha256, new_json)
+
+        if (compare_digest(current_json_md5_digest, new_json_md5_digest) and
+            compare_digest(current_json_sha256_digest, new_json_sha256_digest)):
+                set_date(filename, current_json)
+                return
+
+    cmd = list(ATOMICPARSLEY_WRITE_CMD_TEMPLATE)
+    cmd[1] = filename
+    cmd[6] = json_filename
+    quiet_subprocess_check_call(cmd)
+    set_date(filename, new_json)
+
+
+def id3ted_add_json(filename, json_filename):
+    cmd = list(ID3TED_REMOVE_FRAME_TEMPLATE)
+    cmd[-1] = filename
+    quiet_subprocess_check_call(cmd)
+
+    cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
+    with open(json_filename, 'rb') as f:
+        new_json = f.read()
+
+    cmd[-2] = '{}:{}'.format(standard_b64encode(new_json).decode('utf-8'), TAG_DESCRIPTION)
+    cmd[-1] = filename
+    quiet_subprocess_check_call(cmd)
+
+
+def isfile(path):
+    try:
+        with open(path):
+            pass
+    except IOError:
+        return False
+    return True
+
+
+if __name__ == '__main__':
+    mp4_ext_regex= re.compile(r'\.(?:mp4|m4[pabrv])$')
+    mp3_ext_regex = re.compile(r'\.mp3')
+
+    for arg in sys.argv[1:]:
+        json_filename = '{}.info.json'.format(splitext(arg)[0])
+        if not isfile(json_filename):
+            continue
+
+        if re.search(mp4_ext_regex, arg):
+            atomicparsley_add_json(arg, json_filename)
+            delete = True
+        elif re.search(mp3_ext_regex, arg):
+            id3ted_add_json(arg, json_filename)
+        rm(json_filename)
