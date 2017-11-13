@@ -43,6 +43,24 @@ ID3TED_WRITE_CMD_TEMPLATE = [
     '--TXXX', None,
     None,
 ]
+UPLOAD_DATE_FORMAT = '%Y%m%d'
+
+
+class SubprocessKeywordArguments:
+    standard_output = 'stdout'
+    standard_error = 'stderr'
+
+
+class StringEncodings:
+    utf8 = 'utf-8'
+
+
+class JSONDataKeys:
+    upload_date = 'upload_date'
+
+
+class FileModes:
+    readonly_binary = 'rb'
 
 
 def get_digest(func, s):
@@ -52,20 +70,20 @@ def get_digest(func, s):
 
 
 def quiet_subprocess_check_call(*args, **kwargs):
-    kwargs['stdout'] = sp.PIPE
-    kwargs['stderr'] = sp.PIPE
+    kwargs[SubprocessKeywordArguments.standard_output] = sp.PIPE
+    kwargs[SubprocessKeywordArguments.standard_error] = sp.PIPE
     sp.check_call(*args, **kwargs)
 
 
 def set_date(path, json_str):
-    data = json.loads(json_str.decode('utf-8'))
+    data = json.loads(json_str.decode(StringEncodings.utf8))
     try:
-        upload_date = data['upload_date']
+        upload_date = data[JSONDataKeys.upload_date]
     except KeyError:
         return
     if not isinstance(upload_date, str):
         return
-    seconds = datetime.strptime(upload_date, '%Y%m%d').timestamp()
+    seconds = datetime.strptime(upload_date, UPLOAD_DATE_FORMAT).timestamp()
     utime(path, times=(seconds, seconds,))
 
 
@@ -75,13 +93,13 @@ def atomicparsley_add_json(filename, json_filename):
     quiet_subprocess_check_call(cmd)
     expected_json_filename = '{}-json-uuid.json'.format(splitext(filename)[0])
     try:
-        with open(expected_json_filename, 'rb') as f:
+        with open(expected_json_filename, FileModes.readonly_binary) as f:
             current_json = f.read()
         rm(expected_json_filename)
     except IOError:
         current_json = None
 
-    with open(json_filename, 'rb') as f:
+    with open(json_filename, FileModes.readonly_binary) as f:
         new_json = f.read()
 
     if current_json:
@@ -92,7 +110,8 @@ def atomicparsley_add_json(filename, json_filename):
         new_json_sha256_digest = get_digest(sha256, new_json)
 
         if (compare_digest(current_json_md5_digest, new_json_md5_digest) and
-            compare_digest(current_json_sha256_digest, new_json_sha256_digest)):
+                compare_digest(current_json_sha256_digest,
+                               new_json_sha256_digest)):
                 set_date(filename, current_json)
                 return
 
@@ -109,10 +128,11 @@ def id3ted_add_json(filename, json_filename):
     quiet_subprocess_check_call(cmd)
 
     cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
-    with open(json_filename, 'rb') as f:
+    with open(json_filename, FileModes.readonly_binary) as f:
         new_json = f.read()
 
-    cmd[-2] = '{}:{}'.format(standard_b64encode(new_json).decode('utf-8'), TAG_DESCRIPTION)
+    encoded = standard_b64encode(new_json).decode(StringEncodings.utf8)
+    cmd[-2] = '{}:{}'.format(encoded, TAG_DESCRIPTION)
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
     set_date(filename, new_json)
@@ -128,7 +148,7 @@ def isfile(path):
 
 
 if __name__ == '__main__':
-    mp4_ext_regex= re.compile(r'\.(?:mp4|m4[pabrv])$')
+    mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
     mp3_ext_regex = re.compile(r'\.mp3')
 
     for arg in sys.argv[1:]:
