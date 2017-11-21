@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum, unique
 from hashlib import md5, sha256
 from hmac import compare_digest
-from os import unlink as rm, utime
+from os import environ, unlink as rm, utime
 from os.path import splitext
 import json
 import re
@@ -46,6 +46,11 @@ ID3TED_WRITE_CMD_TEMPLATE = [
 ]
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
+try:
+    subprocess_timeout = int(environ['MP4JSON_SUBPROCESS_TIMEOUT'])
+except (KeyError, ValueError):
+    subprocess_timeout = 30
+
 
 @unique
 class SubprocessKeywordArguments(Enum):
@@ -66,6 +71,7 @@ class JSONDataKeys(Enum):
 @unique
 class FileModes(Enum):
     readonly_binary = 'rb'
+    write_binary = 'wb'
 
 
 def get_digest(func, s):
@@ -105,7 +111,9 @@ def atomicparsley_add_json(filename, json_filename):
         current_json = None
 
     with open(json_filename, FileModes.readonly_binary.value) as f:
-        new_json = f.read()
+        new_json = b''.join([f.read().strip(), b'\n'])
+    with open(json_filename, FileModes.write_binary.value) as f:
+        f.write(new_json)
 
     if current_json:
         current_json_md5_digest = get_digest(md5, current_json)
@@ -123,7 +131,7 @@ def atomicparsley_add_json(filename, json_filename):
     cmd = list(ATOMICPARSLEY_WRITE_CMD_TEMPLATE)
     cmd[1] = filename
     cmd[6] = json_filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(cmd, timeout=subprocess_timeout)
     set_date(filename, new_json)
 
 
