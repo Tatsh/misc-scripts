@@ -6,6 +6,7 @@ from hashlib import md5, sha256
 from hmac import compare_digest
 from os import environ, unlink as rm, utime
 from os.path import splitext
+from shlex import quote
 import json
 import re
 import subprocess as sp
@@ -13,6 +14,7 @@ import sys
 
 CUSTOM_ATOM_NAME = 'json'
 MIMETYPE = 'application/json'
+ONE_HOUR_SECONDS = 3600
 
 TAG_DESCRIPTION = 'youtube-dl metadata'
 ATOMICPARSLEY_WRITE_CMD_TEMPLATE = [
@@ -46,11 +48,6 @@ ID3TED_WRITE_CMD_TEMPLATE = [
 ]
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
-try:
-    subprocess_timeout = int(environ['MP4JSON_SUBPROCESS_TIMEOUT'])
-except (KeyError, ValueError):
-    subprocess_timeout = 30
-
 
 @unique
 class SubprocessKeywordArguments(Enum):
@@ -81,8 +78,8 @@ def get_digest(func, s):
 
 
 def quiet_subprocess_check_call(*args, **kwargs):
-    kwargs[SubprocessKeywordArguments.standard_output.value] = sp.PIPE
-    kwargs[SubprocessKeywordArguments.standard_error.value] = sp.PIPE
+    kwargs[SubprocessKeywordArguments.standard_output.value] = sp.DEVNULL
+    kwargs[SubprocessKeywordArguments.standard_error.value] = sp.DEVNULL
     sp.check_call(*args, **kwargs)
 
 
@@ -131,8 +128,20 @@ def atomicparsley_add_json(filename, json_filename):
     cmd = list(ATOMICPARSLEY_WRITE_CMD_TEMPLATE)
     cmd[1] = filename
     cmd[6] = json_filename
-    quiet_subprocess_check_call(cmd, timeout=subprocess_timeout)
+    timeout = ONE_HOUR_SECONDS
+    try:
+        quiet_subprocess_check_call(cmd, timeout=timeout)
+    except sp.TimeoutExpired as e:
+        cmd = ' '.join([quote(x) for x in cmd])
+        print('[mp4json] Timeout reached ({} seconds passed)'.format(timeout), file=sys.stderr)
+        print('[mp4json] Try the command manually: {}'.format(cmd), file=sys.stderr)
+        print('[mp4json] Try the command with debugging: gdb --args {} (on hang, ^C and `bt full`)'.format(cmd), file=sys.stderr)
+
+        return False
+
     set_date(filename, new_json)
+
+    return True
 
 
 def id3ted_add_json(filename, json_filename):
@@ -149,6 +158,8 @@ def id3ted_add_json(filename, json_filename):
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
     set_date(filename, new_json)
+
+    return True
 
 
 def isfile(path):
@@ -170,8 +181,9 @@ if __name__ == '__main__':
             continue
 
         if re.search(mp4_ext_regex, arg):
-            atomicparsley_add_json(arg, json_filename)
-            delete = True
+            can_delete = atomicparsley_add_json(arg, json_filename)
         elif re.search(mp3_ext_regex, arg):
-            id3ted_add_json(arg, json_filename)
-        rm(json_filename)
+            can_delete = id3ted_add_json(arg, json_filename)
+
+        if can_delete:
+            rm(json_filename)
