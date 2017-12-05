@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function
 from base64 import standard_b64encode
 from datetime import datetime
 from enum import Enum, unique
@@ -6,7 +7,10 @@ from hashlib import md5, sha256
 from hmac import compare_digest
 from os import environ, unlink as rm, utime
 from os.path import splitext
-from shlex import quote
+try:
+    from shlex import quote
+except ImportError:
+    from pipes import quote
 import json
 import re
 import subprocess as sp
@@ -14,7 +18,6 @@ import sys
 
 CUSTOM_ATOM_NAME = 'json'
 MIMETYPE = 'application/json'
-ONE_HOUR_SECONDS = 3600
 
 TAG_DESCRIPTION = 'youtube-dl metadata'
 ATOMICPARSLEY_WRITE_CMD_TEMPLATE = [
@@ -78,8 +81,12 @@ def get_digest(func, s):
 
 
 def quiet_subprocess_check_call(*args, **kwargs):
-    kwargs[SubprocessKeywordArguments.standard_output.value] = sp.DEVNULL
-    kwargs[SubprocessKeywordArguments.standard_error.value] = sp.DEVNULL
+    try:
+        arg = sp.DEVNULL
+    except AttributeError:
+        arg = open('/dev/null')
+    kwargs[SubprocessKeywordArguments.standard_output.value] = arg
+    kwargs[SubprocessKeywordArguments.standard_error.value] = arg
     sp.check_call(*args, **kwargs)
 
 
@@ -128,12 +135,11 @@ def atomicparsley_add_json(filename, json_filename):
     cmd = list(ATOMICPARSLEY_WRITE_CMD_TEMPLATE)
     cmd[1] = filename
     cmd[6] = json_filename
-    timeout = ONE_HOUR_SECONDS
     try:
-        quiet_subprocess_check_call(cmd, timeout=timeout)
-    except sp.TimeoutExpired as e:
+        quiet_subprocess_check_call(cmd)
+    except Exception as e:
         cmd = ' '.join([quote(x) for x in cmd])
-        print('[mp4json] Timeout reached ({} seconds passed)'.format(timeout), file=sys.stderr)
+        print('[mp4json] Caught exception: {}'.format(e), file=sys.stderr)
         print('[mp4json] Try the command manually: {}'.format(cmd), file=sys.stderr)
         print('[mp4json] Try the command with debugging: gdb --args {} (on hang, ^C and `bt full`)'.format(cmd), file=sys.stderr)
 
