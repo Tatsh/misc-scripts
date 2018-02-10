@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+main() {
+    local -r no=1
+    if ! [ -f "$1" ]; then
+        return "$no"
+    fi
+    size=$(stat -c %s "$1")
+    if ((size == 0)); then
+        return "$no"
+    fi
+    perl -E 'exit((-B $ARGV[0])?0:1);' "$1" && return 0
+}
+
+main "$1"
