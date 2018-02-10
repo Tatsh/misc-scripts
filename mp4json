@@ -27,8 +27,8 @@ ATOMICPARSLEY_WRITE_CMD_TEMPLATE = [
     '--meta-uuid', CUSTOM_ATOM_NAME,
     'file',
     None,  # JSON filename
-    'description="{}"'.format(TAG_DESCRIPTION),
-    'mime-type="application/json"',
+    'description={}'.format(TAG_DESCRIPTION),
+    'mime-type=application/json',
 ]
 ATOMICPARSLEY_EXTRACT_JSON_CMD_TEMPLATE = [
     'AtomicParsley',
