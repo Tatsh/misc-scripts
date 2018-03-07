@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from __future__ import print_function, unicode_literals
-from os import stat, utime
+from os import stat, unlink, utime
 from os.path import (
-    basename, isdir, isfile, join as path_join, realpath, splitext, unlink)
+    basename, isdir, isfile, join as path_join, realpath, splitext)
 import argparse
 import sys
 
