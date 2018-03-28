@@ -1,0 +1,93 @@
+#!/usr/bin/env python
+from os.path import basename
+import argparse
+import logging
+import sys
+
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util import Retry
+from requests.utils import dict_from_cookiejar
+import requests
+
+GET_URL = 'https://tools.usps.com/go/TrackConfirmAction'
+POST_URL = ('https://tools.usps.com/go/TrackConfirmRequestUpdateAJAXAction'
+            '.action')
+NAME1_EMPTY_VALUE = 'not required'
+MAX_RETRIES = 10
+HEADERS = {
+    'Accept-Language': 'en-US,en;q=0.8,en-GB;q=0.6',
+    'Connection': 'keep-alive',
+    'Accept': 'text/html,application/xhtml+xml,'
+              'application/xml;q=0.9,*/*;q=0.8',
+    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_2) '
+                  'AppleWebKit/537.36 (KHTML, like Gecko) '
+                  'Chrome/48.0.2564.79 '
+                  'Safari/537.36',
+    'DNT': '1',
+    'Pragma': 'no-cache',
+    'Cache-Control': 'no-cache',
+}
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(basename(sys.argv[0]))
+    parser.add_argument('tracking_number',
+                        nargs='+',
+                        metavar='TRACKING_NUMBER',
+                        help='Tracking numbers')
+    parser.add_argument('phone_number',
+                        nargs=1,
+                        metavar='PHONE_NUMBER',
+                        help='Phone number to send SMS to (US only)')
+    parser.add_argument('-d', '--debug', action='store_true')
+
+    args = parser.parse_args()
+    phone_number = args.phone_number[0]
+    log = logging.getLogger('requests.packages.urllib3')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - '
+                                  '%(levelname)s - %(message)s')
+    channel = logging.StreamHandler(sys.stderr)
+
+    log.setLevel(logging.DEBUG if args.debug else logging.ERROR)
+    channel.setLevel(logging.DEBUG if args.debug else logging.ERROR)
+    channel.setFormatter(formatter)
+    log.addHandler(channel)
+
+    http_adapter = HTTPAdapter(max_retries=MAX_RETRIES)
+    session = requests.Session()
+
+    session.mount('http://', http_adapter)
+    session.mount('https://', http_adapter)
+    session.headers = HEADERS
+
+    for arg in args.tracking_number:
+        r = session.get(GET_URL, params=dict(
+            qtc_tLabels1=arg,
+        ))
+        r.raise_for_status()
+        content = r.content.decode('utf-8')
+
+        if 'could not locate the tracking information' in content:
+            log.error('Failed with tracking number {}'.format(arg))
+            continue
+
+        data = dict(
+            label=arg,
+            updateSms='1',
+            updateSmsFuture='on',
+            name1=NAME1_EMPTY_VALUE,
+            smsNumber=phone_number,
+            confirmSms='on',
+        )
+        log.debug('POST data: {}'.format(data))
+        add_headers = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': '{}?qtc_tLabels1={}'.format(GET_URL, arg),
+        }
+        r = session.post(POST_URL, data=data, headers=add_headers)
+        r.raise_for_status()
+        json = r.json()
+
+        if json['serviceError'] != 'false':
+            log.error('Failed with tracking number {}'.format(arg))
+        else:
+            log.debug('JSON response: {}'.format(json))
