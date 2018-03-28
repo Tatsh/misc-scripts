@@ -59,6 +59,15 @@ if __name__ == '__main__':
     session.mount('https://', http_adapter)
     session.headers = HEADERS
 
+    if '-' not in phone_number:
+        if phone_number[0] == '1' and len(phone_number) == 11:
+            phone_number = phone_number[1:]
+            log.debug('Removed leading 1')
+        parts = [phone_number[i:i + 3] for i in range(0, 10, 3)]
+        log.debug('Phone number parts: {}'.format(parts))
+        phone_number = '-'.join(parts[0:3]) + parts[3]
+        log.debug('Adjusted phone number: {}'.format(phone_number))
+
     for arg in args.tracking_number:
         r = session.get(GET_URL, params=dict(
             qtc_tLabels1=arg,
@@ -72,8 +81,14 @@ if __name__ == '__main__':
 
         data = dict(
             label=arg,
-            updateSms='1',
-            updateSmsFuture='on',
+            textAll='on',
+            textFuture='on',
+            textToday='on',
+            textDnd='on',
+            textPickup='on',
+            textOA='on',
+            textAlert='on',
+            email1=NAME1_EMPTY_VALUE,
             name1=NAME1_EMPTY_VALUE,
             smsNumber=phone_number,
             confirmSms='on',
@@ -86,8 +101,7 @@ if __name__ == '__main__':
         r = session.post(POST_URL, data=data, headers=add_headers)
         r.raise_for_status()
         json = r.json()
+        log.debug('JSON response: {}'.format(json))
 
-        if json['serviceError'] != 'false':
+        if json.get('textServiceError', None) != 'false':
             log.error('Failed with tracking number {}'.format(arg))
-        else:
-            log.debug('JSON response: {}'.format(json))
