@@ -36,15 +36,15 @@ stop_words = [
     'on',
     'or',
     'per',
-    'por', # Spanish
-    #'so',
+    'por',  # Spanish
+    # 'so',
     'te',  # Spanish/French
-    #'than',
+    # 'than',
     'the',
-    #'then',
-    #'this',
+    # 'then',
+    # 'this',
     'to',
-    #'too',
+    # 'too',
     'van',
     'via',
     'von',
@@ -184,9 +184,9 @@ def fix_apostrophes(word):
         return word
 
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                    lambda mo: mo.group(0)[0].upper() +
-                    mo.group(0)[1:].lower(),
-                    word)
+                  lambda mo: mo.group(0)[0].upper() +
+                  mo.group(0)[1:].lower(),
+                  word)
 
 
 def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
@@ -282,6 +282,7 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 
     return title
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Title fixer for various '
@@ -309,4 +310,7 @@ if __name__ == '__main__':
         args.mode = [ENGLISH_MODE]
 
     for title in args.titles:
-        print(lower_stop(title, args.mode, args.no_names, ampersands=args.ampersands))
+        print(lower_stop(title,
+                         args.mode,
+                         args.no_names,
+                         ampersands=args.ampersands))
