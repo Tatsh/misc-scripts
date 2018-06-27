@@ -1,21 +1,23 @@
 #!/usr/bin/env php
 <?php
+namespace Curl2Php;
+
+function array_to_php_array_string(array $arr)
+{
+    $ret = json_encode($arr);
+    $ret = str_replace('\\/', '/', $ret);
+    $ret = str_replace('","', "\",\n    \"", $ret);
+
+    $ret = "\n" . '    '.substr($ret, 1, -1) . ",\n";
+
+    return '[' . str_replace('"', "'", $ret) . ']';
+}
+
 /**
  * Main class.
  */
 class Curl2PhpMain
 {
-    private static function arrayToPhpArrayString(array $arr)
-    {
-        $ret = json_encode($arr);
-        $ret = str_replace('\\/', '/', $ret); // stay compatible with older PHP versions
-        $ret = str_replace('","', "\",\n    \"", $ret);
-
-        $ret = "\n".'    '.substr($ret, 1, -1).",\n";
-
-        return 'array('.str_replace('"', "'", $ret).')';
-    }
-
     /**
     * Entry point.
     *
@@ -24,21 +26,16 @@ class Curl2PhpMain
     *
     * @return integer
     */
-    public static function main($argc, array $argv)
+    public static function main(int $argc, array $argv)
     {
-        $headers = array();
-        $cookie = '';
-        $url = null;
-        $isHeaderPos = false;
+        $headers = [];
+        $cookie = $postData = '';
+        $errorMessage = $url = null;
         $lastWasHeaderPos = $lastWasDataPos = false;
-        $errorMessage = null;
         $stripAcceptEncodingHeader = true;
-        $postData = '';
-
-        array_shift($argv);
 
         // Only -H, --header, and --data are supported
-        foreach ($argv as $i => $arg) {
+        foreach (array_slice($argv, 1) as $i => $arg) {
             if ($lastWasHeaderPos) {
                 $lastWasHeaderPos = false;
                 continue;
@@ -49,21 +46,21 @@ class Curl2PhpMain
                 continue;
             }
 
-            $isHeaderPos = $arg === '-H' || $arg === '--header';
-            $isDataPos = $arg === '--data';
-
-            if ($isHeaderPos) {
-                if (isset($argv[$i + 1])) {
-                    $parts = explode(':', $argv[$i + 1], 2);
+            if ($arg === '-H' || $arg === '--header') {
+                if (isset($argv[$i + 2])) {
+                    $parts = explode(':', $argv[$i + 2], 2);
 
                     if (count($parts) !== 2) {
-                        $errorMessage = 'Invalid header argument. Header must be of format: "Header-Name: EncodedValue"';
+                        $errorMessage = ('Invalid header argument. Header ' .
+                                         'must be of format: "Header-Name: ' .
+                                         'EncodedValue"');
                         break;
                     }
 
                     $parts[0] = strtolower($parts[0]);
 
-                    if ($stripAcceptEncodingHeader && $parts[0] === 'accept-encoding') {
+                    if ($stripAcceptEncodingHeader &&
+                        $parts[0] === 'accept-encoding') {
                         continue;
                     }
 
@@ -72,21 +69,25 @@ class Curl2PhpMain
                         continue;
                     }
 
-                    $headers[] = $parts[0].':'.$parts[1];
+                    $headers[] = $parts[0] . ':' . $parts[1];
                 }
 
                 $lastWasHeaderPos = true;
                 continue;
             }
 
-            if ($isDataPos) {
+            if ($arg === '--data') {
                 if (isset($argv[$i + 1])) {
                     $postData = $argv[$i + 1];
                 }
             }
 
             if ($url === null) {
-                $url = filter_var($arg, FILTER_VALIDATE_URL, FILTER_NULL_ON_FAILURE);
+                $url = filter_var(
+                    $arg,
+                    FILTER_VALIDATE_URL,
+                    FILTER_NULL_ON_FAILURE
+                );
             }
         }
 
@@ -102,19 +103,19 @@ class Curl2PhpMain
             return 1;
         }
 
-        $args = array($url);
-        $format = array(
+        $args = [$url];
+        $format = [
             '<?php',
             "\$ch = curl_init('%s');\n",
             'curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);',
-        );
+        ];
 
         if ($cookie) {
             $args[] = $cookie;
             $format[] = 'curl_setopt($ch, CURLOPT_COOKIE, \'%s\');';
         }
         if ($headers) {
-            $args[] = static::arrayToPhpArrayString($headers);
+            $args[] = array_to_php_array_string($headers);
             $format[] = 'curl_setopt($ch, CURLOPT_HTTPHEADER, %s);';
         }
         if ($postData) {
