@@ -6,19 +6,29 @@ class ValueError extends \Exception
 {
 }
 
+function dict(iterable $arr): array
+{
+    $ret = [];
+    foreach ($arr as list($key, $value)) {
+        $ret[trim($key)] = trim($value);
+    }
+    return $ret;
+}
+
 function array_to_php_array_string(iterable $arr, ?int &$count)
 {
     $arr = iterator_to_array($arr);
     $count = count($arr);
-    $ret = json_encode($arr);
+    $ret = json_encode(dict($arr));
     if ($ret === '[]') {
         return $ret;
     }
     $ret = str_replace('\\/', '/', $ret);
     $ret = str_replace('","', "\",\n    \"", $ret);
+    $ret = str_replace('":"', "' => '", $ret);
     $ret = "\n" . '    '.substr($ret, 1, -1) . ",\n";
 
-    return '[' . str_replace('"', "'", $ret) . ']';
+    return '[' . str_replace('"', "'", $ret) . '  ]';
 }
 
 function parse_headers(
@@ -56,7 +66,7 @@ function parse_headers(
                     continue;
                 }
 
-                yield ($parts[0] . ':' . $parts[1]);
+                yield $parts;
             }
 
             $lastWasHeaderPos = true;
@@ -109,34 +119,39 @@ function main(int $argc, iterable $argv)
     $cookie = trim(ifilter($argv, function ($x) {
         return substr(strtolower($x), 0, 7) === 'cookie:';
     })->current());
-    $args = [$url->current()];
     $format = [
         '<?php',
-        "\$ch = curl_init('%s');\n",
-        'curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);',
+        'use GuzzleHttp;',
+        "\$client = new GuzzleHttp\Client();",
     ];
 
     if ($cookie) {
+        $format[] = "\$jar = new GuzzleHttp\Cookie\CookieJar(false, [";
+        $format[] = "  GuzzleHttp\Cookie\SetCookie::fromString('%s'),";
+        $format[] = "]);";
         $args[] = $cookie;
-        $format[] = 'curl_setopt($ch, CURLOPT_COOKIE, \'%s\');';
     }
+
+    $args[] = $postData ? 'POST' : 'GET';
+    $args[] = $url->current();
+    $format[] = "\$res = \$client->request('%s', '%s', [";
 
     $header_args = array_to_php_array_string($headers, $count);
     if ($count) {
         $args[] = $header_args;
-        $format[] = 'curl_setopt($ch, CURLOPT_HTTPHEADER, %s);';
+        $format[] = "  'headers' => %s,";
+    }
+    if ($cookie) {
+        $format[] = "  'cookies' => \$jar,";
     }
 
     if ($postData) {
         $args[] = $postData;
-        $format[] = 'curl_setopt($ch, CURLOPT_POSTFIELDS, \'%s\');';
+        $format[] = "  'body' => '%s',";
     }
 
-    $format[] = "\$data = curl_exec(\$ch);\n";
-    $format[] = "if (\$data[strlen(\$data) - 1] != \"\\n\") {";
-    $format[] = "    \$data .= \"\\n\";";
-    $format[] = "}";
-    $format[] = "print(\$data);\n";
+    $format[] = ']);';
+    $format[] = "print(\$res->getBody());\n";
 
     return vsprintf(join("\n", $format), $args);
 }
