@@ -15,7 +15,7 @@ function dict(iterable $arr): array
     return $ret;
 }
 
-function array_to_php_array_string(iterable $arr, ?int &$count)
+function array_to_php_array_string(iterable $arr, ?int &$count): string
 {
     $arr = iterator_to_array($arr);
     $count = count($arr);
