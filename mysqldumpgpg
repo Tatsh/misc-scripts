@@ -10,13 +10,14 @@ from os import environ as env, remove as rm
 from os.path import basename, dirname, isdir, join as path_join, realpath
 from shutil import rmtree
 import argparse
+import logging
 import re
 import signal
 import sys
 import tarfile
 
-from sh import bzip2, mysqldump
-import gnupg
+from pretty_bad_protocol import gnupg
+from sh import mysqldump
 import MySQLdb as mysql
 
 MYSQL_USER = 'tatsh'
@@ -55,6 +56,7 @@ if __name__ == '__main__':
                         default=MYSQL_USER)
     parser.add_argument('--host', help='MySQL host', default=MYSQL_HOST)
     parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
 
     args = parser.parse_args()
@@ -62,11 +64,9 @@ if __name__ == '__main__':
     time = datetime.today().strftime('%Y%m%d%H%M%S')
     dry_run = args.dry_run
     gpg_home = realpath(args.gpg_home)
-    recipients = args.gpg_recipients
+    recipients = list(args.gpg_recipients)
     user = args.user
 
-    gpg = gnupg.GPG(gnupghome=gpg_home, verbose=args.verbose, use_agent=True)
-    gpg.encoding = 'utf-8'
 
     m = mysql.connect(user=user,
                       db='information_schema',
@@ -83,7 +83,6 @@ if __name__ == '__main__':
             continue
 
         fn = path_join(target_dir, '%s-%s.sql' % (time, db_name,))
-        bz2_fn = '%s.bz2' % (fn,)
 
         print('Dumping "%s" to "%s"...' % (db_name, fn,))
         mysqldump_args = [
@@ -105,9 +104,8 @@ if __name__ == '__main__':
 
         if dry_run:
             print('mysqldump %s > %s' % (' '.join(mysqldump_args), fn,))
-            print('bzip2 -9 %s' % (fn,))
             print('gpg --status-fd-2 --no-tty --homedir %s --use-agent'
-                  '--encrypt %s --armor --output %s.bz2.gpg' %
+                  ' --encrypt %s --armor --output %s.gpg' %
                   (gpg_home,
                    ' '.join(['--recipient %s' % (x) for x in recipients]),
                    fn))
@@ -116,29 +114,51 @@ if __name__ == '__main__':
 
         try:
             out = mysqldump(mysqldump_args, _out=fn).strip()
-            out += bzip2(['-9', fn]).strip()
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             print('Caught interrupt. Removing "%s"' % (fn,), file=sys.stderr)
-            rm_if_exists(bz2_fn)
             rm_if_exists(fn)
             sys.exit(1)
 
         if len(out):
             print(out, file=sys.stderr)
 
-        output_fn = '%s.gpg' % (bz2_fn,)
+        if args.debug:
+            log = logging.getLogger('gnupg')
+            log.setLevel(logging.DEBUG)
+            ch = logging.StreamHandler(sys.stdout)
+            ch.setLevel(logging.DEBUG)
+            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            ch.setFormatter(formatter)
+            log.addHandler(ch)
+
+        gpg = gnupg.GPG(homedir=gpg_home,
+                        verbose=args.verbose if not args.debug else 'expert',
+                        use_agent=True)
+        keys = gpg.list_keys(secret=True)
+        fingerprints = set()
+        for k in keys:
+            for uid in k['uids']:
+                if recipients[0] in uid:
+                    fingerprints.add(k['fingerprint'])
+        output_fn = '%s.gpg' % (fn,)
         print('Encrypting "%s" to "%s"' %
-              (basename(bz2_fn), basename(output_fn),))
-        with open(bz2_fn, 'rb') as fp:
+              (basename(fn), basename(output_fn),))
+        with open(fn, 'rb') as fp:
             try:
-                gpg.encrypt_file(fp, recipients, output=output_fn)
+                kwargs = dict(compress_algo='BZIP2', output=output_fn)
+                gpg.encrypt(fp, *list(fingerprints), **kwargs)
             except  (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 rm_if_exists(fn)
-                rm_if_exists(bz2_fn)
                 rm_if_exists(output_fn)
                 sys.exit(1)
 
-        print('Removing %s' % (bz2_fn,))
-        rm(bz2_fn)
+            _fp = open(output_fn, 'rb')
+            try:
+                assert len(_fp.read()) > 0
+            finally:
+                _fp.close()
+
+        print('Removing %s' % (fn,))
+        rm(fn)
