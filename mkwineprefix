@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+from os import environ, makedirs
+from os.path import expanduser, isdir, join as path_join
+from shlex import quote
+import argparse
+import subprocess as sp
+import sys
+
+
+def wine(prefix_name):
+    prefix_root = expanduser('~/.wine-prefixes')
+    try:
+        makedirs(prefix_root, 0o755)
+    except FileExistsError:
+        pass
+    target = path_join(prefix_root, prefix_name)
+    if isdir(target):
+        print('Not touching existing prefix at {}'.format(target),
+              file=sys.stderr)
+        return
+    sp.run(['wine', 'reg', 'add', 'HKCU\\Software\\Wine\\DllOverrides',
+            '/t', 'REG_SZ', '/v', 'winemenubuilder.exe', '/f'],
+           env=dict(WINEPREFIX=target, DISPLAY=environ.get('DISPLAY')))
+    target = quote(target)
+
+    print('''Run `export WINEPREFIX={target}` before running wine or use env:
+
+env WINEPREFIX={target} wine ...'''.format(target=target))
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser('Create a Wine prefix with '
+                                     'winemenubuilder disabled')
+    parser.add_argument('prefix_name')
+    args = parser.parse_args()
+    sys.exit(wine(args.prefix_name))
