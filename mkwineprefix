@@ -22,9 +22,12 @@ def wine(prefix_name):
         print('Not touching existing prefix at {}'.format(target),
               file=sys.stderr)
         return
+    env = dict(WINEPREFIX=target,
+               DISPLAY=environ.get('DISPLAY', ''),
+               WINEARCH=environ.get('WINEARCH', 'win64'))
     sp.check_call(['wine', 'reg', 'add', 'HKCU\\Software\\Wine\\DllOverrides',
                    '/t', 'REG_SZ', '/v', 'winemenubuilder.exe', '/f'],
-                   env=dict(WINEPREFIX=target, DISPLAY=environ.get('DISPLAY')))
+                  env=env)
     target = quote(target)
 
     print('''Run `export WINEPREFIX={target}` before running wine or use env:
