@@ -116,9 +116,10 @@ if __name__ == '__main__':
                         action='store_true',
                         help='Do not sandbox the prefix')
     parser.add_argument('--vd',
+                        metavar='SIZE',
                         nargs=1,
                         default='1920x1080',
-                        'Virtual desktop size. "off" to disable')
+                        help='Virtual desktop size. "off" to disable')
     parser.add_argument('prefix_name')
     args = parser.parse_args()
     sys.exit(wine(args))
