@@ -1,43 +1,124 @@
 #!/usr/bin/env python
 from __future__ import print_function
-from os import environ, makedirs
+from os import devnull, environ, makedirs
 from os.path import expanduser, isdir, join as path_join
 try:
     from shlex import quote
 except ImportError:
     from pipes import quote
+from shutil import rmtree
 import argparse
 import subprocess as sp
 import sys
+FNULL = open(devnull, 'w')
 
 
-def wine(prefix_name):
+def wine(args):
+    prefix_name = args.prefix_name
     prefix_root = expanduser('~/.wine-prefixes')
     try:
         makedirs(prefix_root, 0o755)
     except OSError:
         pass
     target = path_join(prefix_root, prefix_name)
+    o_target = target
+
     if isdir(target):
         print('Not touching existing prefix at {}'.format(target),
               file=sys.stderr)
         return
+    arch = 'win32' if args.thirty2bit else 'win64'
     env = dict(WINEPREFIX=target,
                DISPLAY=environ.get('DISPLAY', ''),
-               WINEARCH=environ.get('WINEARCH', 'win64'))
-    sp.check_call(['wine', 'reg', 'add', 'HKCU\\Software\\Wine\\DllOverrides',
-                   '/t', 'REG_SZ', '/v', 'winemenubuilder.exe', '/f'],
-                  env=env)
+               XAUTHORITY=environ.get('XAUTHORITY', ''),
+               WINEARCH=environ.get('WINEARCH', arch))
+    if not args.no_disable_winemenubuilder:
+        try:
+            sp.check_call(['wine', 'reg', 'add',
+                           'HKCU\\Software\\Wine\\DllOverrides',
+                           '/t', 'REG_SZ',
+                           '/v', 'winemenubuilder.exe',
+                           '/f'], env=env, stdout=FNULL, stderr=sp.STDOUT)
+        except (sp.CalledProcessError, KeyboardInterrupt):
+            rmtree(o_target, ignore_errors=True)
+            return 1
     target = quote(target)
+
+    winetricks = (sp.check_output(['which', 'winetricks'])
+                    .decode('utf-8').strip())
+    if not winetricks:
+        print('Winetricks is not installed.', file=sys.stderr)
+        return 1
+
+    winetricks_args = [winetricks]
+    if args.windows_version == 'vista':
+        winetricks_args.append('vista')
+    else:
+        winetricks_args.append('win{}'.format(args.windows_version))
+
+    if not args.no_fontsmooth:
+        winetricks_args.append('fontsmooth={}'.format(args.fontsmooth))
+    if args.no_csmt:
+        winetricks_args.append('csmt=off')
+    if not args.no_sandbox:
+        winetricks_args.append('isolate_home')
+        winetricks_args.append('sandbox')
+    winetricks_args.append('vd={}'.format(args.vd))
+
+    try:
+        sp.check_call(winetricks_args,
+                      env=dict(WINEPREFIX=o_target,
+                               DISPLAY=environ.get('DISPLAY', ''),
+                               XAUTHORITY=environ.get('XAUTHORITY', '')),
+                      stdout=FNULL,
+                      stderr=sp.STDOUT)
+    except (sp.CalledProcessError, KeyboardInterrupt):
+        rmtree(o_target, ignore_errors=True)
+        return 1
 
     print('''Run `export WINEPREFIX={target}` before running wine or use env:
 
-env WINEPREFIX={target} wine ...'''.format(target=target))
+env WINEPREFIX={target} wine ...
+
+If you ran this with eval, your shell is ready.'''.format(target=target),
+          file=sys.stderr)
+    print('export WINEPREFIX={target}'.format(target=target))
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser('Create a Wine prefix with '
-                                     'winemenubuilder disabled')
+    desc = ('Create a Wine prefix with custom settings')
+    epi = 'This should be used with eval: eval "$(mkwineprefix ...)"'
+    parser = argparse.ArgumentParser(description=desc, epilog=epi)
+    parser.add_argument('--no-fontsmooth',
+                        action='store_true',
+                        help='Do not enable smooth fonts')
+    parser.add_argument('--fontsmooth',
+                        default='rgb',
+                        choices=['bgr', 'gray', 'rgb'])
+    parser.add_argument('--no-disable-winemenubuilder',
+                        action='store_true',
+                        help='Do not disable winemenubuilder.exe')
+    parser.add_argument('--32',
+                        help='Use 32-bit prefix',
+                        dest='thirty2bit',
+                        action='store_true')
+    parser.add_argument('--no-csmt',
+                        help='Disable Command Stream Multithreading',
+                        action='store_true')
+    parser.add_argument('-V',
+                        '--windows-version',
+                        default='xp',
+                        help='Windows version',
+                        nargs=1,
+                        choices=['10', '2k3', '2k', '7', '81', '8', 'xp',
+                                 'vista'])
+    parser.add_argument('-S', '--no-sandbox',
+                        action='store_true',
+                        help='Do not sandbox the prefix')
+    parser.add_argument('--vd',
+                        nargs=1,
+                        default='1920x1080',
+                        'Virtual desktop size. "off" to disable')
     parser.add_argument('prefix_name')
     args = parser.parse_args()
-    sys.exit(wine(args.prefix_name))
+    sys.exit(wine(args))
