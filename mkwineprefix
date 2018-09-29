@@ -32,7 +32,7 @@ def wine(args):
                DISPLAY=environ.get('DISPLAY', ''),
                XAUTHORITY=environ.get('XAUTHORITY', ''),
                WINEARCH=environ.get('WINEARCH', arch))
-    if not args.no_disable_winemenubuilder:
+    if args.no_xdg:
         try:
             sp.check_call(['wine', 'reg', 'add',
                            'HKCU\\Software\\Wine\\DllOverrides',
@@ -40,7 +40,7 @@ def wine(args):
                            '/v', 'winemenubuilder.exe',
                            '/f'], env=env, stdout=FNULL, stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
-            rmtree(o_target, ignore_errors=True)
+            rmtree(o_target)
             return 1
     target = quote(target)
 
@@ -58,22 +58,24 @@ def wine(args):
 
     if not args.no_fontsmooth:
         winetricks_args.append('fontsmooth={}'.format(args.fontsmooth))
-    if args.no_csmt:
+    if not args.csmt:
         winetricks_args.append('csmt=off')
-    if not args.no_sandbox:
+    if args.sandbox:
         winetricks_args.append('isolate_home')
         winetricks_args.append('sandbox')
     winetricks_args.append('vd={}'.format(args.vd))
 
     try:
-        sp.check_call(winetricks_args,
-                      env=dict(WINEPREFIX=o_target,
-                               DISPLAY=environ.get('DISPLAY', ''),
-                               XAUTHORITY=environ.get('XAUTHORITY', '')),
-                      stdout=FNULL,
-                      stderr=sp.STDOUT)
-    except (sp.CalledProcessError, KeyboardInterrupt):
-        rmtree(o_target, ignore_errors=True)
+        sp.check_output(winetricks_args,
+                        env=dict(WINEPREFIX=o_target,
+                                 DISPLAY=environ.get('DISPLAY', ''),
+                                 XAUTHORITY=environ.get('XAUTHORITY', '')))
+    except sp.CalledProcessError as e:
+        print('Winetricks exit code was {} but it probably succeeded'.format(e.returncode),
+              file=sys.stderr)
+        print(e.output, file=sys.stderr)
+    except KeyboardInterrupt:
+        rmtree(o_target)
         return 1
 
     print('''Run `export WINEPREFIX={target}` before running wine or use env:
@@ -95,15 +97,15 @@ if __name__ == '__main__':
     parser.add_argument('--fontsmooth',
                         default='rgb',
                         choices=['bgr', 'gray', 'rgb'])
-    parser.add_argument('--no-disable-winemenubuilder',
+    parser.add_argument('--no-xdg',
                         action='store_true',
-                        help='Do not disable winemenubuilder.exe')
+                        help='Disable winemenubuilder.exe')
     parser.add_argument('--32',
                         help='Use 32-bit prefix',
                         dest='thirty2bit',
                         action='store_true')
-    parser.add_argument('--no-csmt',
-                        help='Disable Command Stream Multithreading',
+    parser.add_argument('--csmt',
+                        help='Enable Command Stream Multithreading',
                         action='store_true')
     parser.add_argument('-V',
                         '--windows-version',
@@ -112,9 +114,9 @@ if __name__ == '__main__':
                         nargs=1,
                         choices=['10', '2k3', '2k', '7', '81', '8', 'xp',
                                  'vista'])
-    parser.add_argument('-S', '--no-sandbox',
+    parser.add_argument('-S', '--sandbox',
                         action='store_true',
-                        help='Do not sandbox the prefix')
+                        help='Sandbox the prefix')
     parser.add_argument('--vd',
                         metavar='SIZE',
                         nargs=1,
