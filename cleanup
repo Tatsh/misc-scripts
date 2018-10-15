@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -e
 
-find . -type f \( -iname ".*~" -o \
-                  -iname ".*DS_Store" -o \
-                  -iname "*.swp" \) \
+find . -type f \( -iname '*~' -o \
+                  -iname '*.swp' -o \
+                  -iname 'ehthumbs.db' -o \
+                  -name 'Thumbs.db' -o \
+                  -iname '*.kate-swp' \) \
     -ls -delete
 find ~ -maxdepth 1 -type f \( -name 'java_error*.log' -o \
                               -name 'qphotorec.log' \) \
