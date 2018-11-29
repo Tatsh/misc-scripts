@@ -10,16 +10,29 @@ from shutil import rmtree
 import argparse
 import subprocess as sp
 import sys
-FNULL = open(devnull, 'w')
+
+_VERSION_MAPPING = {'10'   : 'win10',
+                    'vista': 'vista',
+                    '2k3'  : 'win2k3',
+                    '7'    : 'win7',
+                    '8'    : 'win8',
+                    'xp'   : 'winxp',
+                    '81'   : 'win81',
+                    # 32-bit only
+                    '2k'   : 'win2k',
+                    '98'   : 'win98',
+                    '95'   : 'win95'}
 
 
 def wine(args):
     prefix_name = args.prefix_name
-    prefix_root = expanduser('~/.wine-prefixes')
+    prefix_root = expanduser('~/.local/share/wineprefixes')
+
     try:
         makedirs(prefix_root, 0o755)
     except OSError:
         pass
+
     target = path_join(prefix_root, prefix_name)
     o_target = target
 
@@ -27,53 +40,61 @@ def wine(args):
         print('Not touching existing prefix at {}'.format(target),
               file=sys.stderr)
         return
+
     arch = 'win32' if args.thirty2bit else 'win64'
     env = dict(WINEPREFIX=target,
                DISPLAY=environ.get('DISPLAY', ''),
                XAUTHORITY=environ.get('XAUTHORITY', ''),
                WINEARCH=environ.get('WINEARCH', arch))
+
     if args.no_xdg:
         try:
             sp.check_call(['wine', 'reg', 'add',
-                           'HKCU\\Software\\Wine\\DllOverrides',
+                           r'HKCU\Software\Wine\DllOverrides',
                            '/t', 'REG_SZ',
                            '/v', 'winemenubuilder.exe',
-                           '/f'], env=env, stdout=FNULL, stderr=sp.STDOUT)
+                           '/f'],
+                           env=env,
+                           stdout=open(devnull, 'w'),
+                           stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)
             return 1
+
     target = quote(target)
 
     winetricks = (sp.check_output(['which', 'winetricks'])
                     .decode('utf-8').strip())
+
     if not winetricks:
         print('Winetricks is not installed.', file=sys.stderr)
         return 1
 
-    winetricks_args = [winetricks]
-    if args.windows_version == 'vista':
-        winetricks_args.append('vista')
-    else:
-        winetricks_args.append('win{}'.format(args.windows_version))
+    prefix_arg = 'prefix={}'.format(prefix_name)
+    winetricks_args = [winetricks, prefix_arg,
+                       _VERSION_MAPPING[args.windows_version[0]]]
 
-    if not args.no_fontsmooth:
-        winetricks_args.append('fontsmooth={}'.format(args.fontsmooth))
-    if not args.csmt:
-        winetricks_args.append('csmt=off')
+    if args.csmt:
+        winetricks_args.append('csmt=on')
+
     if args.sandbox:
         winetricks_args.append('isolate_home')
         winetricks_args.append('sandbox')
-    winetricks_args.append('vd={}'.format(args.vd))
+
+    if args.vd != 'off':
+        winetricks_args.append('vd={}'.format(args.vd[0]))
 
     try:
         sp.check_output(winetricks_args,
                         env=dict(WINEPREFIX=o_target,
+                                 HOME=environ['HOME'],
                                  DISPLAY=environ.get('DISPLAY', ''),
                                  XAUTHORITY=environ.get('XAUTHORITY', '')))
     except sp.CalledProcessError as e:
-        print('Winetricks exit code was {} but it probably succeeded'.format(e.returncode),
+        print(('Winetricks exit code was {} but it may have '
+               'succeeded').format(e.returncode),
               file=sys.stderr)
-        print(e.output, file=sys.stderr)
+        print(e.output.decode('utf-8'), file=sys.stderr)
     except KeyboardInterrupt:
         rmtree(o_target)
         return 1
@@ -84,19 +105,14 @@ env WINEPREFIX={target} wine ...
 
 If you ran this with eval, your shell is ready.'''.format(target=target),
           file=sys.stderr)
-    print('export WINEPREFIX={target}'.format(target=target))
+    print('export {}'.format(quote('WINEPREFIX={}'.format(target))))
 
 
-if __name__ == '__main__':
-    desc = ('Create a Wine prefix with custom settings')
-    epi = 'This should be used with eval: eval "$(mkwineprefix ...)"'
+def main():
+    desc = 'Create a Wine prefix with custom settings'
+    epi = 'This should be used with eval: eval $(mkwineprefix ...)'
     parser = argparse.ArgumentParser(description=desc, epilog=epi)
-    parser.add_argument('--no-fontsmooth',
-                        action='store_true',
-                        help='Do not enable smooth fonts')
-    parser.add_argument('--fontsmooth',
-                        default='rgb',
-                        choices=['bgr', 'gray', 'rgb'])
+
     parser.add_argument('--no-xdg',
                         action='store_true',
                         help='Disable winemenubuilder.exe')
@@ -112,16 +128,21 @@ if __name__ == '__main__':
                         default='xp',
                         help='Windows version',
                         nargs=1,
-                        choices=['10', '2k3', '2k', '7', '81', '8', 'xp',
-                                 'vista'])
+                        choices=_VERSION_MAPPING.keys())
     parser.add_argument('-S', '--sandbox',
                         action='store_true',
                         help='Sandbox the prefix')
     parser.add_argument('--vd',
                         metavar='SIZE',
                         nargs=1,
-                        default='1920x1080',
-                        help='Virtual desktop size. "off" to disable')
+                        default='off',
+                        help='Virtual desktop size, e.g. 1024x768.')
     parser.add_argument('prefix_name')
+
     args = parser.parse_args()
-    sys.exit(wine(args))
+
+    return wine(args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
