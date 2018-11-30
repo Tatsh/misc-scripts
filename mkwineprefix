@@ -74,9 +74,6 @@ def wine(args):
     winetricks_args = [winetricks, prefix_arg,
                        _VERSION_MAPPING[args.windows_version[0]]]
 
-    if args.csmt:
-        winetricks_args.append('csmt=on')
-
     if args.sandbox:
         winetricks_args.append('isolate_home')
         winetricks_args.append('sandbox')
@@ -120,12 +117,9 @@ def main():
                         help='Use 32-bit prefix',
                         dest='thirty2bit',
                         action='store_true')
-    parser.add_argument('--csmt',
-                        help='Enable Command Stream Multithreading',
-                        action='store_true')
     parser.add_argument('-V',
                         '--windows-version',
-                        default='xp',
+                        default=['xp'],
                         help='Windows version',
                         nargs=1,
                         choices=_VERSION_MAPPING.keys())
