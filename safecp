@@ -9,7 +9,7 @@ import sys
 
 def safe_rename(fn, target, preserve):
     if not isfile(target) and not isdir(target):
-        print('copy {} -> {}'.format(fn, target))
+        print('copy {} -> {}'.format(fn, target), file=sys.stderr)
         with open(target, 'wb+') as f:
             with open(fn, 'rb') as o:
                 f.write(o.read())
@@ -36,7 +36,13 @@ def safe_rename(fn, target, preserve):
 
 
 def main():
-    parser = argparse.ArgumentParser()
+    is_mv = sys.argv[0].endswith('safemv')
+
+    help_ = 'Copy files without clobbering existing files'
+    if is_mv:
+        help_ = 'Move {}'.format(help_[5:])
+
+    parser = argparse.ArgumentParser(help_)
     parser.add_argument('-t', '--target-dir',
                         metavar='TARGET_DIR',
                         help='Target directory (for use with xargs)')
@@ -44,7 +50,7 @@ def main():
     parser.add_argument('files', nargs='*')
     args = parser.parse_args()
     target = args.target_dir
-    is_mv = sys.argv[0].endswith('safemv')
+
 
     if target:
         target = realpath(target)
