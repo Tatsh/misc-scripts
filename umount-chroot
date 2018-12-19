@@ -1,31 +1,31 @@
 #!/usr/bin/env bash
 
-MOUNTPOINT="$1"
+mount_point="$1"
 
-if [ "$MOUNTPOINT" = "" ]; then
-    echo "Usage: $0 MOUNTPOINT"
+if [ -z "${mount_point}" ]; then
+    echo "Usage: $0 mount_point"
     exit 1
 fi
 
-if [[ $(mount | grep "on $MOUNTPOINT" | wc -l) -eq 0 ]]; then
-    echo "$MOUNTPOINT is not mounted. Quitting..."
+if [[ $(mount | grep -c "on ${mount_point}") -eq 0 ]]; then
+    echo "${mount_point} is not mounted. Quitting..."
     exit 1
 fi
 
 for i in sys tmp; do
-    umount -l "$MOUNTPOINT/$i" 2> /dev/null
+    umount -l "${mount_point}/${i}" 2>/dev/null
 done
 
 for i in pts shm; do
-    if [[ -d "$MOUNTPOINT/dev/$i" ]]; then
-        umount -l "$MOUNTPOINT/dev/$i" 2> /dev/null
+    if [[ -d "${mount_point}/dev/${i}" ]]; then
+        umount -l "${mount_point}/dev/${i}" 2>/dev/null
     fi
 done
 
-if [[ -d "$MOUNTPOINT/usr/portage" ]]; then
-    umount -l "$MOUNTPOINT/usr/portage" 2> /dev/null
+if [[ -d "${mount_point}/usr/portage" ]]; then
+    umount -l "${mount_point}/usr/portage" 2>/dev/null
 fi
 
-umount -l "$MOUNTPOINT/dev" 2> /dev/null
-umount -l "$MOUNTPOINT/proc" 2> /dev/null
-umount -l "$MOUNTPOINT" 2> /dev/null
+umount -l "${mount_point}/dev" 2>/dev/null
+umount -l "${mount_point}/proc" 2>/dev/null
+umount -l "${mount_point}" 2>/dev/null

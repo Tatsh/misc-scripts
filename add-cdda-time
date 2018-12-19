@@ -3,6 +3,7 @@ import argparse
 import math
 import sys
 
+
 def add_times(times):
     if not times:
         return None

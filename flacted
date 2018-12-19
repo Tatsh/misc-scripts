@@ -7,6 +7,7 @@ from pipes import quote as shell_quote
 import argparse
 import sys
 
+
 if __name__ == '__main__':
     invoked_as = basename(sys.argv[0])
 

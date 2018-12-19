@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
 
-IMAGE="$1"
-MOUNTPOINT="$2"
-FS="${3:-ext3}"
+image="$1"
+mount_point="$2"
+fs="${3:-ext4}"
 
-if [ -z "$IMAGE" ]; then
-    echo "Usage: $0 IMAGE MOUNTPOINT [FILESYSTEM]"
+if [ -z "${image}" ]; then
+    echo "Usage: $0 image mount_point [FILESYSTEM]"
     exit 1
 fi
 
-if [ $(mount | grep "on $MOUNTPOINT" | wc -l) -ge 1 ]; then
-    echo "Warning: $MOUNTPOINT is already in use. Umounting..."
-    umount-chroot "$MOUNTPOINT"
+if (($(mount | grep -c "on ${mount_point}") >= 1)); then
+    echo "Warning: ${mount_point} is already in use. Umounting..."
+    umount-chroot "${mount_point}"
 fi
 
-mount -t "$FS" "$IMAGE" "$MOUNTPOINT" -o rw
-mount -t proc none "$MOUNTPOINT/proc"
+mount -t "${fs}" "${image}" "${mount_point}" -o rw
+mount -t proc none "${mount_point}/proc"
 
 for i in dev sys tmp; do
-    mount -o bind "/$i" "$MOUNTPOINT/$i"
+    mount -o bind "/$i" "${mount_point}/$i"
 done
 
 for i in pts shm; do
     if [[ -d "/dev/$i" ]]; then
-        mount -o bind "/dev/$i" "$MOUNTPOINT/dev/$i"
+        mount -o bind "/dev/$i" "${mount_point}/dev/$i"
     fi
 done
 
 if [[ -d /usr/portage ]]; then
-    mount -o bind /usr/portage "$MOUNTPOINT/usr/portage"
+    mount -o bind /usr/portage "${mount_point}/usr/portage"
 fi
