@@ -1,11 +1,7 @@
 PyYAML
 requests
 sh
-Unidecode
 
-# For things using commands:
 # - burnrariso requires cksfv, unrar (GPL version works too), and cdrecord
 # - flac-* scripts require metaflac
-# - flac2mp3 requires flac, lame, and metaflac
-# - flacs2mp3-cue requires recent versions sox, lame, and metaflac
 # - GNU mv is expected with wmv (comes with GNU coreutils)
