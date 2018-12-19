@@ -116,5 +116,6 @@ def make_target(str_val):
 
     return str_val
 
+
 for line in sys.stdin.readlines():
     print(make_target(line.strip()))
