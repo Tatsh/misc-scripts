@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+if ! command -v xdpyinfo >/dev/null 2>&1 || \
+   ! command -v import >/dev/null 2>&1; then
+    echo 'You need xdpyinfo and import to use this.' >&2
+    exit 1
+fi
 xdpyinfo -ext XINERAMA | \
     sed '/^  head #/!d;s///' | \
         while IFS=' :x@,' read i w h x y; do
