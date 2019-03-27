@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import os
 import sys
 try:
     from urllib import unquote_plus
@@ -15,6 +14,7 @@ def parse(values, is_netloc=False):
         if is_netloc:
             val = urlparse(val).netloc.strip()
         yield val
+
 
 if __name__ == '__main__':
     is_netloc = sys.argv[0].endswith('netloc')
