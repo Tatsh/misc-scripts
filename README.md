@@ -22,26 +22,6 @@ Imports cookies from a file in Netscape 'cookies.txt' format into Chromium's (Ch
 
 Usage: `chrome-import-cookies COOKIES_TXT_FILE`
 
-## curl2php
-
-Converts a simple `curl` command to PHP code. Only `-H`, `--header`, and `--data` are supported. This command is intended to be used in conjunction with Chrome's 'Copy as Curl' feature (Network tab).
-
-Usage: `curl2php [-H HEADER] [--header HEADER] [--data DATA] URL`
-Usage: `curl2php URL [-H HEADER] [--header HEADER] [--data DATA]` (for the way Chrome currently generates the command line)
-
-## curl2py
-
-Converts a simple `curl` command to equivalent Python code. Cookies are not handled using a cookie jar and they are sent raw in the header. This command is intended to be used in conjunction with Chrome's 'Copy as Curl' feature (Network tab).
-
-Usage: `curl2py [-h] [-H HEADER] [--data DATA] URL`
-Usage: `curl2py URL [-h] [-H HEADER] [--data DATA]` (for the way Chrome currently generates the command line)
-
-## linkshare-dec
-
-Given a Linkshare affilate URL, this decodes the target URL and displays it.
-
-Usage: `./linkshare-dec URL`
-
 ## mozcookie2chrome
 
 Given a domain, inserts/replaces cookies in Chromium's database with ones from Firefox. The argument is placed in a `LIKE` statement wrapped in `%` so anything is usable.
