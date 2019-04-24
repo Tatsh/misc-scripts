@@ -13,11 +13,11 @@ import argparse
 import logging
 import re
 import signal
+import subprocess as sp
 import sys
 import tarfile
 
 from pretty_bad_protocol import gnupg
-from sh import mysqldump
 import MySQLdb as mysql
 
 MYSQL_USER = 'tatsh'
@@ -29,6 +29,11 @@ DB_BLACKLIST = (
     'mysql',
     'performance_schema',
 )
+
+
+def mysqldump(args, outpath):
+    with open(outpath, 'wb+') as f:
+        sp.run(['mysqldump'] + args, stdout=f, check=True)
 
 
 def rm_if_exists(fn):
@@ -113,15 +118,16 @@ if __name__ == '__main__':
             continue
 
         try:
-            out = mysqldump(mysqldump_args, _out=fn).strip()
+            mysqldump(mysqldump_args, fn)
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             print('Caught interrupt. Removing "%s"' % (fn,), file=sys.stderr)
             rm_if_exists(fn)
             sys.exit(1)
-
-        if len(out):
-            print(out, file=sys.stderr)
+        except sp.CalledProcessError as e:
+            print('{} failed with code {}'.format(e.cmd, e.returncode))
+            rm_if_exists(fn)
+            sys.exit(1)
 
         if args.debug:
             log = logging.getLogger('gnupg')
