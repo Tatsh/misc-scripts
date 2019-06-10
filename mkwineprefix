@@ -47,6 +47,9 @@ def wine(args):
                XAUTHORITY=environ.get('XAUTHORITY', ''),
                WINEARCH=environ.get('WINEARCH', arch))
 
+    if not env['DISPLAY']:
+        env['DISPLAY'] = ':0'
+
     if args.no_xdg:
         try:
             sp.check_call(['wine', 'reg', 'add',
@@ -103,6 +106,7 @@ env WINEPREFIX={target} wine ...
 If you ran this with eval, your shell is ready.'''.format(target=target),
           file=sys.stderr)
     print('export {}'.format(quote('WINEPREFIX={}'.format(target))))
+    print('export PS1="{}🍷$PS1"'.format(prefix_name))
 
 
 def main():
