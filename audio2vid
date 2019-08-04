@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+main() {
+    if [ -z "$1" ] || [ -z "$2" ]; then
+        echo 'Usage: INPUT TITLE'
+        return 1
+    fi
+    local -r tmpfile=$(mktemp --suffix=.png)
+    local out=$(basename "$1")
+    out="${out%.*}-audio.mp4"
+    convert -size 1920x1080 xc:black -fill white -pointsize 50 \
+        -draw "gravity Center text 0,0 '${2}'" "$tmpfile"
+    ffmpeg -y -loop 1 -i "$tmpfile" -i "$1" -shortest -acodec copy \
+        -vcodec h264_nvenc -profile:v high -level 4.1 -preset llhq \
+        -pix_fmt yuv420p -coder:v cabac -b:v 1M -maxrate:v 1M \
+        "$out"
+    rm "$tmpfile"
+}
+
+exit $(main "$@")
