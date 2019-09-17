@@ -10,23 +10,31 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Searches logs for a string or expression')
     parser.add_argument(
-        'unscaled_resolution', metavar='UNSCALED_RES',
+        'unscaled_resolution',
+        metavar='UNSCALED_RES',
         help='Unscaled resolution in X:Y format')
     parser.add_argument(
         'aspect_ratio', metavar='AR', help='Aspect ratio in X:Y format')
     parser.add_argument(
         'video_bitrate', metavar='VIDEO_BITRATE', help='Video bitrate in bps')
     parser.add_argument('fps', metavar='FPS', help='Frames per second')
-    parser.add_argument('-r', '--raw-ar', metavar='RAW_AR',
-                        default='720:480',
-                        help='Raw aspect ratio in X:Y format')
+    parser.add_argument(
+        '-r',
+        '--raw-ar',
+        metavar='RAW_AR',
+        default='720:480',
+        help='Raw aspect ratio in X:Y format')
 
     args = parser.parse_args()
 
     unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
     raw_aspect_width, raw_aspect_height = [
-        int(x) for x in args.raw_ar.split(':')]
-    bps, fps = (args.video_bitrate, args.fps,)
+        int(x) for x in args.raw_ar.split(':')
+    ]
+    bps, fps = (
+        args.video_bitrate,
+        args.fps,
+    )
     raw_aspect = raw_aspect_width / raw_aspect_height
     encoded_at = args.aspect_ratio
 

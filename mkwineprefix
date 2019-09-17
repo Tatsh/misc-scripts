@@ -11,17 +11,19 @@ import argparse
 import subprocess as sp
 import sys
 
-_VERSION_MAPPING = {'10'   : 'win10',
-                    'vista': 'vista',
-                    '2k3'  : 'win2k3',
-                    '7'    : 'win7',
-                    '8'    : 'win8',
-                    'xp'   : 'winxp',
-                    '81'   : 'win81',
-                    # 32-bit only
-                    '2k'   : 'win2k',
-                    '98'   : 'win98',
-                    '95'   : 'win95'}
+_VERSION_MAPPING = {
+    '10': 'win10',
+    'vista': 'vista',
+    '2k3': 'win2k3',
+    '7': 'win7',
+    '8': 'win8',
+    'xp': 'winxp',
+    '81': 'win81',
+    # 32-bit only
+    '2k': 'win2k',
+    '98': 'win98',
+    '95': 'win95'
+}
 
 
 def wine(args):
@@ -37,45 +39,47 @@ def wine(args):
     o_target = target
 
     if isdir(target):
-        print('Not touching existing prefix at {}'.format(target),
-              file=sys.stderr)
+        print(
+            'Not touching existing prefix at {}'.format(target),
+            file=sys.stderr)
         return
 
     arch = 'win32' if args.thirty2bit else 'win64'
-    env = dict(WINEPREFIX=target,
-               DISPLAY=environ.get('DISPLAY', ''),
-               XAUTHORITY=environ.get('XAUTHORITY', ''),
-               WINEARCH=environ.get('WINEARCH', arch))
+    env = dict(
+        WINEPREFIX=target,
+        DISPLAY=environ.get('DISPLAY', ''),
+        XAUTHORITY=environ.get('XAUTHORITY', ''),
+        WINEARCH=environ.get('WINEARCH', arch))
 
     if not env['DISPLAY']:
         env['DISPLAY'] = ':0'
 
     if args.no_xdg:
         try:
-            sp.check_call(['wine', 'reg', 'add',
-                           r'HKCU\Software\Wine\DllOverrides',
-                           '/t', 'REG_SZ',
-                           '/v', 'winemenubuilder.exe',
-                           '/f'],
-                           env=env,
-                           stdout=open(devnull, 'w'),
-                           stderr=sp.STDOUT)
+            sp.check_call([
+                'wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t',
+                'REG_SZ', '/v', 'winemenubuilder.exe', '/f'
+            ],
+                          env=env,
+                          stdout=open(devnull, 'w'),
+                          stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)
             return 1
 
     target = quote(target)
 
-    winetricks = (sp.check_output(['which', 'winetricks'])
-                    .decode('utf-8').strip())
+    winetricks = (sp.check_output(['which',
+                                   'winetricks']).decode('utf-8').strip())
 
     if not winetricks:
         print('Winetricks is not installed.', file=sys.stderr)
         return 1
 
     prefix_arg = 'prefix={}'.format(prefix_name)
-    winetricks_args = [winetricks, prefix_arg,
-                       _VERSION_MAPPING[args.windows_version[0]]]
+    winetricks_args = [
+        winetricks, prefix_arg, _VERSION_MAPPING[args.windows_version[0]]
+    ]
 
     if args.sandbox:
         winetricks_args.append('isolate_home')
@@ -85,26 +89,30 @@ def wine(args):
         winetricks_args.append('vd={}'.format(args.vd[0]))
 
     try:
-        sp.check_output(winetricks_args,
-                        env=dict(WINEPREFIX=o_target,
-                                 HOME=environ['HOME'],
-                                 DISPLAY=environ.get('DISPLAY', ''),
-                                 XAUTHORITY=environ.get('XAUTHORITY', '')))
+        sp.check_output(
+            winetricks_args,
+            env=dict(
+                WINEPREFIX=o_target,
+                HOME=environ['HOME'],
+                DISPLAY=environ.get('DISPLAY', ''),
+                XAUTHORITY=environ.get('XAUTHORITY', '')))
     except sp.CalledProcessError as e:
-        print(('Winetricks exit code was {} but it may have '
-               'succeeded').format(e.returncode),
-              file=sys.stderr)
+        print(
+            ('Winetricks exit code was {} but it may have '
+             'succeeded').format(e.returncode),
+            file=sys.stderr)
         print(e.output.decode('utf-8'), file=sys.stderr)
     except KeyboardInterrupt:
         rmtree(o_target)
         return 1
 
-    print('''Run `export WINEPREFIX={target}` before running wine or use env:
+    print(
+        '''Run `export WINEPREFIX={target}` before running wine or use env:
 
 env WINEPREFIX={target} wine ...
 
 If you ran this with eval, your shell is ready.'''.format(target=target),
-          file=sys.stderr)
+        file=sys.stderr)
     print('export {}'.format(quote('WINEPREFIX={}'.format(target))))
     print('export PS1="{}🍷$PS1"'.format(prefix_name))
 
@@ -114,27 +122,28 @@ def main():
     epi = 'This should be used with eval: eval $(mkwineprefix ...)'
     parser = argparse.ArgumentParser(description=desc, epilog=epi)
 
-    parser.add_argument('--no-xdg',
-                        action='store_true',
-                        help='Disable winemenubuilder.exe')
-    parser.add_argument('--32',
-                        help='Use 32-bit prefix',
-                        dest='thirty2bit',
-                        action='store_true')
-    parser.add_argument('-V',
-                        '--windows-version',
-                        default=['xp'],
-                        help='Windows version',
-                        nargs=1,
-                        choices=_VERSION_MAPPING.keys())
-    parser.add_argument('-S', '--sandbox',
-                        action='store_true',
-                        help='Sandbox the prefix')
-    parser.add_argument('--vd',
-                        metavar='SIZE',
-                        nargs=1,
-                        default='off',
-                        help='Virtual desktop size, e.g. 1024x768.')
+    parser.add_argument(
+        '--no-xdg', action='store_true', help='Disable winemenubuilder.exe')
+    parser.add_argument(
+        '--32',
+        help='Use 32-bit prefix',
+        dest='thirty2bit',
+        action='store_true')
+    parser.add_argument(
+        '-V',
+        '--windows-version',
+        default=['xp'],
+        help='Windows version',
+        nargs=1,
+        choices=_VERSION_MAPPING.keys())
+    parser.add_argument(
+        '-S', '--sandbox', action='store_true', help='Sandbox the prefix')
+    parser.add_argument(
+        '--vd',
+        metavar='SIZE',
+        nargs=1,
+        default='off',
+        help='Virtual desktop size, e.g. 1024x768.')
     parser.add_argument('prefix_name')
 
     args = parser.parse_args()

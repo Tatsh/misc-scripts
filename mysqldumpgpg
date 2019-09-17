@@ -7,15 +7,12 @@
 from __future__ import print_function
 from datetime import datetime
 from os import environ as env, remove as rm
-from os.path import basename, dirname, isdir, join as path_join, realpath
-from shutil import rmtree
+from os.path import basename, join as path_join, realpath
 import argparse
 import logging
-import re
 import signal
 import subprocess as sp
 import sys
-import tarfile
 
 from pretty_bad_protocol import gnupg
 import MySQLdb as mysql
@@ -51,14 +48,11 @@ def rm_if_exists(fn):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--target', '-t',
-                        help='Target directory to store in',
-                        required=True)
+    parser.add_argument(
+        '--target', '-t', help='Target directory to store in', required=True)
     parser.add_argument('--dry-run', default=False, action='store_true')
     parser.add_argument('--gpg-home', default=path_join(env['HOME'], '.gnupg'))
-    parser.add_argument('--user', '-U',
-                        help='MySQL user',
-                        default=MYSQL_USER)
+    parser.add_argument('--user', '-U', help='MySQL user', default=MYSQL_USER)
     parser.add_argument('--host', help='MySQL host', default=MYSQL_HOST)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('--debug', '-d', action='store_true')
@@ -72,10 +66,7 @@ if __name__ == '__main__':
     recipients = list(args.gpg_recipients)
     user = args.user
 
-
-    m = mysql.connect(user=user,
-                      db='information_schema',
-                      host=args.host)
+    m = mysql.connect(user=user, db='information_schema', host=args.host)
     c = m.cursor()
     c.execute('SHOW DATABASES')
     db_names = sorted([x[0] for x in c.fetchall()])
@@ -87,9 +78,15 @@ if __name__ == '__main__':
                 db_name in DB_BLACKLIST:
             continue
 
-        fn = path_join(target_dir, '%s-%s.sql' % (time, db_name,))
+        fn = path_join(target_dir, '%s-%s.sql' % (
+            time,
+            db_name,
+        ))
 
-        print('Dumping "%s" to "%s"...' % (db_name, fn,))
+        print('Dumping "%s" to "%s"...' % (
+            db_name,
+            fn,
+        ))
         mysqldump_args = [
             '--add-drop-database',
             '--add-drop-table',
@@ -102,26 +99,30 @@ if __name__ == '__main__':
             '--quick',
             '--routines',
             '--single-transaction',
-            '-h', args.host,
-            '-u', user,
+            '-h',
+            args.host,
+            '-u',
+            user,
             db_name,
         ]
 
         if dry_run:
-            print('mysqldump %s > %s' % (' '.join(mysqldump_args), fn,))
-            print('gpg --status-fd-2 --no-tty --homedir %s --use-agent'
-                  ' --encrypt %s --armor --output %s.gpg' %
-                  (gpg_home,
-                   ' '.join(['--recipient %s' % (x) for x in recipients]),
-                   fn))
-            print('rm %s.tar' % (fn,))
+            print('mysqldump %s > %s' % (
+                ' '.join(mysqldump_args),
+                fn,
+            ))
+            print(
+                'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
+                ' --encrypt %s --armor --output %s.gpg' % (gpg_home, ' '.join(
+                    ['--recipient %s' % (x) for x in recipients]), fn))
+            print('rm %s.tar' % (fn, ))
             continue
 
         try:
             mysqldump(mysqldump_args, fn)
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s"' % (fn,), file=sys.stderr)
+            print('Caught interrupt. Removing "%s"' % (fn, ), file=sys.stderr)
             rm_if_exists(fn)
             sys.exit(1)
         except sp.CalledProcessError as e:
@@ -134,27 +135,31 @@ if __name__ == '__main__':
             log.setLevel(logging.DEBUG)
             ch = logging.StreamHandler(sys.stdout)
             ch.setLevel(logging.DEBUG)
-            formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
             ch.setFormatter(formatter)
             log.addHandler(ch)
 
-        gpg = gnupg.GPG(homedir=gpg_home,
-                        verbose=args.verbose if not args.debug else 'expert',
-                        use_agent=True)
+        gpg = gnupg.GPG(
+            homedir=gpg_home,
+            verbose=args.verbose if not args.debug else 'expert',
+            use_agent=True)
         keys = gpg.list_keys(secret=True)
         fingerprints = set()
         for k in keys:
             for uid in k['uids']:
                 if recipients[0] in uid:
                     fingerprints.add(k['fingerprint'])
-        output_fn = '%s.gpg' % (fn,)
-        print('Encrypting "%s" to "%s"' %
-              (basename(fn), basename(output_fn),))
+        output_fn = '%s.gpg' % (fn, )
+        print('Encrypting "%s" to "%s"' % (
+            basename(fn),
+            basename(output_fn),
+        ))
         with open(fn, 'rb') as fp:
             try:
                 kwargs = dict(compress_algo='BZIP2', output=output_fn)
                 gpg.encrypt(fp, *list(fingerprints), **kwargs)
-            except  (KeyboardInterrupt, SystemExit):
+            except (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 rm_if_exists(fn)
                 rm_if_exists(output_fn)
@@ -166,5 +171,5 @@ if __name__ == '__main__':
             finally:
                 _fp.close()
 
-        print('Removing %s' % (fn,))
+        print('Removing %s' % (fn, ))
         rm(fn)

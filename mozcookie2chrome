@@ -4,8 +4,6 @@ import configparser
 import os
 import sqlite3
 import sys
-import re
-from urllib.parse import unquote as urldecode
 from datetime import datetime
 
 try:
@@ -46,12 +44,11 @@ if is_full_path is False:
     mozilla_db_file = os.path.join(home, '.mozilla', 'firefox',
                                    mozilla_db_file)
 
-conn = sqlite3.connect(mozilla_db_file,
-                       detect_types=sqlite3.PARSE_COLNAMES)
+conn = sqlite3.connect(mozilla_db_file, detect_types=sqlite3.PARSE_COLNAMES)
 c = conn.cursor()
 sql = ('SELECT name, value, host, path, expiry, isSecure, isHttpOnly FROM ' +
        'moz_cookies WHERE baseDomain like ?')
-c.execute(sql, ('%' + base_domain + '%',))
+c.execute(sql, ('%' + base_domain + '%', ))
 cookies = []
 
 for row in c:
@@ -67,30 +64,19 @@ for row in c:
 
 conn.close()
 
-conn = sqlite3.connect(chrome_sqlite_file,
-                       detect_types=sqlite3.PARSE_COLNAMES)
+conn = sqlite3.connect(chrome_sqlite_file, detect_types=sqlite3.PARSE_COLNAMES)
 c = conn.cursor()
 i = 0
-creation_utc = int((datetime.utcnow() -
-                    datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
-
+creation_utc = int(
+    (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
 
 columns = [
-    'creation_utc',
-    'host_key',
-    'name',
-    'value',
-    'path',
-    'expires_utc',
-    'secure',
-    'httponly',
-    'has_expires',
-    'persistent',
-    'last_access_utc'
+    'creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
+    'secure', 'httponly', 'has_expires', 'persistent', 'last_access_utc'
 ]
 
 for dic in cookies:
-    dic['expires_utc'] = int(float(dic['expires_utc'])) * (10 ** 7)
+    dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
     has_expires = persistent = 1
 
     if dic['expires_utc'] == 0:
@@ -100,22 +86,18 @@ for dic in cookies:
     query = '''
 DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?
 '''
-    c.execute(query, (dic['host_key'], dic['name'], dic['path'],))
+    c.execute(query, (
+        dic['host_key'],
+        dic['name'],
+        dic['path'],
+    ))
 
-    query = ('INSERT INTO cookies (%s) VALUES(%s)' %
-            (','.join(columns), ('?,' * len(columns))[:-1]))
-    t = (creation_utc + i,
-         dic['host_key'],
-         dic['name'],
-         dic['value'],
-         dic['path'],
-         dic['expires_utc'],
-         dic['secure'],
-         dic['httponly'],
-         has_expires,
-         persistent,
-         creation_utc
-         )
+    query = (
+        'INSERT INTO cookies (%s) VALUES(%s)' % (','.join(columns),
+                                                 ('?,' * len(columns))[:-1]))
+    t = (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
+         dic['path'], dic['expires_utc'], dic['secure'], dic['httponly'],
+         has_expires, persistent, creation_utc)
 
     c.execute(query, t)
     i = i + 1

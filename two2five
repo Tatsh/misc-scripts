@@ -20,12 +20,12 @@ ffmpeg \
     -y \
     -i "$input" \
     -map_channel 0.1.0 "$left" \
-    -map_channel 0.1.1 "$right" || \
-        ffmpeg \
-            -y \
-            -i "$input" \
-            -map_channel 0.0.0 "$left" \
-            -map_channel 0.0.1 "$right"
+    -map_channel 0.1.1 "$right" ||
+    ffmpeg \
+        -y \
+        -i "$input" \
+        -map_channel 0.0.0 "$left" \
+        -map_channel 0.0.1 "$right"
 ffmpeg -y -i "$input" -c:v copy -an "$noaud"
 ffmpeg \
     -y \

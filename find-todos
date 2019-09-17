@@ -1,16 +1,13 @@
 #!/usr/bin/env python
-from configparser import SafeConfigParser as ConfigParser
 from math import floor
 from os import (
-    chdir,
-    getcwd,
     listdir,
     makedirs,
     remove as rm,
     stat,
     utime as setfiletime,
 )
-from os.path import dirname, expanduser, isdir, join as path_join, realpath
+from os.path import dirname, isdir, join as path_join, realpath
 import argparse
 import logging
 import re
@@ -22,16 +19,19 @@ from osext.argparse_actions import (
 )
 import magic
 
-
 log = logging.getLogger('find-todos')
 
 
 def _get_listing(newdir):
-    return sorted([realpath(path_join(newdir, x))
-                   for x in listdir(newdir)
-                   if not x.endswith('~')
-                   and not x.endswith('.svn-base')
-                   and x not in ('.git', '.svn', '.hg', 'CVS',)])
+    return sorted([
+        realpath(path_join(newdir, x)) for x in listdir(newdir)
+        if not x.endswith('~') and not x.endswith('.svn-base') and x not in (
+            '.git',
+            '.svn',
+            '.hg',
+            'CVS',
+        )
+    ])
 
 
 def _handle_listing(listing, outdir, top):
@@ -45,12 +45,11 @@ def _handle_listing(listing, outdir, top):
                 log.error(e.strerror)
                 continue
 
-            log.debug('From magic: {info:s}'.format(
-                info=file_info.decode('utf-8')
-            ))
-            if (file_info == b'application/octet-stream' or
-                    (not file_info.startswith(b'text/') and
-                     not file_info.endswith(b'+xml'))):
+            log.debug(
+                'From magic: {info:s}'.format(info=file_info.decode('utf-8')))
+            if (file_info == b'application/octet-stream'
+                    or (not file_info.startswith(b'text/')
+                        and not file_info.endswith(b'+xml'))):
                 continue
 
             unix_ts = floor(stat(entry).st_mtime)
@@ -58,8 +57,7 @@ def _handle_listing(listing, outdir, top):
             try:
                 with open(entry, 'rb') as f:
                     dummy_log_fn = '.{fn:s}.txt'.format(
-                        fn=entry[len(top) + 1:]
-                    )
+                        fn=entry[len(top) + 1:])
                     dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
 
                     try:
@@ -84,8 +82,7 @@ def _handle_listing(listing, outdir, top):
                         except UnicodeDecodeError:
                             log.error('Caught UnicodeDecodeError on line '
                                       '{number:d}, file: {fn!s}'.format(
-                                          number=i,
-                                          fn=entry))
+                                          number=i, fn=entry))
                             line = 'Could not decode line {number:d}'.format(
                                 number=i)
 
@@ -97,9 +94,8 @@ def _handle_listing(listing, outdir, top):
                             if ctx_count == 0:
                                 found.write(b'\n')
 
-                        m = re.search(r'\b(@?todo|fixme|hack)\b',
-                                      line,
-                                      flags=re.I)
+                        m = re.search(
+                            r'\b(@?todo|fixme|hack)\b', line, flags=re.I)
 
                         if m:
                             _ = entry[len(top) + 1:]
@@ -126,8 +122,7 @@ def _handle_listing(listing, outdir, top):
                                          '{log:s}'.format(log=found.name))
 
                             _ = '{filename:s}:{number:d}\n'.format(
-                                filename=entry,
-                                number=i).encode('utf-8')
+                                filename=entry, number=i).encode('utf-8')
                             found.write(_)
                             _ = '{line:s}\n'.format(line=line).encode('utf-8')
                             found.write(_)
@@ -141,7 +136,10 @@ def _handle_listing(listing, outdir, top):
                         fname = found.name
                         found.close()
 
-                        setfiletime(fname, (unix_ts, unix_ts,))
+                        setfiletime(fname, (
+                            unix_ts,
+                            unix_ts,
+                        ))
                         found = None
 
                         try:
@@ -153,8 +151,8 @@ def _handle_listing(listing, outdir, top):
                     else:
                         _ = entry[len(top) + 1:]
                         dummy_log_fn = '.{fn:s}.txt'.format(fn=_)
-                        dummy_log_fn = realpath(path_join(outdir,
-                                                          dummy_log_fn))
+                        dummy_log_fn = realpath(
+                            path_join(outdir, dummy_log_fn))
 
                         try:
                             makedirs(dirname(dummy_log_fn))
@@ -164,31 +162,29 @@ def _handle_listing(listing, outdir, top):
                         with open(dummy_log_fn, 'w+') as f:
                             f.write('Dummy\n')
 
-                        setfiletime(dummy_log_fn, (unix_ts, unix_ts,))
+                        setfiletime(dummy_log_fn, (
+                            unix_ts,
+                            unix_ts,
+                        ))
 
-                        log.debug('Created dummy {name:s}'.format(
-                            name=dummy_log_fn))
+                        log.debug(
+                            'Created dummy {name:s}'.format(name=dummy_log_fn))
             except OSError as e:
                 if e.errno == 40:
                     log.error(e.strerror)
                     continue
                 raise e
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('start',
-                        metavar='START_DIR',
-                        action=ReadableDirectoryAction)
-    parser.add_argument('target',
-                        metavar='TARGET',
-                        action=WritableDirectoryAction)
-    parser.add_argument('-v',
-                        '--verbose',
-                        action='store_true')
-    parser.add_argument('-d',
-                        '--debug',
-                        action='store_true')
+    parser.add_argument(
+        'start', metavar='START_DIR', action=ReadableDirectoryAction)
+    parser.add_argument(
+        'target', metavar='TARGET', action=WritableDirectoryAction)
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-d', '--debug', action='store_true')
 
     args = parser.parse_args()
 

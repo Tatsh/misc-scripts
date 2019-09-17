@@ -3,9 +3,7 @@ from __future__ import print_function
 from base64 import standard_b64encode
 from datetime import datetime
 from enum import Enum, unique
-from hashlib import md5, sha256
-from hmac import compare_digest
-from os import environ, unlink as rm, utime
+from os import unlink as rm, utime
 from os.path import splitext
 try:
     from shlex import quote
@@ -44,14 +42,16 @@ ID3_TEXT_FRAME = 'TXXX'
 ID3TED_REMOVE_FRAME_TEMPLATE = [
     'id3ted',
     '--preserve-times',
-    '--remove', ID3_TEXT_FRAME,
+    '--remove',
+    ID3_TEXT_FRAME,
     None,  # MP3 filename
 ]
 ID3TED_WRITE_CMD_TEMPLATE = [
     'id3ted',
     '--preserve-times',
     '-3',
-    '--TXXX', None,
+    '--TXXX',
+    None,
     None,
 ]
 UPLOAD_DATE_FORMAT = '%Y%m%d'
@@ -104,7 +104,11 @@ def set_date(path, json_str):
     if not isinstance(upload_date, str):
         return
     seconds = datetime.strptime(upload_date, UPLOAD_DATE_FORMAT).timestamp()
-    utime(path, times=(seconds, seconds,))
+    utime(
+        path, times=(
+            seconds,
+            seconds,
+        ))
 
 
 def mp4box_add_json(filename, json_filename):

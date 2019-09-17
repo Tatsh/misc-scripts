@@ -7,8 +7,10 @@ import yaml
 
 status = 0
 
+
 def yaml_dump(s):
     return yaml.dump(s, default_flow_style=False, indent=4)
+
 
 # argv mode
 if len(sys.argv) >= 2:

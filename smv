@@ -11,65 +11,66 @@ RMVERBOSE=0
 RMRECURSIVE=0
 
 while getopts "hc:F:i:l:o:P:S:1246BCEpqrv" OPTION; do
-  case $OPTION in
-    1|2|4|6|B|C|E|p|q|r|v)
-      [ "$DASHARG" = "" ] && DASHARG="-"
-      DASHARG="$DASHARG$OPTION"
-      [ "$OPTION" = "v" ] && RMVERBOSE=1
-      [ "$OPTION" = "r" ] && RMRECURSIVE=1
-      ;;
+    case $OPTION in
+        1 | 2 | 4 | 6 | B | C | E | p | q | r | v)
+            [ "$DASHARG" = "" ] && DASHARG="-"
+            DASHARG="$DASHARG$OPTION"
+            [ "$OPTION" = "v" ] && RMVERBOSE=1
+            [ "$OPTION" = "r" ] && RMRECURSIVE=1
+            ;;
 
-    c)
-      c="-c $OPTARG"
-      ;;
+        c)
+            c="-c $OPTARG"
+            ;;
 
-    F)
-      F="-F $OPTARG"
-      ;;
+        F)
+            F="-F $OPTARG"
+            ;;
 
-    i)
-      i="-i $OPTARG"
-      ;;
+        i)
+            i="-i $OPTARG"
+            ;;
 
-    l)
-      l="-l $OPTARG"
-      ;;
+        l)
+            l="-l $OPTARG"
+            ;;
 
-    o)
-      o="-o $OPTARG"
-      ;;
+        o)
+            o="-o $OPTARG"
+            ;;
 
-    P)
-      P="-P $OPTARG"
-      ;;
+        P)
+            P="-P $OPTARG"
+            ;;
 
-    S)
-      S="-S $OPTARG"
-      ;;
+        S)
+            S="-S $OPTARG"
+            ;;
 
-    h)
-      scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
-      exit 1
-      ;;
+        h)
+            scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
+            exit 1
+            ;;
 
-    ?)
-      scp -h
-      exit 1
-      ;;
-  esac
+        ?)
+            scp -h
+            exit 1
+            ;;
+    esac
 done
 
 SRC="${BASH_ARGV[1]}"
 DEST=$BASH_ARGV
-RMARGS=""
+RMARGS=
 
 if [ ! "$SRC" ]; then
-  scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
-  exit 1
+    scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
+    exit 1
 fi
 
-[ RMVERBOSE ] && RMARGS="-v"
-[ RMRECURSIVE ] && RMARGS="${RMARGS}R"
+[ $RMVERBOSE ] && RMARGS="-v"
+[ $RMRECURSIVE ] && RMARGS="${RMARGS}R"
 
-scp $DASHARG $c $F $i $l $o $P $S "$SRC" "$DEST"
-[ $? -eq 0 ] && rm "$RMARGS" "$SRC"
+if scp "$DASHARG" "$c" "$F" "$i" "$l" "$o" "$P" "$S" "$SRC" "$DEST"; then
+    rm "$RMARGS" "$SRC"
+fi

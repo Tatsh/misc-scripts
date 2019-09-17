@@ -13,19 +13,19 @@ if [[ $(mount | grep -c "on ${mount_point}") -eq 0 ]]; then
 fi
 
 for i in sys tmp; do
-    umount -l "${mount_point}/${i}" 2>/dev/null
+    umount -l "${mount_point}/${i}" 2> /dev/null
 done
 
 for i in pts shm; do
     if [[ -d "${mount_point}/dev/${i}" ]]; then
-        umount -l "${mount_point}/dev/${i}" 2>/dev/null
+        umount -l "${mount_point}/dev/${i}" 2> /dev/null
     fi
 done
 
 if [[ -d "${mount_point}/usr/portage" ]]; then
-    umount -l "${mount_point}/usr/portage" 2>/dev/null
+    umount -l "${mount_point}/usr/portage" 2> /dev/null
 fi
 
-umount -l "${mount_point}/dev" 2>/dev/null
-umount -l "${mount_point}/proc" 2>/dev/null
-umount -l "${mount_point}" 2>/dev/null
+umount -l "${mount_point}/dev" 2> /dev/null
+umount -l "${mount_point}/proc" 2> /dev/null
+umount -l "${mount_point}" 2> /dev/null

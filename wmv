@@ -7,7 +7,7 @@ import sys
 
 try:
     from shlex import quote as shell_quote
-except:
+except ImportError:
     from pipes import quote as shell_quote
 
 tr_map = [
@@ -129,8 +129,8 @@ def make_target(filename):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Renames file names with full-width characters to normal '
-                    'width name. Please see `man mv` or '
-                    '`info coreutils \'mv invocation\'` for option arguments')
+        'width name. Please see `man mv` or '
+        '`info coreutils \'mv invocation\'` for option arguments')
 
     # ilm mv | grep -E '^`\-' | cut -c 2- | sed -e "s/'$//"
     parser.add_argument('--backup')
@@ -145,8 +145,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--target-directory')
     parser.add_argument('-T', '--no-target-directory', action='store_true')
 
-    parser.add_argument('file', metavar='SOURCE',
-                        nargs=1, help='Source')
+    parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
 
     args = parser.parse_args()
 
@@ -179,8 +178,7 @@ if __name__ == '__main__':
 
     target = shell_quote(make_target(args.file[0]))
 
-    command = 'mv %s %s %s' % (' '.join(mv_args),
-                               shell_quote(args.file[0]),
+    command = 'mv %s %s %s' % (' '.join(mv_args), shell_quote(args.file[0]),
                                target)
 
     status, output = sp.getstatusoutput(command)

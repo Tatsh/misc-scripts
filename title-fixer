@@ -90,46 +90,37 @@ chinese_particles = [
 # NOTE This list is not yet complete
 arabic_stops = [
     'al',
-
     'li',
     'laka',
     'lahu',
-
     'fi',
     'fiya',
     'fika',
     'fihi',
-
     'bi',
     'biha',
     'bika',
     'bihi',
-
     'ila',
     'ilayya',
     'ilayka',
     'ilayhi',
-
     'ala',
     'alayya',
     'alayka',
     'alayhi',
-
     'maa',
     'mai',
     'maaka',
     'maahu',
-
     'min',
     'minni',
     'minka',
     'minhu',
-
     'an',
     'anni',
     'anka',
     'anhu',
-
     'wa',
 ]
 
@@ -174,8 +165,7 @@ def is_roman_numeral(string):
         return False
     # https://l.tat.sh/2HXEIyx
     m = re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$',
-                 string,
-                 re.I)
+                 string, re.I)
     return m is not None
 
 
@@ -184,12 +174,13 @@ def fix_apostrophes(word):
         return word
 
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                  lambda mo: mo.group(0)[0].upper() +
-                  mo.group(0)[1:].lower(),
+                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(),
                   word)
 
 
-def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
+def lower_stop(words,
+               modes=[ENGLISH_MODE],
+               disable_names=False,
                ampersands=False):
     original_words = words.strip().split()
     words = words.strip().title().split()
@@ -224,7 +215,7 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 
             # Detect an upper-case word not to change
             if original_words[index] == word.upper() and \
-                    not re.match('[^\w]', word):
+                    not re.match(r'[^\w]', word):
 
                 # Detect I (not Roman numeral necessarily)
                 if mode == ENGLISH_MODE and word == 'I':
@@ -286,31 +277,58 @@ def lower_stop(words, modes=[ENGLISH_MODE], disable_names=False,
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Title fixer for various '
-                    'languages. Defaults to English mode. If any '
-                    'option is specified without -e, English mode'
-                    ' is disabled.')
-    parser.add_argument('titles', metavar='TITLE', type=argparse.FileType('r'),
-                        default=sys.stdin, nargs='?', help='Titles to process')
-    parser.add_argument('-e', dest='mode', action='append_const',
-                        const=ENGLISH_MODE, help='Enable English mode')
-    parser.add_argument('-c', dest='mode', action='append_const',
-                        const=CHINESE_MODE, help='Enable Chinese mode')
-    parser.add_argument('-j', dest='mode', action='append_const',
-                        const=JAPANESE_MODE, help='Enable Japanese mode')
-    parser.add_argument('-a', dest='mode', action='append_const',
-                        const=ARABIC_MODE, help='Enable Arabic mode')
-    parser.add_argument('--no-names', action='store_true',
-                        help='Disable name checking', dest='no_names',
-                        default=False)
-    parser.add_argument('-s', '--ampersands', action='store_true',
-                        help='Replace " and " with " & "', default=False)
+        'languages. Defaults to English mode. If any '
+        'option is specified without -e, English mode'
+        ' is disabled.')
+    parser.add_argument(
+        'titles',
+        metavar='TITLE',
+        type=argparse.FileType('r'),
+        default=sys.stdin,
+        nargs='?',
+        help='Titles to process')
+    parser.add_argument(
+        '-e',
+        dest='mode',
+        action='append_const',
+        const=ENGLISH_MODE,
+        help='Enable English mode')
+    parser.add_argument(
+        '-c',
+        dest='mode',
+        action='append_const',
+        const=CHINESE_MODE,
+        help='Enable Chinese mode')
+    parser.add_argument(
+        '-j',
+        dest='mode',
+        action='append_const',
+        const=JAPANESE_MODE,
+        help='Enable Japanese mode')
+    parser.add_argument(
+        '-a',
+        dest='mode',
+        action='append_const',
+        const=ARABIC_MODE,
+        help='Enable Arabic mode')
+    parser.add_argument(
+        '--no-names',
+        action='store_true',
+        help='Disable name checking',
+        dest='no_names',
+        default=False)
+    parser.add_argument(
+        '-s',
+        '--ampersands',
+        action='store_true',
+        help='Replace " and " with " & "',
+        default=False)
     args = parser.parse_args()
 
     if args.mode is None:
         args.mode = [ENGLISH_MODE]
 
     for title in args.titles:
-        print(lower_stop(title,
-                         args.mode,
-                         args.no_names,
-                         ampersands=args.ampersands))
+        print(
+            lower_stop(
+                title, args.mode, args.no_names, ampersands=args.ampersands))

@@ -14,30 +14,19 @@ except IndexError:
     sys.exit(1)
 home = os.environ['HOME']
 sqlite_file = home + '/.config/chromium/Default/Cookies'
-conn = sqlite3.connect(sqlite_file,
-                       detect_types=sqlite3.PARSE_COLNAMES)
+conn = sqlite3.connect(sqlite_file, detect_types=sqlite3.PARSE_COLNAMES)
 c = conn.cursor()
 i = 0
 
 regex = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
          r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
          r'\t(?P<name>.*)\t(?P<value>.*)\n?')
-creation_utc = int((datetime.utcnow() -
-                    datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
+creation_utc = int(
+    (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
 
-columns = [
-    'creation_utc',
-    'host_key',
-    'name',
-    'value',
-    'path',
-    'expires_utc',
-    'secure',
-    'httponly',
-    'has_expires',
-    'persistent',
-    'last_access_utc'
-]
+columns = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
+           'secure', 'httponly', 'has_expires', 'persistent',
+           'last_access_utc')
 
 with open(cookies_txt) as f:
     lines = f.readlines()
@@ -49,7 +38,7 @@ with open(cookies_txt) as f:
             continue
 
         dic = match.groupdict()
-        dic['expires_utc'] = int(float(dic['expires_utc'])) * (10 ** 7)
+        dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
         dic['value'] = urldecode(dic['value'])
         dic['path'] = urldecode(dic['path'])
 
@@ -72,22 +61,17 @@ with open(cookies_txt) as f:
         query = '''
 DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?
 '''
-        c.execute(query, (dic['host_key'], dic['name'], dic['path'],))
+        c.execute(query, (
+            dic['host_key'],
+            dic['name'],
+            dic['path'],
+        ))
 
         query = ('INSERT INTO cookies (%s) VALUES(%s)' %
-                (','.join(columns), ('?,' * len(columns))[:-1]))
-        t = (creation_utc + i,
-             dic['host_key'],
-             dic['name'],
-             dic['value'],
-             dic['path'],
-             dic['expires_utc'],
-             dic['secure'],
-             dic['httponly'],
-             has_expires,
-             persistent,
-             creation_utc
-             )
+                 (','.join(columns), ('?,' * len(columns))[:-1]))
+        t = (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
+             dic['path'], dic['expires_utc'], dic['secure'], dic['httponly'],
+             has_expires, persistent, creation_utc)
 
         c.execute(query, t)
         i = i + 1

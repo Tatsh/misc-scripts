@@ -6,7 +6,8 @@ main() {
         return 1
     fi
     local -r tmpfile=$(mktemp --suffix=.png)
-    local out=$(basename "$1")
+    local out
+    out=$(basename "$1")
     out="${out%.*}-audio.mp4"
     convert -size 1920x1080 xc:black -fill white -pointsize 50 \
         -draw "gravity Center text 0,0 '${2}'" "$tmpfile"
@@ -17,4 +18,4 @@ main() {
     rm "$tmpfile"
 }
 
-exit $(main "$@")
+main "$@"

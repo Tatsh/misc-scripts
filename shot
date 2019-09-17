@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-if ! command -v xdpyinfo >/dev/null 2>&1 || \
-   ! command -v import >/dev/null 2>&1; then
+if ! command -v xdpyinfo > /dev/null 2>&1 ||
+    ! command -v import > /dev/null 2>&1; then
     echo 'You need xdpyinfo and import to use this.' >&2
     exit 1
 fi
-xdpyinfo -ext XINERAMA | \
-    sed '/^  head #/!d;s///' | \
-        while IFS=' :x@,' read i w h x y; do
-            import -window root -crop ${w}x$h+$x+$y head_$i.png
-        done
+xdpyinfo -ext XINERAMA |
+    sed '/^  head #/!d;s///' |
+    while IFS=' :x@,' read -r i w h x y; do
+        import -window root -crop "${w}x$h+$x+$y" "head_$i.png"
+    done

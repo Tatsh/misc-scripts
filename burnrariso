@@ -8,7 +8,7 @@ import sys
 
 try:
     from shlex import quote as shell_quote
-except:
+except ImportError:
     from pipes import quote as shell_quote
 
 verbose = False
@@ -98,7 +98,10 @@ def find_iso_in_rar(rar_filename):
     return (fn, int(tsize))
 
 
-def unrar_wodim_pipe(rar_filename, iso_filename, tsize, speed=8,
+def unrar_wodim_pipe(rar_filename,
+                     iso_filename,
+                     tsize,
+                     speed=8,
                      device_name=None):
     unrar_args = [
         'unrar',
@@ -122,8 +125,8 @@ def unrar_wodim_pipe(rar_filename, iso_filename, tsize, speed=8,
     if verbose:
         wodim_args.append('-v')
 
-    verbose_print('Command: %s | %s' %
-                  (' '.join(unrar_args), ' '.join(wodim_args)))
+    verbose_print(
+        'Command: %s | %s' % (' '.join(unrar_args), ' '.join(wodim_args)))
 
     r1 = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
     r2 = sp.Popen(wodim_args, stdin=r1.stdout, close_fds=True)
@@ -166,8 +169,7 @@ def check_requirements(skip_crc):
             print('If you are using Gentoo or a derivative with Gentoo\'s '
                   'Portage tree, you can find "%s" in packages %s' %
                   (command_needed, ', '.join(
-                      apps_to_gentoo_packages[command_needed]
-                  )))
+                      apps_to_gentoo_packages[command_needed])))
 
         return False
 
@@ -178,16 +180,25 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Burns an ISO found in a RAR'
                                      'file without extracting')
 
-    parser.add_argument('-v', help='enables verbose mode', action='store_true',
-                        dest='verbose')
-    parser.add_argument('--no-crc-check', help='Disable CRC check',
-                        action='store_true', dest='crc_test')
-    parser.add_argument('--test-extraction', help='Enable extraction test',
-                        action='store_true', dest='rar_test')
-    parser.add_argument('-s', type=int, dest='speed', help='Write speed',
-                        default=8)
-    parser.add_argument('-d', dest='device', default=None,
-                        help='Device name (no argument means default)')
+    parser.add_argument(
+        '-v', help='enables verbose mode', action='store_true', dest='verbose')
+    parser.add_argument(
+        '--no-crc-check',
+        help='Disable CRC check',
+        action='store_true',
+        dest='crc_test')
+    parser.add_argument(
+        '--test-extraction',
+        help='Enable extraction test',
+        action='store_true',
+        dest='rar_test')
+    parser.add_argument(
+        '-s', type=int, dest='speed', help='Write speed', default=8)
+    parser.add_argument(
+        '-d',
+        dest='device',
+        default=None,
+        help='Device name (no argument means default)')
     parser.add_argument('rar_filename', help='Base RAR file name')
 
     args = parser.parse_args()
@@ -217,8 +228,8 @@ if __name__ == '__main__':
         for name in sfv_filenames:
             if os.path.exists(name):
                 sfv_filename = name
-                verbose_print('Found SFV file: "%s"' %
-                              (os.path.basename(name)))
+                verbose_print(
+                    'Found SFV file: "%s"' % (os.path.basename(name)))
 
         if sfv_filename is None:
             globbed = glob.glob('*.sfv')

@@ -4,11 +4,11 @@ usage() {
     echo "Usage: $0 <exe file> <icon> <icon index>"
 }
 
-(test -z "$1" || test -z "$2" || test -z "$3") && usage && exit 1
+[ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] && usage && exit 1
 
 EXE="$1"
-ICO="$2"
 ICO_INDEX="$3"
 
-printf "[Autorun]\nopen=$EXE\nicon=$EXE,$ICO_INDEX\n" > Autorun.inf
+printf "[Autorun]\nopen=%s\nicon=%s,%d\n" \
+    "$EXE" "$EXE" "$ICO_INDEX" > Autorun.inf
 unix2dos Autorun.inf &> /dev/null

@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import math
-import sys
 
 
 def add_times(times):
@@ -14,8 +12,8 @@ def add_times(times):
         seconds = int(time[3:5])
         frames = int(time[6:8])
 
-        if (minutes < 0 or seconds < 0 or frames < 0 or
-            minutes > 99 or seconds > 59 or frames > 75):
+        if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99
+                or seconds > 59 or frames > 75):
             return None
 
         total_ms += minutes * 60 * 1000
@@ -38,9 +36,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Calculate total CDDA time for use a in CUE sheet')
 
-    parser.add_argument('times', metavar='TIMES',
-                        nargs='+', help='times to add in HH:SS:FF where FF is '
-                                        'frames (75 FPS in CDDA)')
+    parser.add_argument(
+        'times',
+        metavar='TIMES',
+        nargs='+',
+        help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
 
     args = parser.parse_args()
 

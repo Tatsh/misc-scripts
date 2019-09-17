@@ -39,19 +39,15 @@ def rm_if_exists(fn):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--target', '-t',
-                        help='Target directory to store in',
-                        required=True)
+    parser.add_argument(
+        '--target', '-t', help='Target directory to store in', required=True)
     parser.add_argument('--dry-run', default=False, action='store_true')
     parser.add_argument('--gpg-home', default=path_join(env['HOME'], '.gnupg'))
-    parser.add_argument('--user', '-U',
-                        help='PostgreSQL user',
-                        default=PG_USER)
+    parser.add_argument(
+        '--user', '-U', help='PostgreSQL user', default=PG_USER)
     parser.add_argument('--host', help='PostgreSQL host', default=PG_HOST)
-    parser.add_argument('--jobs', '-j',
-                        help='Parallel jobs',
-                        default=PG_JOBS,
-                        type=int)
+    parser.add_argument(
+        '--jobs', '-j', help='Parallel jobs', default=PG_JOBS, type=int)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
 
@@ -73,7 +69,10 @@ if __name__ == '__main__':
             continue
 
         name = db_name.split('|')[0].strip()
-        fn = path_join(target_dir, '%s-%s' % (time, name,))
+        fn = path_join(target_dir, '%s-%s' % (
+            time,
+            name,
+        ))
 
         # Cannot dump template0
         # Also skip the '(x rows)' line at the end
@@ -81,39 +80,50 @@ if __name__ == '__main__':
                 re.match(r'^\(\d+ rows\)$', name):
             continue
 
-        print('Dumping "%s" to "%s"...' % (name, fn,))
+        print('Dumping "%s" to "%s"...' % (
+            name,
+            fn,
+        ))
         pg_dump_args = [
             '-w',
             '-C',
             '--column-inserts',
             '-c',
-            '-U', args.user,
-            '-h', args.host,
-            '-d', name,
-            '-f', fn,
+            '-U',
+            args.user,
+            '-h',
+            args.host,
+            '-d',
+            name,
+            '-f',
+            fn,
             '-Fd',
-            '-j', str(args.jobs),
-            '-Z', '9',
-            '--lock-wait-timeout=%d' % (LOCK_WAIT_TIMEOUT,),
+            '-j',
+            str(args.jobs),
+            '-Z',
+            '9',
+            '--lock-wait-timeout=%d' % (LOCK_WAIT_TIMEOUT, ),
         ]
 
         if dry_run:
-            print('pg_dump %s' % (' '.join(pg_dump_args),))
-            print('pushd %s && tar cf %s.tar %s && popd' %
-                  (dirname(fn), basename(fn), basename(fn),))
+            print('pg_dump %s' % (' '.join(pg_dump_args), ))
+            print('pushd %s && tar cf %s.tar %s && popd' % (
+                dirname(fn),
+                basename(fn),
+                basename(fn),
+            ))
             print('gpg --status-fd-2 --no-tty --homedir %s --use-agent'
                   '--encrypt %s --armor --output %s.tar.gpg' %
-                  (gpg_home,
-                   ' '.join(['--recipient %s' % (x) for x in recipients]),
-                   fn))
-            print('rm %s.tar' % (fn,))
+                  (gpg_home, ' '.join(
+                      ['--recipient %s' % (x) for x in recipients]), fn))
+            print('rm %s.tar' % (fn, ))
             continue
 
         try:
             out = pg_dump(pg_dump_args).strip()
         except (KeyboardInterrupt, SystemExit, ErrorReturnCode_1):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s"' % (fn,), file=sys.stderr)
+            print('Caught interrupt. Removing "%s"' % (fn, ), file=sys.stderr)
             if isdir(fn):
                 rmtree(fn)
             sys.exit(1)
@@ -121,8 +131,8 @@ if __name__ == '__main__':
         if len(out):
             print(out, file=sys.stderr)
 
-        tar_fn = '%s.tar' % (fn,)
-        print('Tar\'ing to "%s"' % (tar_fn,))
+        tar_fn = '%s.tar' % (fn, )
+        print('Tar\'ing to "%s"' % (tar_fn, ))
         tar = tarfile.open(tar_fn, 'w')
 
         tar.add(fn, arcname=basename(fn))
@@ -130,7 +140,9 @@ if __name__ == '__main__':
             tar.close()
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s" and data' % (tar_fn,), file=sys.stderr)
+            print(
+                'Caught interrupt. Removing "%s" and data' % (tar_fn, ),
+                file=sys.stderr)
             rmtree(fn)
             try:
                 with open(tar_fn, 'rb'):
@@ -140,7 +152,7 @@ if __name__ == '__main__':
                 pass
             sys.exit(1)
 
-        print('Removing "%s"' % (fn,))
+        print('Removing "%s"' % (fn, ))
         try:
             rmtree(fn)
         except (KeyboardInterrupt, SystemExit):
@@ -150,13 +162,15 @@ if __name__ == '__main__':
             rm_if_exists(tar_fn)
             sys.exit(1)
 
-        output_fn = '%s.gpg' % (tar_fn,)
-        print('Encrypting "%s" to "%s"' %
-              (basename(tar_fn), basename(output_fn),))
+        output_fn = '%s.gpg' % (tar_fn, )
+        print('Encrypting "%s" to "%s"' % (
+            basename(tar_fn),
+            basename(output_fn),
+        ))
         with open(tar_fn, 'rb') as fp:
             try:
                 gpg.encrypt_file(fp, recipients, output=output_fn)
-            except  (KeyboardInterrupt, SystemExit):
+            except (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 if isdir(fn):
                     rmtree(fn)
@@ -164,5 +178,5 @@ if __name__ == '__main__':
                 rm_if_exists(tar_fn)
                 sys.exit(1)
 
-        print('Removing "%s"' % (tar_fn,))
+        print('Removing "%s"' % (tar_fn, ))
         rm(tar_fn)

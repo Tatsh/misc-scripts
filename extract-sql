@@ -432,6 +432,3 @@ sub quit {
   ## Exit
   exit($incoming{'errorLevel'});
 }
-
-
-

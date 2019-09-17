@@ -11,7 +11,6 @@ from sh import speedtest
 import sh
 import yaml
 
-
 LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
 
 logfh = None
@@ -45,9 +44,10 @@ def ctrl_c(signum, frame):
 def log_yaml(**kwargs):
     if logyamlfh:
         kwargs['time'] = str(datetime.today())
-        logyamlfh.write(yaml.safe_dump([kwargs],
-                                       default_flow_style=False,
-                                       allow_unicode=True))
+        logyamlfh.write(
+            yaml.safe_dump([kwargs],
+                           default_flow_style=False,
+                           allow_unicode=True))
 
 
 if __name__ == '__main__':
@@ -113,32 +113,34 @@ if __name__ == '__main__':
     if ping > args.ping_threshold:
         logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; '
                      'wanted at most '
-                     '{wanted:0.03f}'.format(ping=ping,
-                                             wanted=args.ping_threshold))
+                     '{wanted:0.03f}'.format(
+                         ping=ping, wanted=args.ping_threshold))
         failed = True
     if dl < args.download_threshold:
         logger.error('Download speed threshold lower than threshold. Got '
                      '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(speed=dl,
-                                             wanted=args.download_threshold))
+                     '{wanted:0.03f}'.format(
+                         speed=dl, wanted=args.download_threshold))
         failed = True
     if ul < args.upload_threshold:
         logger.error('Upload speed threshold lower than threshold. Got '
                      '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(speed=ul,
-                                             wanted=args.download_threshold))
+                     '{wanted:0.03f}'.format(
+                         speed=ul, wanted=args.download_threshold))
         failed = True
 
     logger.info('Ping: {ping:0.03f} ms'.format(ping=ping))
     logger.info('Download speed: {speed:0.02f} Mb/s'.format(speed=dl))
     logger.info('Upload speed: {speed:0.02f} Mb/s'.format(speed=ul))
     logger.info('Share URI: {uri!s}'.format(uri=share))
-    log_yaml(ping=ping,
-             download=dl,
-             upload=ul,
-             share_uri=share)
+    log_yaml(ping=ping, download=dl, upload=ul, share_uri=share)
 
-    if True in [not x for x in (ping, dl, ul, share,)]:
+    if True in [not x for x in (
+            ping,
+            dl,
+            ul,
+            share,
+    )]:
         logger.error('Output not as expected (other error)')
         cleanup_and_exit(status=1)
 
