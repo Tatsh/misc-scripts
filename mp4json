@@ -5,10 +5,7 @@ from datetime import datetime
 from enum import Enum, unique
 from os import unlink as rm, utime
 from os.path import splitext
-try:
-    from shlex import quote
-except ImportError:
-    from pipes import quote
+from shlex import quote
 from shutil import copyfile
 import json
 import re
