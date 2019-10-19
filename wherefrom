@@ -1,0 +1,62 @@
+#!/usr/bin/env python
+import argparse
+import subprocess as sp
+import sys
+import plistlib
+import re
+
+KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
+
+
+def hexstr2bytes(s):
+    def chunks(l, n):
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    def hexstr2bytes_generator(s):
+        for h in chunks(s, 2):
+            yield int(h, 16)
+
+    return bytes(hexstr2bytes_generator(s))
+
+
+def xattr(key, filename):
+    return re.sub(
+        r'\s+', '',
+        sp.run(('xattr', '-p', key, filename),
+               stdout=sp.PIPE).stdout.decode('utf-8'))
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Determine where downloaded files came from.')
+    parser.add_argument('files',
+                        metavar='FILE',
+                        nargs='+',
+                        help='Files to process.')
+    parser.add_argument('-w',
+                        '--webpage',
+                        action='store_true',
+                        help='Print the webpage URL')
+    args = parser.parse_args()
+    has_multiple = len(args.files) > 1
+    index = 1 if args.webpage else 0
+    ret = 0
+    for arg in args.files:
+        try:
+            val = plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
+                                                    arg)))[index]
+            if has_multiple:
+                sys.stdout.write(f'{arg}: ')
+            sys.stdout.write(f'{val}\n')
+        except Exception as e:
+            print(str(e), file=sys.stderr)
+            ret = 1
+        except KeyboardInterrupt:
+            print('Killed', file=sys.stderr)
+            return 1
+    return ret
+
+
+if __name__ == '__main__':
+    sys.exit(main())
