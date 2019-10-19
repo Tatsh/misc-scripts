@@ -14,16 +14,20 @@ def ffmpeg(args, **kwargs):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='Convert any video file to GIF')
-    parser.add_argument(
-        '-ss', metavar='TIME_START', help='Time start specification')
-    parser.add_argument(
-        '-to', metavar='TIME_END', help='Time end specification')
-    parser.add_argument(
-        '-t',
-        metavar='LENGTH_SPEC',
-        help='Length specification or number of seconds')
-    parser.add_argument(
-        '-w', '--width', type=int, default=640, help='Video width')
+    parser.add_argument('-ss',
+                        metavar='TIME_START',
+                        help='Time start specification')
+    parser.add_argument('-to',
+                        metavar='TIME_END',
+                        help='Time end specification')
+    parser.add_argument('-t',
+                        metavar='LENGTH_SPEC',
+                        help='Length specification or number of seconds')
+    parser.add_argument('-w',
+                        '--width',
+                        type=int,
+                        default=640,
+                        help='Video width')
     parser.add_argument('-r', '--fps', type=int, default=10, help='Framerate')
     parser.add_argument('-gifflags', help='See `ffmpeg -h encoder=gif`')
     parser.add_argument('-o', '--output', help='Output file')
@@ -34,15 +38,14 @@ if __name__ == '__main__':
     input_video = realpath(args.video_file)
     if not args.output:
         output_file = path_join(
-            dirname(input_video), '{}.gif'.format(
-                splitext(basename(input_video))[0]))
+            dirname(input_video),
+            '{}.gif'.format(splitext(basename(input_video))[0]))
     else:
         output_file = args.output
     ffmpeg_args = ['-y']
 
     palette_filter = ('fps={fps},scale={width}:-1:flags=lanczos,'
-                      'palettegen').format(
-                          width=args.width, fps=args.fps)
+                      'palettegen').format(width=args.width, fps=args.fps)
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
         sys.exit(1)
@@ -58,8 +61,8 @@ if __name__ == '__main__':
     ffmpeg(ffmpeg_args)
 
     video_filter = ('fps={fps},scale={width}:-1:flags=lanczos[x];'
-                    '[x][1:v]paletteuse').format(
-                        width=args.width, fps=args.fps)
+                    '[x][1:v]paletteuse').format(width=args.width,
+                                                 fps=args.fps)
     ffmpeg_args = ['-y']
     if args.ss:
         ffmpeg_args += ['-ss', args.ss]

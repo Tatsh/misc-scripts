@@ -71,18 +71,20 @@ if __name__ == '__main__':
         print('No valid `kakasi` binary found.', file=sys.stderr)
         sys.exit(1)
     if not iconv:
-        print(
-            'No valid `iconv` binary found (must support SJIS conversion).',
-            file=sys.stderr)
+        print('No valid `iconv` binary found (must support SJIS conversion).',
+              file=sys.stderr)
         sys.exit(1)
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument('words', nargs='*')
-    parser.add_argument(
-        '-k', '--keep-long', action='store_true', default=False)
-    parser.add_argument(
-        '--allow-non-ascii', action='store_true', default=False)
+    parser.add_argument('-k',
+                        '--keep-long',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('--allow-non-ascii',
+                        action='store_true',
+                        default=False)
 
     args = parser.parse_args()
     words = args.words
@@ -113,8 +115,10 @@ if __name__ == '__main__':
         words = [x.encode('utf-8') for x in words]
 
     for word in words:
-        iconv_to_sjis = sp.Popen(
-            iconv_to_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        iconv_to_sjis = sp.Popen(iconv_to_args,
+                                 stdin=sp.PIPE,
+                                 stdout=sp.PIPE,
+                                 stderr=sp.PIPE)
         out, err = iconv_to_sjis.communicate(word)
         err = err.decode('utf-8').strip()
 
@@ -123,12 +127,16 @@ if __name__ == '__main__':
                   (word.decode('utf-8'), err))
             continue
 
-        kakasi = sp.Popen(
-            kakasi_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        kakasi = sp.Popen(kakasi_args,
+                          stdin=sp.PIPE,
+                          stdout=sp.PIPE,
+                          stderr=sp.PIPE)
         out, err = kakasi.communicate(out)
 
-        iconv_from_sjis = sp.Popen(
-            iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
+        iconv_from_sjis = sp.Popen(iconv_from_args,
+                                   stdin=sp.PIPE,
+                                   stdout=sp.PIPE,
+                                   stderr=sp.PIPE)
         final, err = iconv_from_sjis.communicate(out)
         err = err.decode('utf-8').strip()
 

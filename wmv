@@ -178,8 +178,8 @@ if __name__ == '__main__':
 
     target = shell_quote(make_target(args.file[0]))
 
-    command = 'mv %s %s %s' % (' '.join(mv_args), shell_quote(args.file[0]),
-                               target)
+    command = 'mv %s %s %s' % (' '.join(mv_args), shell_quote(
+        args.file[0]), target)
 
     status, output = sp.getstatusoutput(command)
 

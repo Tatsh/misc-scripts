@@ -56,8 +56,8 @@ def _handle_listing(listing, outdir, top):
 
             try:
                 with open(entry, 'rb') as f:
-                    dummy_log_fn = '.{fn:s}.txt'.format(
-                        fn=entry[len(top) + 1:])
+                    dummy_log_fn = '.{fn:s}.txt'.format(fn=entry[len(top) +
+                                                                 1:])
                     dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
 
                     try:
@@ -94,8 +94,9 @@ def _handle_listing(listing, outdir, top):
                             if ctx_count == 0:
                                 found.write(b'\n')
 
-                        m = re.search(
-                            r'\b(@?todo|fixme|hack)\b', line, flags=re.I)
+                        m = re.search(r'\b(@?todo|fixme|hack)\b',
+                                      line,
+                                      flags=re.I)
 
                         if m:
                             _ = entry[len(top) + 1:]
@@ -151,8 +152,8 @@ def _handle_listing(listing, outdir, top):
                     else:
                         _ = entry[len(top) + 1:]
                         dummy_log_fn = '.{fn:s}.txt'.format(fn=_)
-                        dummy_log_fn = realpath(
-                            path_join(outdir, dummy_log_fn))
+                        dummy_log_fn = realpath(path_join(
+                            outdir, dummy_log_fn))
 
                         try:
                             makedirs(dirname(dummy_log_fn))
@@ -179,10 +180,12 @@ def _handle_listing(listing, outdir, top):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        'start', metavar='START_DIR', action=ReadableDirectoryAction)
-    parser.add_argument(
-        'target', metavar='TARGET', action=WritableDirectoryAction)
+    parser.add_argument('start',
+                        metavar='START_DIR',
+                        action=ReadableDirectoryAction)
+    parser.add_argument('target',
+                        metavar='TARGET',
+                        action=WritableDirectoryAction)
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true')
 

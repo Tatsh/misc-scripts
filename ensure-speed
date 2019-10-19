@@ -113,20 +113,20 @@ if __name__ == '__main__':
     if ping > args.ping_threshold:
         logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; '
                      'wanted at most '
-                     '{wanted:0.03f}'.format(
-                         ping=ping, wanted=args.ping_threshold))
+                     '{wanted:0.03f}'.format(ping=ping,
+                                             wanted=args.ping_threshold))
         failed = True
     if dl < args.download_threshold:
         logger.error('Download speed threshold lower than threshold. Got '
                      '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(
-                         speed=dl, wanted=args.download_threshold))
+                     '{wanted:0.03f}'.format(speed=dl,
+                                             wanted=args.download_threshold))
         failed = True
     if ul < args.upload_threshold:
         logger.error('Upload speed threshold lower than threshold. Got '
                      '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(
-                         speed=ul, wanted=args.download_threshold))
+                     '{wanted:0.03f}'.format(speed=ul,
+                                             wanted=args.download_threshold))
         failed = True
 
     logger.info('Ping: {ping:0.03f} ms'.format(ping=ping))

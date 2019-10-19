@@ -92,9 +92,8 @@ DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?
         dic['path'],
     ))
 
-    query = (
-        'INSERT INTO cookies (%s) VALUES(%s)' % (','.join(columns),
-                                                 ('?,' * len(columns))[:-1]))
+    query = ('INSERT INTO cookies (%s) VALUES(%s)' %
+             (','.join(columns), ('?,' * len(columns))[:-1]))
     t = (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
          dic['path'], dic['expires_utc'], dic['secure'], dic['httponly'],
          has_expires, persistent, creation_utc)

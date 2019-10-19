@@ -37,16 +37,14 @@ def is_dir(f=False):
 def recurse_cwd(path, follow_symlinks=False, depth=1, _cur_depth=0):
     files = []
 
-    for entry in sorted(
-            sorted(scandir(path), key=lambda x: x.name),
-            key=is_dir(f=follow_symlinks)):
+    for entry in sorted(sorted(scandir(path), key=lambda x: x.name),
+                        key=is_dir(f=follow_symlinks)):
         if (entry.is_dir(follow_symlinks=follow_symlinks)
                 and _cur_depth < depth):
-            new_files = recurse_cwd(
-                entry.path,
-                follow_symlinks=follow_symlinks,
-                depth=depth,
-                _cur_depth=_cur_depth + 1)
+            new_files = recurse_cwd(entry.path,
+                                    follow_symlinks=follow_symlinks,
+                                    depth=depth,
+                                    _cur_depth=_cur_depth + 1)
             files.append('<li class="dir"><details><summary>'
                          '<code>{}/</code></summary><ul>'.format(
                              escape(entry.name)))
@@ -105,10 +103,9 @@ crossorigin="anonymous">
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        basename(sys.argv[0]),
-        description='Generate a directory '
-        'listing in HTML 5.')
+    parser = argparse.ArgumentParser(basename(sys.argv[0]),
+                                     description='Generate a directory '
+                                     'listing in HTML 5.')
     parser.add_argument('dir', nargs=1)
     parser.add_argument('-s', '--follow-symlinks', action='store_true')
     parser.add_argument('-d', '--depth', default=1, type=int)

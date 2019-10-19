@@ -99,13 +99,12 @@ if __name__ == '__main__':
     if args.picture:
         try:
             with open(args.picture, 'rb'):
-                metaflac_args.append(
-                    '--import-picture-from=%s' % (shell_quote(args.picture)))
+                metaflac_args.append('--import-picture-from=%s' %
+                                     (shell_quote(args.picture)))
         except IOError:
-            print(
-                'Cannot add file "{}". Specified argument is not supported'.
-                format(args.picture),
-                file=sys.stderr)
+            print('Cannot add file "{}". Specified argument is not supported'.
+                  format(args.picture),
+                  file=sys.stderr)
             sys.exit(1)
 
     if len(metaflac_args) == 2:

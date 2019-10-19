@@ -100,11 +100,10 @@ def set_date(path, json_str):
     if not isinstance(upload_date, str):
         return
     seconds = datetime.strptime(upload_date, UPLOAD_DATE_FORMAT).timestamp()
-    utime(
-        path, times=(
-            seconds,
-            seconds,
-        ))
+    utime(path, times=(
+        seconds,
+        seconds,
+    ))
 
 
 def mp4box_add_json(filename, json_filename):

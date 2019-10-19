@@ -35,16 +35,14 @@ HEADERS = {
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(basename(sys.argv[0]))
-    parser.add_argument(
-        'tracking_number',
-        nargs='+',
-        metavar='TRACKING_NUMBER',
-        help='Tracking numbers')
-    parser.add_argument(
-        'phone_number',
-        nargs=1,
-        metavar='PHONE_NUMBER',
-        help='Phone number to send SMS to (US only)')
+    parser.add_argument('tracking_number',
+                        nargs='+',
+                        metavar='TRACKING_NUMBER',
+                        help='Tracking numbers')
+    parser.add_argument('phone_number',
+                        nargs=1,
+                        metavar='PHONE_NUMBER',
+                        help='Phone number to send SMS to (US only)')
     parser.add_argument('-d', '--debug', action='store_true')
 
     args = parser.parse_args()
