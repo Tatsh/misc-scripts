@@ -1,0 +1,36 @@
+#!/usr/bin/env python
+from pathlib import Path
+import logging
+import plistlib
+import sys
+
+ENVIRONMENT_VARS_KEY = 'LSEnvironment'
+KDE_SESSION_VERSION = 'KDE_SESSION_VERSION'
+QT_QPA_PLATFORMTHEME = 'QT_QPA_PLATFORMTHEME'
+QT_QPA_PLATFORMTHEME_VALUE = 'kde'
+KDE_SESSION_VERSION_VALUE = '5'
+
+
+def main():
+    log = logging.getLogger('main')
+    for fin in sys.argv[1:]:
+        p = Path(fin).joinpath('Contents', 'Info.plist')
+        if not p.exists():
+            log.info(f'Skipping {fin} (Info.plist not found)')
+            continue
+        with p.open('rb') as f:
+            data = plistlib.load(f)
+            if ENVIRONMENT_VARS_KEY not in data:
+                data[ENVIRONMENT_VARS_KEY] = {}
+            data[ENVIRONMENT_VARS_KEY][
+                QT_QPA_PLATFORMTHEME] = QT_QPA_PLATFORMTHEME_VALUE
+            data[ENVIRONMENT_VARS_KEY][
+                KDE_SESSION_VERSION] = KDE_SESSION_VERSION_VALUE
+        with p.open('wb') as f:
+            plistlib.dump(data, f, sort_keys=False)
+        p.touch()
+        log.info(f'Rewrote Info.plist for {fin}')
+
+
+if __name__ == '__main__':
+    main()
