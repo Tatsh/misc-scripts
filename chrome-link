@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-from os import chmod, makedirs
+from os import chmod, close, environ, makedirs
 from os.path import expanduser, join as path_join
-from tempfile import mkdtemp
+from tempfile import mkdtemp, mkstemp
 import argparse
 import plistlib
 import platform
@@ -19,15 +19,22 @@ def main():
     parser.add_argument('url')
     args = parser.parse_args()
 
-    is_windows = len(''.join(platform.win32_ver())) != 0
+    is_windows = len(''.join(
+        list(platform.win32_ver()) + [environ.get('MSYSTEM_CHOST', '')])) != 0
     is_mac = bool(platform.mac_ver()[0])
     is_linux = not is_mac and not is_windows
 
     if is_linux:
         # Create .desktop file
-        out_name = expanduser(
-            f'~/.local/share/applications/chrome-{args.name}-{args.profile_directory}.desktop'
-            .replace(' ', ''))
+        apps_dir = expanduser('~/.local/share/applications')
+        try:
+            makedirs(apps_dir)
+        except FileNotFoundError:
+            pass
+        out_name = path_join(
+            apps_dir,
+            f'chrome-{args.name}-{args.profile_directory}.desktop'.replace(
+                ' ', ''))
         try_exec = args.chrome_command.replace(' ', r'\ ')
         with open(out_name, 'w+') as f:
             f.write(f'''#!/usr/bin/env xdg-open
@@ -43,10 +50,7 @@ Exec={args.chrome_command} "--user-data-directory={args.profile_directory}"'''
                     f'''"--app={args.url}"
 Icon={args.icon}
 ''')
-        subprocess.check_call([
-            'update-desktop-database',
-            expanduser('~/.local/share/applications/')
-        ])
+        subprocess.check_call(['update-desktop-database', apps_dir])
     elif is_mac:
         iconset_dir = mkdtemp(suffix='.iconset')
         for width in (2**x for x in range(1, 11)):
@@ -71,12 +75,12 @@ Icon={args.icon}
         res_dir = path_join(contents_dir, 'Resources')
         profile_dir_short = args.profile_directory.replace(' ', '')
         name_short = args.name.replace(' ', '')
+        bundle_id = f'com.google.Chrome.app.{profile_dir_short}-{name_short}'
         info_plist_data = dict(
             CFBundleDevelopmentRegion='en',
             CFBundleExecutable='app_mode_loader',
             CFBundleIconFile='app.icns',
-            CFBundleIdentifier=
-            f'com.google.Chrome.app.{profile_dir_short}-{name_short}',
+            CFBundleIdentifier=bundle_id,
             CFBundleInfoDictionaryVersion='6.0',
             CFBundleName=args.name,
             CFBundlePackageType='APPL',
@@ -111,25 +115,27 @@ Icon={args.icon}
             f.write('APPL????')
     elif is_windows:
         # Generate a vbs and run it
-        script_vbs = mkstemp(suffix='vbs')[1]
-        desktop_key = (r'HKEY_CURRENT_USER\Software\Microsoft\Windows'
-                       r'\CurrentVersion\Explorer\User Shell Folders\Desktop')
-        link_args = (r'\"--app={args.url}\" '
-                     r'\"--user-data-directory={args.profile_directory}\"')
+        fd, script_vbs = mkstemp(suffix='.vbs')
+        close(fd)
+        desktop_key = (
+            r'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer'
+            r'\User Shell Folders\Desktop')
+        link_args = (f'""--app={args.url}"" '
+                     f'""--user-data-directory={args.profile_directory}""')
         with open(script_vbs, 'w+') as f:
             f.write(f'''Set ows = WScript.CreateObject("WScript.Shell")
-Set strRegDesktopPath = ows.RegRead("{desktop_key}")
-Set desktopPath = ows.ExpandEnvironmentStrings(strRegDesktopPath)
-Set linkFile = desktopPath & "{name}.lnk"
+strRegDesktopPath = ows.RegRead("{desktop_key}")
+desktopPath = ows.ExpandEnvironmentStrings(strRegDesktopPath)
+linkFile = desktopPath & "\\{args.name}.lnk"
 Set link = ows.CreateShortcut(linkFile)
 link.TargetPath = "{args.chrome_command}"
 link.WorkingDirectory = desktopPath
 link.Arguments = "{link_args}"
-link.Description = "{args.comment}"
-link.IconLocation = "{args.icon}"
+link.Description = "{args.comment or ''}"
+link.IconLocation = "{args.icon or args.chrome_command}"
 link.Save
 ''')
-        subprocess.check_call(['cscript', script_vbs])
+        subprocess.check_call(['cscript', '//Nologo', script_vbs])
     else:
         raise OSError('Should never get here')
 
