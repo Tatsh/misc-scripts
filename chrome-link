@@ -120,7 +120,6 @@ Icon={args.icon}
         link_args = (r'\"--app={args.url}\" '
                      r'\"--user-data-directory={args.profile_directory}\"')
         with open(script_vbs, 'w+') as f:
-            pass
             f.write(f'''Set ows = WScript.CreateObject("WScript.Shell")
 Set strRegDesktopPath = ows.RegRead("{desktop_key}")
 Set desktopPath = ows.ExpandEnvironmentStrings(strRegDesktopPath)
