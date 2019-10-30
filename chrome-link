@@ -72,7 +72,6 @@ Icon={args.icon}
         profile_dir_short = args.profile_directory.replace(' ', '')
         name_short = args.name.replace(' ', '')
         info_plist_data = dict(
-            BuildMachineOSBuild='17G65',
             CFBundleDevelopmentRegion='en',
             CFBundleExecutable='app_mode_loader',
             CFBundleIconFile='app.icns',
@@ -84,13 +83,7 @@ Icon={args.icon}
             CFBundleShortVersionString='2019.10.11.39800',
             CFBundleSignature='????',
             CFBundleVersion='3904.50',
-            DTCompiler='com.apple.compilers.llvm.clang.1_0',
-            DTSDKBuild='10.14',
-            DTSDKName='macosx101.4',
-            DTXcode='1021',
-            DTXcodeBuild='10E1001',
             LSEnvironment=dict(MallocNanoZone='0'),
-            LSHasLocalizedDisplayName=True,
             LSMinimumSystemVersion='10.10.0',
             NSAppleScriptEnabled=True,
             NSHighResolutionCapable=True,
@@ -107,8 +100,9 @@ Icon={args.icon}
                               stdout=subprocess.PIPE)
         script = path_join(macos_dir, 'app_mode_loader')
         with open(script, 'w+') as f:
-            f.write('#!/usr/bin/env bash')
-            f.write(f'open -n {args.chrome_command} --args \'app={args.url}\' '
+            f.write('#!/usr/bin/env bash\n')
+            f.write(f"open -n '{args.chrome_command}' --args "
+                    f"'--app={args.url}' "
                     f'--user-data-directory={args.profile_directory}\n')
         chmod(script, 0o755)
         with open(path_join(contents_dir, 'Info.plist'), 'wb+') as f:
