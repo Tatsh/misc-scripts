@@ -55,13 +55,15 @@ Icon={args.icon}
                 str(width),
                 str(width), args.icon, '--out',
                 path_join(iconset_dir, f'icon_{width}x{width}.png')
-            ])
+            ],
+                                  stdout=subprocess.PIPE)
             subprocess.check_call([
                 'sips', '-z',
                 str(width),
                 str(width), args.icon, '--out',
                 path_join(iconset_dir, f'icon_{width//2}x{width//2}@2x.png')
-            ])
+            ],
+                                  stdout=subprocess.PIPE)
         app_dir = expanduser(
             f'~/Applications/Chrome Apps.localized/{args.name}.app')
         contents_dir = path_join(app_dir, 'Contents')
@@ -101,7 +103,8 @@ Icon={args.icon}
         subprocess.check_call([
             'iconutil', '-c', 'icns', iconset_dir, '-o',
             path_join(res_dir, 'app.icns')
-        ])
+        ],
+                              stdout=subprocess.PIPE)
         script = path_join(macos_dir, 'app_mode_loader')
         with open(script, 'w+') as f:
             f.write('#!/usr/bin/env bash')
@@ -114,7 +117,7 @@ Icon={args.icon}
             f.write('APPL????')
     elif is_windows:
         # Generate a vbs and run it
-        script_vbs, _ = mkstemp(suffix='vbs')
+        script_vbs = mkstemp(suffix='vbs')[1]
         desktop_key = (r'HKEY_CURRENT_USER\Software\Microsoft\Windows'
                        r'\CurrentVersion\Explorer\User Shell Folders\Desktop')
         link_args = (r'\"--app={args.url}\" '
@@ -132,7 +135,7 @@ link.Description = "{args.comment}"
 link.IconLocation = "{args.icon}"
 link.Save
 ''')
-        subprocesss.check_call(['cscript', script_vbs])
+        subprocess.check_call(['cscript', script_vbs])
     else:
         raise OSError('Should never get here')
 
