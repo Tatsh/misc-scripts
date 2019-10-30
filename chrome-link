@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+from os import chmod, makedirs
+from os.path import expanduser, join as path_join
+from tempfile import mkdtemp
+import argparse
+import plistlib
+import platform
+import subprocess
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--chrome-command', default='chromium-browser')
+    parser.add_argument('-p', '--profile-directory', default='Default')
+    parser.add_argument('-i', '--icon', default='chromium-browser')
+    parser.add_argument('-C', '--categories', default='Network;')
+    parser.add_argument('--comment')
+    parser.add_argument('name')
+    parser.add_argument('url')
+    args = parser.parse_args()
+
+    is_windows = len(''.join(platform.win32_ver())) != 0
+    is_linux = len(''.join(platform.linux_distribution())) != 0
+    is_mac = not is_windows and not is_linux
+
+    if is_linux:
+        # Create .desktop file
+        out_name = expanduser(
+            f'~/.local/share/applications/chrome-{args.name}-{args.profile_directory}.desktop'
+            .replace(' ', ''))
+        try_exec = args.chrome_command.replace(' ', r'\ ')
+        with open(out_name, 'w+') as f:
+            f.write(f'''#!/usr/bin/env xdg-open
+[Desktop Entry]
+Version=1.0
+Terminal=false
+Type=Application
+TryExec={try_exec}
+Categories={args.categories or ''}
+Comment={args.comment or ''}
+Name={args.name}
+Exec={args.chrome_command} "--user-data-directory={args.profile_directory}"'''
+                    f'''"--app={args.url}"
+Icon={args.icon}
+''')
+        subprocess.check_call([
+            'update-desktop-database',
+            expanduser('~/.local/share/applications/')
+        ])
+    elif is_mac:
+        iconset_dir = mkdtemp(suffix='.iconset')
+        for width in (2**x for x in range(1, 11)):
+            subprocess.check_call([
+                'sips', '-z',
+                str(width),
+                str(width), args.icon, '--out',
+                path_join(iconset_dir, f'icon_{width}x{width}.png')
+            ])
+            subprocess.check_call([
+                'sips', '-z',
+                str(width),
+                str(width), args.icon, '--out',
+                path_join(iconset_dir, f'icon_{width//2}x{width//2}@2x.png')
+            ])
+        app_dir = expanduser(
+            f'~/Applications/Chrome Apps.localized/{args.name}.app')
+        contents_dir = path_join(app_dir, 'Contents')
+        macos_dir = path_join(contents_dir, 'MacOS')
+        res_dir = path_join(contents_dir, 'Resources')
+        profile_dir_short = args.profile_directory.replace(' ', '')
+        name_short = args.name.replace(' ', '')
+        info_plist_data = dict(
+            BuildMachineOSBuild='17G65',
+            CFBundleDevelopmentRegion='en',
+            CFBundleExecutable='app_mode_loader',
+            CFBundleIconFile='app.icns',
+            CFBundleIdentifier=
+            f'com.google.Chrome.app.{profile_dir_short}-{name_short}',
+            CFBundleInfoDictionaryVersion='6.0',
+            CFBundleName=args.name,
+            CFBundlePackageType='APPL',
+            CFBundleShortVersionString='2019.10.11.39800',
+            CFBundleSignature='????',
+            CFBundleVersion='3904.50',
+            DTCompiler='com.apple.compilers.llvm.clang.1_0',
+            DTSDKBuild='10.14',
+            DTSDKName='macosx101.4',
+            DTXcode='1021',
+            DTXcodeBuild='10E1001',
+            LSEnvironment=dict(MallocNanoZone='0'),
+            LSHasLocalizedDisplayName=True,
+            LSMinimumSystemVersion='10.10.0',
+            NSAppleScriptEnabled=True,
+            NSHighResolutionCapable=True,
+        )
+        for x in (contents_dir, macos_dir, res_dir):
+            try:
+                makedirs(x)
+            except FileExistsError:
+                pass
+        subprocess.check_call([
+            'iconutil', '-c', 'icns', iconset_dir, '-o',
+            path_join(res_dir, 'app.icns')
+        ])
+        script = path_join(macos_dir, 'app_mode_loader')
+        with open(script, 'w+') as f:
+            f.write('#!/usr/bin/env bash')
+            f.write(f'open -n {args.chrome_command} --args \'app={args.url}\' '
+                    f'--user-data-directory={args.profile_directory}\n')
+        chmod(script, 0o755)
+        with open(path_join(contents_dir, 'Info.plist'), 'wb+') as f:
+            plistlib.dump(info_plist_data, f)
+        with open(path_join(contents_dir, 'PkgInfo'), 'w+') as f:
+            f.write('APPL????')
+    elif is_windows:
+        # Generate a vbs and run it
+        script_vbs, _ = mkstemp(suffix='vbs')
+        desktop_key = (r'HKEY_CURRENT_USER\Software\Microsoft\Windows'
+                       r'\CurrentVersion\Explorer\User Shell Folders\Desktop')
+        link_args = (r'\"--app={args.url}\" '
+                     r'\"--user-data-directory={args.profile_directory}\"')
+        with open(script_vbs, 'w+') as f:
+            pass
+            f.write(f'''Set ows = WScript.CreateObject("WScript.Shell")
+Set strRegDesktopPath = ows.RegRead("{desktop_key}")
+Set desktopPath = ows.ExpandEnvironmentStrings(strRegDesktopPath)
+Set linkFile = desktopPath & "{name}.lnk"
+Set link = ows.CreateShortcut(linkFile)
+link.TargetPath = "{args.chrome_command}"
+link.WorkingDirectory = desktopPath
+link.Arguments = "{link_args}"
+link.Description = "{args.comment}"
+link.IconLocation = "{args.icon}"
+link.Save
+''')
+        subprocesss.check_call(['cscript', script_vbs])
+    else:
+        raise OSError('Should never get here')
+
+
+if __name__ == '__main__':
+    main()
