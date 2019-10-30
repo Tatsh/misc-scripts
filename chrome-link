@@ -20,8 +20,8 @@ def main():
     args = parser.parse_args()
 
     is_windows = len(''.join(platform.win32_ver())) != 0
-    is_linux = len(''.join(platform.linux_distribution())) != 0
-    is_mac = not is_windows and not is_linux
+    is_mac = bool(platform.mac_ver()[0])
+    is_linux = not is_mac and not is_windows
 
     if is_linux:
         # Create .desktop file
