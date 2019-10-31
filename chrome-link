@@ -6,22 +6,24 @@ import argparse
 import plistlib
 import platform
 import subprocess
+import sys
 
-is_windows = len(
-    ''.join(list(platform.win32_ver()) +
-            [environ.get('MSYSTEM_CHOST', '')])) != 0
+is_msys = environ.get('MSYSTEM_CHOST', '') != 0
+is_windows = is_msys or len(''.join(platform.win32_ver())) != 0
 is_mac = bool(platform.mac_ver()[0])
 is_linux = not is_mac and not is_windows
 
 
+def fix_msys_arg(s: str) -> str:
+    return s.replace('\n', ' ').replace('\\', '\\\\') if is_msys else s
+
+
 def main():
     chrome_command_kwargs = dict(required=True)
-    comment_kwargs = dict(required=True)
     icon_kwargs = {}
     if is_linux:
         chrome_command_kwargs = dict(default='chromium-browser')
         icon_kwargs = dict(default='chromium-browser')
-        comment_kwargs = {}
     if is_mac:
         icon_kwargs = dict(required=True)
 
@@ -32,7 +34,7 @@ def main():
     if is_linux:
         parser.add_argument('-C', '--categories', default='Network;')
     if not is_mac:
-        parser.add_argument('-d', '--comment', **comment_kwargs)
+        parser.add_argument('-d', '--comment')
     if is_windows:
         parser.add_argument('--window-style', type=int, default=1)
         parser.add_argument('--hotkey')
@@ -133,24 +135,29 @@ Icon={args.icon}
         # Generate a JScript file and run it
         fd, script_js = mkstemp(suffix='.js')
         close(fd)
-        link_args = (f'"--app={args.url}" '
-                     f'"--user-data-directory={args.profile_directory}"')
-        default_icon = f'{args.chrome_command},0'
         with open(script_js, 'w+') as f:
             f.write(f'''var ows = WScript.CreateObject('WScript.Shell');
 var desktop = ows.SpecialFolders('Desktop');
 var link = ows.CreateShortcut(desktop + '\\\\{args.name}.lnk');
 link.WorkingDirectory = desktop;\n''')
+            if is_msys and args.chrome_command.startswith('/'):
+                args.chrome_command = fix_msys_arg(
+                    subprocess.check_output(
+                        ['cygpath', '-w',
+                         args.chrome_command]).decode('utf-8').strip())
+            default_icon = f'{args.chrome_command},0'
             props = dict(
                 TargetPath=args.chrome_command,
-                Arguments=' '.join(
+                Arguments=fix_msys_arg(' '.join(
                     map(lambda x: f'"{x}"',
                         (f'--app={args.url}',
-                         f'--user-data-directory={args.profile_directory}'))),
-                IconLocation=args.icon or default_icon,
+                         f'--user-data-directory={args.profile_directory}')))),
+                IconLocation=fix_msys_arg(args.icon)
+                if args.icon else default_icon,
                 WindowStyle=args.window_style,
-                Description=args.comment,
             )
+            if args.comment:
+                props['Description'] = args.comment
             if args.hotkey:
                 props['Hotkey'] = args.hotkey
             for prop, val in props.items():
@@ -158,9 +165,14 @@ link.WorkingDirectory = desktop;\n''')
                     val = f"'{val}'"
                 f.write(f"link.{prop} = {val};\n")
             f.write('link.Save();\n')
-        subprocess.check_call(['cscript', '//Nologo', script_js])
+        try:
+            subprocess.check_call(['cscript', '//Nologo', script_js])
+        except subprocess.CalledProcessError as e:
+            print(f'Caught exception: {e}', file=sys.stderr)
+            with open(script_js, 'r') as f:
+                print(f.read(), file=sys.stderr)
     else:
-        raise OSError('Should never get here')
+        raise RuntimeError('Should never get here')
 
 
 if __name__ == '__main__':
