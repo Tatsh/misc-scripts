@@ -7,22 +7,38 @@ import plistlib
 import platform
 import subprocess
 
+is_windows = len(
+    ''.join(list(platform.win32_ver()) +
+            [environ.get('MSYSTEM_CHOST', '')])) != 0
+is_mac = bool(platform.mac_ver()[0])
+is_linux = not is_mac and not is_windows
+
 
 def main():
+    chrome_command_kwargs = dict(required=True)
+    comment_kwargs = dict(required=True)
+    icon_kwargs = {}
+    if is_linux:
+        chrome_command_kwargs = dict(default='chromium-browser')
+        icon_kwargs = dict(default='chromium-browser')
+        comment_kwargs = {}
+    if is_mac:
+        icon_kwargs = dict(required=True)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--chrome-command', default='chromium-browser')
+    parser.add_argument('-c', '--chrome-command', **chrome_command_kwargs)
     parser.add_argument('-p', '--profile-directory', default='Default')
-    parser.add_argument('-i', '--icon', default='chromium-browser')
-    parser.add_argument('-C', '--categories', default='Network;')
-    parser.add_argument('--comment')
+    parser.add_argument('-i', '--icon', **icon_kwargs)
+    if is_linux:
+        parser.add_argument('-C', '--categories', default='Network;')
+    if not is_mac:
+        parser.add_argument('-d', '--comment', **comment_kwargs)
+    if is_windows:
+        parser.add_argument('--window-style', type=int, default=1)
+        parser.add_argument('--hotkey')
     parser.add_argument('name')
     parser.add_argument('url')
     args = parser.parse_args()
-
-    is_windows = len(''.join(
-        list(platform.win32_ver()) + [environ.get('MSYSTEM_CHOST', '')])) != 0
-    is_mac = bool(platform.mac_ver()[0])
-    is_linux = not is_mac and not is_windows
 
     if is_linux:
         # Create .desktop file
@@ -114,28 +130,35 @@ Icon={args.icon}
         with open(path_join(contents_dir, 'PkgInfo'), 'w+') as f:
             f.write('APPL????')
     elif is_windows:
-        # Generate a vbs and run it
-        fd, script_vbs = mkstemp(suffix='.vbs')
+        # Generate a JScript file and run it
+        fd, script_js = mkstemp(suffix='.js')
         close(fd)
-        desktop_key = (
-            r'HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer'
-            r'\User Shell Folders\Desktop')
-        link_args = (f'""--app={args.url}"" '
-                     f'""--user-data-directory={args.profile_directory}""')
-        with open(script_vbs, 'w+') as f:
-            f.write(f'''Set ows = WScript.CreateObject("WScript.Shell")
-strRegDesktopPath = ows.RegRead("{desktop_key}")
-desktopPath = ows.ExpandEnvironmentStrings(strRegDesktopPath)
-linkFile = desktopPath & "\\{args.name}.lnk"
-Set link = ows.CreateShortcut(linkFile)
-link.TargetPath = "{args.chrome_command}"
-link.WorkingDirectory = desktopPath
-link.Arguments = "{link_args}"
-link.Description = "{args.comment or ''}"
-link.IconLocation = "{args.icon or args.chrome_command}"
-link.Save
-''')
-        subprocess.check_call(['cscript', '//Nologo', script_vbs])
+        link_args = (f'"--app={args.url}" '
+                     f'"--user-data-directory={args.profile_directory}"')
+        default_icon = f'{args.chrome_command},0'
+        with open(script_js, 'w+') as f:
+            f.write(f'''var ows = WScript.CreateObject('WScript.Shell');
+var desktop = ows.SpecialFolders('Desktop');
+var link = ows.CreateShortcut(desktop + '\\\\{args.name}.lnk');
+link.WorkingDirectory = desktop;\n''')
+            props = dict(
+                TargetPath=args.chrome_command,
+                Arguments=' '.join(
+                    map(lambda x: f'"{x}"',
+                        (f'--app={args.url}',
+                         f'--user-data-directory={args.profile_directory}'))),
+                IconLocation=args.icon or default_icon,
+                WindowStyle=args.window_style,
+                Description=args.comment,
+            )
+            if args.hotkey:
+                props['Hotkey'] = args.hotkey
+            for prop, val in props.items():
+                if isinstance(val, str):
+                    val = f"'{val}'"
+                f.write(f"link.{prop} = {val};\n")
+            f.write('link.Save();\n')
+        subprocess.check_call(['cscript', '//Nologo', script_js])
     else:
         raise OSError('Should never get here')
 
