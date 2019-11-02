@@ -28,17 +28,13 @@ def fix_msys_arg(s: str) -> str:
 
 def main():
     chrome_command_kwargs = dict(required=True)
-    icon_kwargs = {}
     if is_linux:
         chrome_command_kwargs = dict(default='chromium-browser')
-        icon_kwargs = dict(default='chromium-browser')
-    if is_mac:
-        icon_kwargs = dict(required=True)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--chrome-command', **chrome_command_kwargs)
     parser.add_argument('-p', '--profile-directory', default='Default')
-    parser.add_argument('-i', '--icon', **icon_kwargs)
+    parser.add_argument('-i', '--icon')
     if is_linux:
         parser.add_argument('-C', '--categories', default='Network;')
     if not is_mac:
@@ -50,7 +46,14 @@ def main():
     parser.add_argument('url')
     args = parser.parse_args()
 
-    if re.match(r'https?\://', args.icon) and HAS_REQUESTS:
+    if not args.icon and HAS_REQUESTS:
+        p = urlparse(args.url)
+        args.icon = f'{p.scheme}://{p.netloc}/favicon.ico'
+        r = requests.head(args.icon)
+        if r.status_code != 200:
+            args.icon = None
+
+    if re.match(r'https?\://', args.icon or '') and HAS_REQUESTS:
         r = requests.get(args.icon, stream=True)
         if is_linux:
             short_name = args.name.replace(' ', '')
@@ -131,7 +134,7 @@ Categories={args.categories or ''}
 Comment={args.comment or ''}
 Name={args.name}
 Exec={args.chrome_command} "--user-data-directory={args.profile_directory}"'''
-                    f'''"--app={args.url}"
+                    f''' "--app={args.url}"
 Icon={args.icon}
 ''')
         subprocess.check_call(['update-desktop-database', apps_dir])
