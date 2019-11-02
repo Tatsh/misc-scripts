@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from glob import glob
 from os import chmod, close, environ, makedirs, write
 from os.path import expanduser, join as path_join, splitext
 from tempfile import mkdtemp, mkstemp
@@ -52,6 +53,9 @@ def main():
         r = requests.head(args.icon)
         if r.status_code != 200:
             args.icon = None
+            if is_mac:
+                print('Need -i argument', file=sys.stderr)
+                return 1
 
     if re.match(r'https?\://', args.icon or '') and HAS_REQUESTS:
         r = requests.get(args.icon, stream=True)
@@ -79,16 +83,28 @@ def main():
                     write(fd, chunk)
                 close(fd)
                 subprocess.check_call(['convert', tmp_name, args.icon])
+                try:
+                    with open(args.icon, 'rb'):
+                        pass
+                except FileNotFoundError:
+                    args.icon = sorted(glob(f'{splitext(args.icon)[0]}-*.png'),
+                                       reverse=True)[0]
         elif is_mac:
             ext = splitext(urlparse(args.icon).path)[1].lower()
             if ext != '.png':
                 fd, tmp_name = mkstemp(suffix=ext)
-                fd2, args.icon = mkstemp(suffix='.png')
+                fd2, new_name = mkstemp(suffix='.png')
                 close(fd2)
                 for chunk in r.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
-                subprocess.check_call(['convert', tmp_name, args.icon])
+                subprocess.check_call(['convert', tmp_name, new_name])
+                try:
+                    with open(args.icon, 'rb'):
+                        pass
+                except FileNotFoundError:
+                    args.icon = sorted(glob(f'{splitext(new_name)[0]}-*.png'),
+                                       reverse=True)[0]
             else:
                 fd, args.icon = mkstemp(suffix='.png')
                 for chunk in r.iter_content(chunk_size=128):
