@@ -1,14 +1,22 @@
 #!/usr/bin/env python
-from os import chmod, close, environ, makedirs
-from os.path import expanduser, join as path_join
+from os import chmod, close, environ, makedirs, write
+from os.path import expanduser, join as path_join, splitext
 from tempfile import mkdtemp, mkstemp
+from urllib.parse import urlparse
 import argparse
-import plistlib
 import platform
+import plistlib
+import re
 import subprocess
 import sys
 
-is_msys = environ.get('MSYSTEM_CHOST', '') != 0
+try:
+    import requests
+    HAS_REQUESTS = True
+except ImportError:
+    HAS_REQUESTS = False
+
+is_msys = len(environ.get('MSYSTEM_CHOST', '')) != 0
 is_windows = is_msys or len(''.join(platform.win32_ver())) != 0
 is_mac = bool(platform.mac_ver()[0])
 is_linux = not is_mac and not is_windows
@@ -42,12 +50,70 @@ def main():
     parser.add_argument('url')
     args = parser.parse_args()
 
+    if re.match(r'https?\://', args.icon) and HAS_REQUESTS:
+        r = requests.get(args.icon, stream=True)
+        if is_linux:
+            short_name = args.name.replace(' ', '')
+            ext = splitext(urlparse(args.icon).path)[1].lower()
+            if ext in ('.png', '.xpm'):
+                args.icon = expanduser(
+                    f'~/.local/share/pixmaps/{short_name}{ext}')
+                with open(args.icon, 'wb+') as f:
+                    for chunk in r.iter_content(chunk_size=128):
+                        f.write(chunk)
+            elif ext == '.svg':
+                args.icon = expanduser('~/.local/share/icons/hicolor/scalable/'
+                                       f'apps/{short_name}{ext}')
+                with open(args.icon, 'wb+') as f:
+                    for chunk in r.iter_content(chunk_size=128):
+                        f.write(chunk)
+            else:
+                fd, tmp_name = mkstemp(
+                    suffix=splitext(urlparse(args.icon).path)[1])
+                args.icon = expanduser('~/.local/share/pixmaps/'
+                                       f'{short_name}.png')
+                for chunk in r.iter_content(chunk_size=128):
+                    write(fd, chunk)
+                close(fd)
+                subprocess.check_call(['convert', tmp_name, args.icon])
+        elif is_mac:
+            ext = splitext(urlparse(args.icon).path)[1].lower()
+            if ext != '.png':
+                fd, tmp_name = mkstemp(suffix=ext)
+                fd2, args.icon = mkstemp(suffix='.png')
+                close(fd2)
+                for chunk in r.iter_content(chunk_size=128):
+                    write(fd, chunk)
+                close(fd)
+                subprocess.check_call(['convert', tmp_name, args.icon])
+            else:
+                fd, args.icon = mkstemp(suffix='.png')
+                for chunk in r.iter_content(chunk_size=128):
+                    write(fd, chunk)
+                close(fd)
+        else:
+            ext = splitext(urlparse(args.icon).path)
+            if ext != '.ico':
+                fd, tmp_name = mkstemp(suffix=ext)
+                fd2, args.icon = mkstemp(suffix='.ico')
+                close(fd2)
+                for chunk in r.iter_content(chunk_size=128):
+                    write(fd, chunk)
+                close(fd)
+                subprocess.check_call(['convert', tmp_name, args.icon])
+            else:
+                args.icon = expanduser('~/AppData/Roaming/'
+                                       f'chrome-link-{args.name}.ico')
+                with open(args.icon, 'wb+') as f:
+                    for chunk in r.iter_content(chunk_size=128):
+                        f.write(chunk)
+
     if is_linux:
         # Create .desktop file
         apps_dir = expanduser('~/.local/share/applications')
         try:
             makedirs(apps_dir)
-        except FileNotFoundError:
+        except FileExistsError:
             pass
         out_name = path_join(
             apps_dir,
