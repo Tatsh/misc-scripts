@@ -93,12 +93,12 @@ def main():
             ext = splitext(urlparse(args.icon).path)[1].lower()
             if ext != '.png':
                 fd, tmp_name = mkstemp(suffix=ext)
-                fd2, new_name = mkstemp(suffix='.png')
+                fd2, args.icon = mkstemp(suffix='.png')
                 close(fd2)
                 for chunk in r.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
-                subprocess.check_call(['convert', tmp_name, new_name])
+                subprocess.check_call(['convert', tmp_name, args.icon])
                 try:
                     with open(args.icon, 'rb'):
                         pass
