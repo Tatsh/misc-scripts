@@ -46,6 +46,7 @@ def main():
     parser.add_argument('name')
     parser.add_argument('url')
     args = parser.parse_args()
+    short_name = args.name.replace(' ', '')
 
     if not args.icon and HAS_REQUESTS:
         p = urlparse(args.url)
@@ -59,24 +60,23 @@ def main():
 
     if re.match(r'https?\://', args.icon or '') and HAS_REQUESTS:
         r = requests.get(args.icon, stream=True)
+        icon_prefix, icon_ext = splitext(urlparse(args.icon).path)
+        icon_ext = icon_ext.lower()
         if is_linux:
-            short_name = args.name.replace(' ', '')
-            ext = splitext(urlparse(args.icon).path)[1].lower()
-            if ext in ('.png', '.xpm'):
+            if icon_ext in ('.png', '.xpm'):
                 args.icon = expanduser(
-                    f'~/.local/share/pixmaps/{short_name}{ext}')
+                    f'~/.local/share/pixmaps/{short_name}{icon_ext}')
                 with open(args.icon, 'wb+') as f:
                     for chunk in r.iter_content(chunk_size=128):
                         f.write(chunk)
-            elif ext == '.svg':
+            elif icon_ext == '.svg':
                 args.icon = expanduser('~/.local/share/icons/hicolor/scalable/'
-                                       f'apps/{short_name}{ext}')
+                                       f'apps/{short_name}{icon_ext}')
                 with open(args.icon, 'wb+') as f:
                     for chunk in r.iter_content(chunk_size=128):
                         f.write(chunk)
             else:
-                fd, tmp_name = mkstemp(
-                    suffix=splitext(urlparse(args.icon).path)[1])
+                fd, tmp_name = mkstemp(suffix=icon_ext)
                 args.icon = expanduser('~/.local/share/pixmaps/'
                                        f'{short_name}.png')
                 for chunk in r.iter_content(chunk_size=128):
@@ -87,12 +87,11 @@ def main():
                     with open(args.icon, 'rb'):
                         pass
                 except FileNotFoundError:
-                    args.icon = sorted(glob(f'{splitext(args.icon)[0]}-*.png'),
+                    args.icon = sorted(glob(f'{icon_prefix}-*.png'),
                                        reverse=True)[0]
         elif is_mac:
-            ext = splitext(urlparse(args.icon).path)[1].lower()
-            if ext != '.png':
-                fd, tmp_name = mkstemp(suffix=ext)
+            if icon_ext != '.png':
+                fd, tmp_name = mkstemp(suffix=icon_ext)
                 fd2, args.icon = mkstemp(suffix='.png')
                 close(fd2)
                 for chunk in r.iter_content(chunk_size=128):
@@ -103,17 +102,16 @@ def main():
                     with open(args.icon, 'rb'):
                         pass
                 except FileNotFoundError:
-                    args.icon = sorted(glob(f'{splitext(new_name)[0]}-*.png'),
+                    args.icon = sorted(glob(f'{icon_prefix}-*.png'),
                                        reverse=True)[0]
             else:
                 fd, args.icon = mkstemp(suffix='.png')
                 for chunk in r.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
-        else:
-            ext = splitext(urlparse(args.icon).path)
-            if ext != '.ico':
-                fd, tmp_name = mkstemp(suffix=ext)
+        else:  # Windows
+            if icon_ext != '.ico':
+                fd, tmp_name = mkstemp(suffix=icon_ext)
                 fd2, args.icon = mkstemp(suffix='.ico')
                 close(fd2)
                 for chunk in r.iter_content(chunk_size=128):
@@ -177,8 +175,7 @@ Icon={args.icon}
         macos_dir = path_join(contents_dir, 'MacOS')
         res_dir = path_join(contents_dir, 'Resources')
         profile_dir_short = args.profile_directory.replace(' ', '')
-        name_short = args.name.replace(' ', '')
-        bundle_id = f'com.google.Chrome.app.{profile_dir_short}-{name_short}'
+        bundle_id = f'com.google.Chrome.app.{profile_dir_short}-{short_name}'
         info_plist_data = dict(
             CFBundleExecutable='app_mode_loader',
             CFBundleIconFile='app.icns',
@@ -207,7 +204,7 @@ Icon={args.icon}
         chmod(script, 0o755)
         with open(path_join(contents_dir, 'Info.plist'), 'wb+') as f:
             plistlib.dump(info_plist_data, f)
-    elif is_windows:
+    else:  # Windows
         # Generate a JScript file and run it
         fd, script_js = mkstemp(suffix='.js')
         close(fd)
@@ -247,8 +244,6 @@ link.WorkingDirectory = desktop;\n''')
             print(f'Caught exception: {e}', file=sys.stderr)
             with open(script_js, 'r') as f:
                 print(f.read(), file=sys.stderr)
-    else:
-        raise RuntimeError('Should never get here')
 
 
 if __name__ == '__main__':
