@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+main() {
+    local path json
+    path=$(realpath "$1")
+    json="{\"command\":[\"loadfile\",\"${path}\"]}"
+    socat - "${HOME}/.cache/mpv.sock" <<< "$json" ||
+        mpv --player-operation-mode=pseudo-gui "$path"
+}
+
+for arg in "$@"; do
+    [ -e "$arg" ] && main "$arg"
+done

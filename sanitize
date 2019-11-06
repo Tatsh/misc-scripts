@@ -1,0 +1,25 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+from __future__ import unicode_literals
+import re
+import sys
+
+from youtube_dl.utils import sanitize_filename
+
+
+def main(s):
+    try:
+        r = sanitize_filename(
+            s.decode('utf-8', errors='ignore'), restricted=True)
+    except IndexError:
+        return 1
+    r = r.strip()
+    if not r:
+        return 1
+    print(re.sub(r'[_\-]+', '-', r.lower()))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1]))

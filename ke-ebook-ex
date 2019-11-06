@@ -1,0 +1,80 @@
+#!/usr/bin/env python
+from __future__ import print_function
+from os import chdir, getcwd, listdir, remove as rm, rename
+from os.path import basename, dirname, isdir, realpath
+from zipfile import ZipFile
+import argparse
+import re
+import subprocess as sp
+import sys
+
+
+def extract_rar_from_zip(zfile):
+    rars = [x for x in zfile.namelist() if re.search(r'\.r(?:ar|\d{2})$', x)]
+    [zfile.extract(x) for x in rars]
+
+    return rars
+
+
+def unrar_x(rar):
+    try:
+        rar = rar[0]
+    except IndexError:
+        pass
+    sp.check_call(['unrar', 'x', '-y', rar])
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('directories', nargs='+')
+
+    args = parser.parse_args()
+
+    for _dir in args.directories:
+        if not isdir(_dir):
+            print('Directory argument %s is invalid', file=sys.stderr)
+            sys.exit(1)
+
+    for _dir in args.directories:
+        last = getcwd()
+        chdir(_dir)
+
+        orig_listing = listdir('.')
+        zip_listing = frozenset(
+            ZipFile(x) for x in listdir('.') if x.endswith('.zip'))
+        if len(zip_listing) == 0:
+            print(
+                'No zip files found. Skipping directory %s' % (_dir, ),
+                file=sys.stderr)
+            continue
+
+        _rar_list = [extract_rar_from_zip(x) for x in zip_listing]
+        extracted = [x for y in _rar_list for x in y]
+        # Only need the .rar
+        rar = [x for x in extracted if x.endswith('.rar')]
+        unrar_x(rar)
+
+        pdf = [x for x in listdir('.') if x.endswith('.pdf')]
+
+        if len(pdf) > 1:
+            print(
+                'More than one PDF extracted. Not sure what to do. Skipping '
+                'directory %s' % (_dir, ),
+                file=sys.stderr)
+            continue
+
+        with open(pdf[0], 'rb') as f:
+            if f.read(4) != b'%PDF':
+                print(
+                    '.pdf file extracted but is not a PDF. Skipping '
+                    'directory %s' % (_dir, ),
+                    file=sys.stderr)
+                continue
+
+        target_name = '../%s.pdf' % (basename(dirname(realpath(pdf[0]))), )
+        rename(pdf[0], target_name)
+
+        [rm(x) for x in extracted]
+
+        chdir(last)

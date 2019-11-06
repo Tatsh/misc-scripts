@@ -1,0 +1,21 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+
+import argparse
+import sys
+from mp3rename import clean_str
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Replaces white space with underscores')
+    parser.add_argument(
+        'strings',
+        metavar='STRING',
+        default=sys.stdin,
+        nargs='*',
+        help='Strings to process')
+
+    args = parser.parse_args()
+    strings = args.strings
+
+    print(clean_str(' '.join(strings)))
