@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 main() {
     if [ -z "$1" ] || [ -z "$2" ]; then
         echo 'Usage: INPUT TITLE'
