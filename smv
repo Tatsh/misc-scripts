@@ -1,50 +1,45 @@
 #!/usr/bin/env bash
 DASHARG=
-c=
-F=
-i=
-l=
-o=
-P=
-S=
-RMVERBOSE=0
-RMRECURSIVE=0
+DEST="${BASH_ARGV[0]}"
+files=()
+rm_args=()
+scp_args=()
 
 while getopts "hc:F:i:l:o:P:S:1246BCEpqrv" OPTION; do
     case $OPTION in
         1 | 2 | 4 | 6 | B | C | E | p | q | r | v)
-            [ "$DASHARG" = "" ] && DASHARG="-"
+            [ -z "$DASHARG" ] && DASHARG="-"
             DASHARG="$DASHARG$OPTION"
-            [ "$OPTION" = "v" ] && RMVERBOSE=1
-            [ "$OPTION" = "r" ] && RMRECURSIVE=1
+            [ "$OPTION" = "v" ] && rm_args+=("-v")
+            [ "$OPTION" = "r" ] && rm_args+=("-R")
             ;;
 
         c)
-            c="-c $OPTARG"
+            scp_args+=("-c $OPTARG")
             ;;
 
         F)
-            F="-F $OPTARG"
+            scp_args+=("-F $OPTARG")
             ;;
 
         i)
-            i="-i $OPTARG"
+            scp_args+=("-i $OPTARG")
             ;;
 
         l)
-            l="-l $OPTARG"
+            scp_args+=("-l $OPTARG")
             ;;
 
         o)
-            o="-o $OPTARG"
+            scp_args+=("-o $OPTARG")
             ;;
 
         P)
-            P="-P $OPTARG"
+            scp_args+=("-P $OPTARG")
             ;;
 
         S)
-            S="-S $OPTARG"
+            scp_args+=("-S $OPTARG")
             ;;
 
         h)
@@ -59,18 +54,23 @@ while getopts "hc:F:i:l:o:P:S:1246BCEpqrv" OPTION; do
     esac
 done
 
-SRC="${BASH_ARGV[1]}"
-DEST=$BASH_ARGV
-RMARGS=
-
-if [ ! "$SRC" ]; then
+if [ -n "$DASHARG" ]; then
+  scp_args+=("$DASHARG")
+fi
+for f in "$@"; do
+    if [[ "$f" = -* ]] || [[ "$f" = "$DEST" ]]; then
+        continue
+    fi
+    scp_args+=("$f")
+    files+=("$f")
+done
+if ((${#files[@]} == 0)) || [ -z "$DEST" ]; then
     scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
     exit 1
 fi
+scp_args+=("${DEST}")
+((${#rm_args[@]} == 0)) && unset rm_args
 
-[ $RMVERBOSE ] && RMARGS="-v"
-[ $RMRECURSIVE ] && RMARGS="${RMARGS}R"
-
-if scp "$DASHARG" "$c" "$F" "$i" "$l" "$o" "$P" "$S" "$SRC" "$DEST"; then
-    rm "$RMARGS" "$SRC"
+if scp "${scp_args[@]}"; then
+    rm "${rm_args[@]}" "${files[@]}"
 fi
