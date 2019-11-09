@@ -3,7 +3,6 @@ from os.path import basename, dirname, join as path_join, splitext
 import argparse
 import os
 import re
-import sys
 
 
 def main():
