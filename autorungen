@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-
 usage() {
     echo "Usage: $0 <exe file> <icon> <icon index>"
 }
 
 [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] && usage && exit 1
 
-EXE="$1"
-ICO_INDEX="$3"
+exe="$1"
+ico_index="$3"
 
 printf "[Autorun]\nopen=%s\nicon=%s,%d\n" \
-    "$EXE" "$EXE" "$ICO_INDEX" > Autorun.inf
+    "$exe" "$exe" "$ico_index" > Autorun.inf
 unix2dos Autorun.inf &> /dev/null
