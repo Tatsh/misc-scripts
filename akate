@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 filenames=()
 final_args=()
 for arg in "$@"; do
@@ -12,7 +11,7 @@ done
 
 if [ -x /Applications/MacPorts/KF5/kate.app/Contents/MacOS/kate ]; then
     open -a /Applications/MacPorts/KF5/kate.app/Contents/MacOS/kate \
-        ${filenames[*]} --args ${final_args[*]}
+        "${filenames[@]}" --args "${final_args[@]}"
 else
-    kate ${final_args[*]} ${filenames[*]}
+    kate "${final_args[@]}" -- "${filenames[@]}"
 fi
