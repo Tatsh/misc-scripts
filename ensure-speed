@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 from datetime import datetime
-from os.path import realpath
 from logging.handlers import SysLogHandler
+from os.path import realpath
 import argparse
 import logging
 import signal
+import subprocess as sp
 import sys
 
-from sh import speedtest
-import sh
-import yaml
+try:
+    import yaml
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
 
@@ -18,16 +21,20 @@ logyamlfh = None
 syslogh = None
 
 
+def speedtest(*args, **kwargs) -> sp.CompletedProcess:
+    kwargs['check'] = True
+    kwargs['capture_output'] = True
+    return sp.run(('speedtest', ) + args, **kwargs)
+
+
 def cleanup():
     global logfh, syslogh
-
     if logfh:
         logfh.close()
     if logyamlfh:
         logyamlfh.close()
     if syslogh:
         syslogh.close()
-
     logging.shutdown()
 
 
@@ -41,7 +48,7 @@ def ctrl_c(signum, frame):
     raise SystemExit('Signal raised')
 
 
-def log_yaml(**kwargs):
+def maybe_log_yaml(**kwargs):
     if logyamlfh:
         kwargs['time'] = str(datetime.today())
         logyamlfh.write(
@@ -50,102 +57,89 @@ def log_yaml(**kwargs):
                            allow_unicode=True))
 
 
+def get_line_value(s: str) -> str:
+    return s.split(':')[1].strip().split(' ')[0].strip()
+
+
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, ctrl_c)
     logger = logging.getLogger('speedtest')
     logger.setLevel(logging.INFO)
-
-    signal.signal(signal.SIGINT, ctrl_c)
-
     parser = argparse.ArgumentParser()
-
     parser.add_argument('-d', '--download-threshold', default=50, type=float)
     parser.add_argument('-u', '--upload-threshold', default=5, type=float)
     parser.add_argument('-p', '--ping-threshold', default=30, type=float)
     parser.add_argument('-s', '--syslog', action='store_true')
     parser.add_argument('-l', '--log-file', help='Debug log')
     parser.add_argument('-v', '--verbose', action='store_true')
-
     args = parser.parse_args()
     ping = dl = ul = share = None
     failed = False
-
     if args.log_file:
         args.log_file = realpath(args.log_file)
         logfh = open(args.log_file, 'a+')
-        logyamlfh = open(args.log_file + '.yml', 'a+')
+        if HAS_YAML:
+            logyamlfh = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(logfh)
-
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)
         logger.addHandler(channel)
-
     if args.syslog:
         syslogh = SysLogHandler(address='/dev/log')
-
         syslogh.setFormatter(LOG_FORMATTER)
         syslogh.setLevel(logging.INFO)
         logger.addHandler(syslogh)
-
     if args.verbose:
         channel = logging.StreamHandler(sys.stdout)
-
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.INFO)
         logger.addHandler(channel)
-
     logger.info('Running `speedtest --share --simple`')
-
     try:
-        for line in speedtest(['--share', '--simple'], _iter=True):
+        for line in speedtest('--share',
+                              '--simple').stdout.decode('utf-8').split('\n'):
             if line.startswith('Ping: '):
-                ping = float(line.split(':')[1].strip().split(' ')[0].strip())
+                ping = float(get_line_value(line))
             elif line.startswith('Download: '):
-                dl = float(line.split(':')[1].strip().split(' ')[0].strip())
+                dl = float(get_line_value(line))
             elif line.startswith('Upload: '):
-                ul = float(line.split(':')[1].strip().split(' ')[0].strip())
+                ul = float(get_line_value(line))
             elif line.startswith('Share results: '):
                 share = ':'.join(line.split(':')[1:]).strip()
-    except sh.ErrorReturnCode_1 as e:
+    except sp.CalledProcessError as e:
         logger.error('speedtest failed to run')
-        logger.error(e.stderr.decode('utf-8'))
+        if e.stderr:
+            logger.error(e.stderr.decode('utf-8'))
         cleanup_and_exit(status=1)
-
     if ping > args.ping_threshold:
-        logger.error('Ping threshold higher than threshold. Got {ping:0.03f}; '
-                     'wanted at most '
-                     '{wanted:0.03f}'.format(ping=ping,
-                                             wanted=args.ping_threshold))
+        logger.error(
+            'Ping threshold higher than threshold. Got %0.03f, '
+            'wanted at most %.03f.', ping, args.ping_threshold)
         failed = True
     if dl < args.download_threshold:
-        logger.error('Download speed threshold lower than threshold. Got '
-                     '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(speed=dl,
-                                             wanted=args.download_threshold))
+        logger.error(
+            'Download speed threshold lower than threshold. '
+            'Got %.03f, wanted at least %0.03f.', dl, args.download_threshold)
         failed = True
     if ul < args.upload_threshold:
-        logger.error('Upload speed threshold lower than threshold. Got '
-                     '{speed:0.03f}, wanted at least '
-                     '{wanted:0.03f}'.format(speed=ul,
-                                             wanted=args.download_threshold))
+        logger.error(
+            'Upload speed threshold lower than threshold. '
+            'Got %.03f, wanted at least %0.03f.', ul, args.upload_threshold)
         failed = True
-
-    logger.info('Ping: {ping:0.03f} ms'.format(ping=ping))
-    logger.info('Download speed: {speed:0.02f} Mb/s'.format(speed=dl))
-    logger.info('Upload speed: {speed:0.02f} Mb/s'.format(speed=ul))
-    logger.info('Share URI: {uri!s}'.format(uri=share))
-    log_yaml(ping=ping, download=dl, upload=ul, share_uri=share)
-
-    if True in [not x for x in (
+    logger.info('Ping: %0.03f ms', ping)
+    logger.info('Download speed: %0.02f Mb/s', dl)
+    logger.info('Upload speed: %0.02f Mb/s', ul)
+    logger.info('Share URI: %s', share)
+    maybe_log_yaml(ping=ping, download=dl, upload=ul, share_uri=share)
+    if True in (not x for x in (
             ping,
             dl,
             ul,
             share,
-    )]:
+    )):
         logger.error('Output not as expected (other error)')
         cleanup_and_exit(status=1)
-
     if failed:
         logger.error('Exiting with status 1')
         cleanup_and_exit(status=1)
-
     cleanup_and_exit()
