@@ -1,185 +1,150 @@
 #!/usr/bin/env python
-
+from os.path import basename
+from typing import Optional, Tuple, cast
 import argparse
 import glob
+import logging
 import os
 import subprocess as sp
 import sys
 
-try:
-    from shlex import quote as shell_quote
-except ImportError:
-    from pipes import quote as shell_quote
-
-verbose = False
+log: Optional[logging.Logger] = None
 
 
-def verbose_print(message):
-    if verbose is False:
-        return
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
-    print(message)
 
-
-def crc_check_with_sfv(sfv_filename):
+def crc_check_with_sfv(sfv_filename: str) -> bool:
+    assert log is not None
     cwd = os.getcwd()
     sfv_dir = os.path.dirname(os.path.abspath(sfv_filename))
-    args = ['cksfv', '-f', shell_quote(sfv_filename)]
-
-    if verbose is False:
-        args.append('&>/dev/null')
-
-    args = ' '.join(args)
-
-    verbose_print(args)
+    args = ('cksfv', '-f', sfv_filename)
+    log.debug('%s', ' '.join(args))
     os.chdir(sfv_dir)
-
-    r = sp.call(args, shell=True)
-
+    r = sp.run(args)
     os.chdir(cwd)
-
-    if r == 0:
-        return True
-
-    return False
+    return True if r.returncode == 0 else False
 
 
-def test_extraction(rar_filename):
-    test_arg = 't'
-
-    if verbose is False:
-        test_arg = 't -inul'
-
-    args = ' '.join(['unrar', test_arg, shell_quote(rar_filename)])
-
-    verbose_print(args)
-
-    r = sp.call(args, shell=True)
-
-    if r == 0:
-        return True
-
-    return False
+def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
+    assert log is not None
+    args = ['unrar', 't']
+    if not verbose:
+        args.append('-inul')
+    args.append(rar_filename)
+    log.debug('%s', ' '.join(args))
+    r = sp.run(args)
+    return True if r.returncode == 0 else False
 
 
-def find_iso_in_rar(rar_filename):
+def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
     # Find if there is an ISO within the RAR f
-    work = list(['', ''])
-    r = sp.Popen(['unrar', 'l', rar_filename], stdout=sp.PIPE)
-    for line in r.stdout:
-        line_str = str(line, encoding='utf8')
-        if 'iso' in line_str.lower():
+    work = ['', '']
+    r = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE)
+    for line in r.stdout.decode('utf-8').split('\n'):
+        if 'iso' in line.lower():
             work = line.split()
             break
-    r.wait()
-
     # Handle spaces in ISO file name
-    fn = str(work[0], encoding='utf8')
-    if 'iso' not in fn.lower():
+    fn = work[4]
+    if '.iso' not in fn.lower():
         fn = ''
         i = 0
-        for iso in work:
-            if 'iso' in iso.lower():
+        for iso in work[4:]:
+            if '.iso' in iso.lower():
                 fn += iso
                 i += 1
                 break
-            fn += iso + ' '
+            fn += f'{iso} '
             i += 1
-
     if 'iso' not in fn.lower():
-        return (False, False)
-
-    work_str = str(work[0], encoding='utf8')
+        return None, None
+    work_str = work[4]
     if 'iso' in work_str.lower():
         i = 1
-
-    tsize = work[i]
-
-    return (fn, int(tsize))
+    return fn, int(work[i])
 
 
-def unrar_wodim_pipe(rar_filename,
-                     iso_filename,
-                     tsize,
-                     speed=8,
-                     device_name=None):
-    unrar_args = [
+def unrar_wodim_pipe(rar_filename: str,
+                     iso_filename: str,
+                     tsize: int,
+                     speed: int = 8,
+                     device_name: Optional[str] = None,
+                     verbose: bool = False) -> bool:
+    assert log is not None
+    unrar_args = (
         'unrar',
         'p',
         '-inul',
-        shell_quote(rar_filename),
-        shell_quote(iso_filename),
-    ]
+        rar_filename,
+        iso_filename,
+    )
     wodim_args = [
         'cdrecord',
-        ('speed=%d' % speed),
+        f'speed={speed}',
         'driveropts=burnfree',
-        ('tsize=%d' % tsize),
+        f'tsize={tsize}',
     ]
-
-    if device_name is not None:
-        wodim_args.append('dev=%s' % (shell_quote(str(device_name))))
-
+    if device_name:
+        wodim_args.append(f'dev={device_name}')
     wodim_args.extend(['-dao', '-eject', '-'])
-
     if verbose:
         wodim_args.append('-v')
-
-    verbose_print('Command: %s | %s' %
-                  (' '.join(unrar_args), ' '.join(wodim_args)))
-
+    log.debug('Command: %s | %s', ' '.join(unrar_args), ' '.join(wodim_args))
     r1 = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
     r2 = sp.Popen(wodim_args, stdin=r1.stdout, close_fds=True)
-
     r1.stdout.close()
     r2.wait()
     r1.wait()
-
-    if r1.returncode != 0 or r2.returncode != 0:
-        return False
-
-    return True
+    return r1.returncode == 0 and r2.returncode == 0
 
 
-def check_requirements(skip_crc):
+def check_requirements(skip_crc: bool) -> bool:
     try:
-        sp.check_output('which unrar &> /dev/null', shell=True)
-        if skip_crc is False:
-            sp.check_output('which cksfv &> /dev/null', shell=True)
-        sp.check_output('which cdrecord &> /dev/null', shell=True)
+        sp.check_output(('which', 'unrar'))
+        if not skip_crc:
+            sp.check_output(('which', 'cksfv'))
+        sp.check_output(('which', 'cdrecord'))
     except sp.CalledProcessError as e:
-        command_needed = e.cmd \
-                          .replace('which ', '') \
-                          .replace(' &> /dev/null', '')
-
-        print('Your system is missing "%s" (or it is not in PATH)' %
-              (command_needed))
-
+        command_needed = e.cmd.replace('which ', '')
+        print(
+            f'Your system is missing "{command_needed}" (or it is not in '
+            'PATH)',
+            file=sys.stderr)
         apps_to_gentoo_packages = {
             'unrar': ['app-arch/unrar', 'app-arch/unrar-gpl'],
             'cksfv': ['app-arch/cksfv'],
             'cdrecord': ['app-cdr/cdrtools'],
         }
-
         if len(apps_to_gentoo_packages[command_needed]) == 1:
-            print('If you are using Gentoo or a derivative with Gentoo\'s '
-                  'Portage tree, you can find "%s" in package %s' %
-                  (command_needed, apps_to_gentoo_packages[command_needed][0]))
+            print(
+                'If you are using Gentoo or a derivative with Gentoo\'s '
+                f'Portage tree, you can find "{command_needed}" in package '
+                f'{apps_to_gentoo_packages[command_needed][0]}',
+                file=sys.stderr)
         else:
-            print('If you are using Gentoo or a derivative with Gentoo\'s '
-                  'Portage tree, you can find "%s" in packages %s' %
-                  (command_needed, ', '.join(
-                      apps_to_gentoo_packages[command_needed])))
-
+            pkgs = ', '.join(apps_to_gentoo_packages[command_needed])
+            print(
+                'If you are using Gentoo or a derivative with Gentoo\'s '
+                f'Portage tree, you can find "{command_needed}" in '
+                f'packages {pkgs}',
+                file=sys.stderr)
         return False
-
     return True
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Burns an ISO found in a RAR'
-                                     'file without extracting')
-
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Burns an ISO found in a RAR file without extracting')
     parser.add_argument('-v',
                         help='enables verbose mode',
                         action='store_true',
@@ -202,63 +167,59 @@ if __name__ == '__main__':
                         default=None,
                         help='Device name (no argument means default)')
     parser.add_argument('rar_filename', help='Base RAR file name')
-
     args = parser.parse_args()
-    verbose = args.verbose
     rar_filename = os.path.realpath(args.rar_filename)
-
-    if check_requirements(args.crc_test) is False:
-        sys.exit(1)
-
+    setup_logging_stdout(verbose=args.verbose)
+    assert log is not None
+    if not check_requirements(args.crc_test):
+        return 1
     iso, tsize = find_iso_in_rar(rar_filename)
-
     if not tsize:
-        print('Unable to find ISO in RAR "%s"' % (args.rar_filename))
-        sys.exit(1)
+        print(f'Unable to find ISO in RAR "{args.rar_filename}"',
+              file=sys.stderr)
+        return 1
     else:
-        verbose_print('Found ISO "%s" with tsize %d' % (iso, tsize))
-
-    if args.crc_test is False:
+        log.debug('Found ISO %s with tsize %d', iso, tsize)
+    if not args.crc_test:
         # See if file without .rar/.001/etc exists first
         filename_without_ext, _ = os.path.splitext(args.rar_filename)
-        sfv_filenames = [
-            filename_without_ext + '.sfv',
-            filename_without_ext + '.SFV',
-        ]
+        sfv_filenames = (
+            f'{filename_without_ext}.sfv',
+            f'{filename_without_ext}.SFV',
+        )
         sfv_filename = None
-
         for name in sfv_filenames:
             if os.path.exists(name):
                 sfv_filename = name
-                verbose_print('Found SFV file: "%s"' %
-                              (os.path.basename(name)))
-
-        if sfv_filename is None:
+                log.debug('Found SFV file: "%s"', basename(name))
+        if not sfv_filename:
             globbed = glob.glob('*.sfv')
-
             if len(globbed):
                 sfv_filename = globbed[0]
-                verbose_print('Found SFV file via globbing: "%s"' %
-                              (os.path.basename(globbed)))
-
-        if sfv_filename is None:
-            print('Cannot find SFV file to verify with '
-                  '(you can run with --no-crc-check)')
-            sys.exit(1)
-
-        if crc_check_with_sfv(sfv_filename) is False:
-            print('SFV verification failed')
-            sys.exit(1)
-
-    if args.rar_test is True:
-        print('Testing extraction ...')
-        if test_extraction(rar_filename) is False:
-            print('Extraction test failed')
-            sys.exit(1)
+                log.debug('Found SFV file via globbing: "%s"',
+                          basename(sfv_filename))
+        if not sfv_filename:
+            print(
+                'Cannot find SFV file to verify with '
+                '(you can run with --no-crc-check)',
+                file=sys.stderr)
+            return 1
+        if not crc_check_with_sfv(sfv_filename):
+            print('SFV verification failed', file=sys.stderr)
+            return 1
+    if args.rar_test:
+        log.info('Testing extraction')
+        if not test_extraction(rar_filename, verbose=args.verbose):
+            print('Extraction test failed', file=sys.stderr)
+            return 1
         else:
-            verbose_print('Extraction test succeeded')
+            log.debug('Extraction test succeeded')
+    if not unrar_wodim_pipe(rar_filename, cast(str, iso), tsize, args.speed,
+                            args.device):
+        print('Write failed!', file=sys.stderr)
+        return 1
+    return 0
 
-    if unrar_wodim_pipe(rar_filename, iso, tsize, args.speed, args.device) is \
-            not True:
-        print('Write failed!')
-        sys.exit(1)
+
+if __name__ == '__main__':
+    sys.exit(main())
