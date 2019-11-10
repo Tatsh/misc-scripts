@@ -26,7 +26,10 @@ def main() -> int:
         parser.add_argument('string', nargs='*')
     args = parser.parse_args()
     arg = args.string if is_atty else sys.stdin.readlines()
-    for x in parse(arg, is_netloc=is_netloc):
+    for x in parse(arg,
+                   is_netloc=is_netloc,
+                   encoding=args.encoding,
+                   errors=args.errors):
         print(x)
     return 0
 
