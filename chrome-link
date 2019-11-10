@@ -31,7 +31,6 @@ def main():
     chrome_command_kwargs = dict(required=True)
     if is_linux:
         chrome_command_kwargs = dict(default='chromium-browser')
-
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--chrome-command', **chrome_command_kwargs)
     parser.add_argument('-p', '--profile-directory', default='Default')
@@ -47,7 +46,6 @@ def main():
     parser.add_argument('url')
     args = parser.parse_args()
     short_name = args.name.replace(' ', '')
-
     if not args.icon and HAS_REQUESTS:
         p = urlparse(args.url)
         args.icon = f'{p.scheme}://{p.netloc}/favicon.ico'
@@ -57,7 +55,6 @@ def main():
             if is_mac:
                 print('Need -i argument', file=sys.stderr)
                 return 1
-
     if re.match(r'https?\://', args.icon or '') and HAS_REQUESTS:
         r = requests.get(args.icon, stream=True)
         icon_prefix, icon_ext = splitext(urlparse(args.icon).path)
@@ -124,7 +121,6 @@ def main():
                 with open(args.icon, 'wb+') as f:
                     for chunk in r.iter_content(chunk_size=128):
                         f.write(chunk)
-
     if is_linux:
         # Create .desktop file
         apps_dir = expanduser('~/.local/share/applications')
