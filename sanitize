@@ -1,17 +1,13 @@
 #!/usr/bin/env python
-# coding: utf-8
-
-from __future__ import unicode_literals
 import re
 import sys
 
 from youtube_dl.utils import sanitize_filename
 
 
-def main(s):
+def main(s: str) -> int:
     try:
-        r = sanitize_filename(
-            s.decode('utf-8', errors='ignore'), restricted=True)
+        r = sanitize_filename(s, restricted=True)
     except IndexError:
         return 1
     r = r.strip()
