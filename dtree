@@ -1,20 +1,19 @@
 #!/usr/bin/env python
-from collections import Iterable
-try:
-    from html import escape
-except ImportError:
-    from cgi import escape
-try:
-    from os import scandir
-except ImportError:
-    from scandir import scandir
-from os import chdir
+from html import escape
+from os import chdir, scandir
 from os.path import basename, realpath
+from typing import Any, Iterable, Iterator, List, Sequence, Union, cast
 import argparse
 import sys
 
+BOOTSTRAP_CSS_URI = (
+    'https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css')
+BOOTSTRAP_CSS_HASH = (
+    'sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO')
 
-def flatten(items):
+
+def flatten(items: Sequence[Union[str, bytes, List[Any]]]
+            ) -> Iterator[Union[Any, str, bytes]]:
     """
     Yield items from any nested iterable.
     Credit: https://stackoverflow.com/a/40857703
@@ -27,86 +26,77 @@ def flatten(items):
             yield x
 
 
-def is_dir(f=False):
-    def ret(x):
-        return not x.is_dir(follow_symlinks=f)
-
-    return ret
-
-
-def recurse_cwd(path, follow_symlinks=False, depth=1, _cur_depth=0):
-    files = []
-
-    for entry in sorted(sorted(scandir(path), key=lambda x: x.name),
-                        key=is_dir(f=follow_symlinks)):
+def recurse_cwd(path: str,
+                follow_symlinks: bool = False,
+                depth: int = 1,
+                _cur_depth: int = 0) -> List[Union[str, List[Any]]]:
+    files: List[Union[str, List[Any]]] = []
+    for entry in sorted(
+            sorted(scandir(path), key=lambda x: x.name),
+            key=lambda x: not x.is_dir(follow_symlinks=follow_symlinks)):
         if (entry.is_dir(follow_symlinks=follow_symlinks)
                 and _cur_depth < depth):
-            new_files = recurse_cwd(entry.path,
-                                    follow_symlinks=follow_symlinks,
-                                    depth=depth,
-                                    _cur_depth=_cur_depth + 1)
             files.append('<li class="dir"><details><summary>'
-                         '<code>{}/</code></summary><ul>'.format(
-                             escape(entry.name)))
-            files.append(new_files)
+                         f'<code>{escape(entry.name)}/</code></summary><ul>')
+            files.append(
+                recurse_cwd(entry.path,
+                            follow_symlinks=follow_symlinks,
+                            depth=depth,
+                            _cur_depth=_cur_depth + 1))
             files.append('</ul></details></li>')
         else:
             isd = entry.is_dir(follow_symlinks=follow_symlinks)
-            claz = ' class="file"'
-            slash = ''
-            if isd:
-                claz = ' class="dir"'
-                slash = '/'
-            files.append('<li{}><code>{}{}</code></li>'.format(
-                claz, escape(entry.name), slash))
+            claz = 'file' if not isd else 'dir'
+            slash = '' if not isd else '/'
+            files.append(f'<li class="{claz}">'
+                         f'<code>{escape(entry.name)}{slash}</code></li>')
     return files
 
 
-def main(args):
-    follow_sym = args.follow_symlinks
-    depth = args.depth
-    chdir(args.dir[0])
-    title = basename(realpath(args.dir[0]))
-    print('<!DOCTYPE html>')
-    print('<html lang="en">')
-    print('<head><meta charset="utf-8"><title>Contents of {}/</title>'.format(
-        title))
-    print('''<link rel="stylesheet"
-href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
-integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO"
-crossorigin="anonymous">
-    <style>
-        ul {
-            list-style-type: none;
-        }
-        code {
-            color: #000;
-            font-size: 80%;
-        }
-        .dir {
-            font-weight: bold;
-        }
-        .file {
-            font-weight: normal;
-        }
-    </style>
-</head>''')
-    print('<body>')
-    print('<ul>')
-    files = ''.join(
-        flatten(
-            recurse_cwd(args.dir[0], follow_symlinks=follow_sym, depth=depth)))
-    print(files)
-    print('</ul>')
-    print('</body>')
-    print('</html>')
-
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(basename(sys.argv[0]),
-                                     description='Generate a directory '
-                                     'listing in HTML 5.')
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        basename(sys.argv[0]),
+        description='Generate a directory listing in HTML 5.')
     parser.add_argument('dir', nargs=1)
     parser.add_argument('-s', '--follow-symlinks', action='store_true')
     parser.add_argument('-d', '--depth', default=1, type=int)
-    sys.exit(main(parser.parse_args()))
+    args = parser.parse_args()
+    chdir(args.dir[0])
+    title = basename(realpath(args.dir[0]))
+    files = ''.join(
+        cast(
+            Iterable[str],
+            flatten(recurse_cwd(args.dir[0], args.follow_symlinks,
+                                args.depth))))
+    print(f'''<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Contents of {title}/</title>
+<link rel="stylesheet" href="{BOOTSTRAP_CSS_URI}"
+integrity="{BOOTSTRAP_CSS_HASH}" crossorigin="anonymous">
+<style>
+ul {{
+    list-style-type: none;
+}}
+code {{
+    color: #000;
+    font-size: 80%;
+}}
+.dir {{
+    font-weight: bold;
+}}
+.file {{
+    font-weight: normal;
+}}
+</style>
+</head>
+<body>
+<ul>{files}</ul>
+</body>
+</html>''')
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
