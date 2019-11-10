@@ -8,23 +8,24 @@ import re
 KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
 
 
-def hexstr2bytes(s):
+def hexstr2bytes(s: str) -> bytes:
     def chunks(l, n):
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    def hexstr2bytes_generator(s):
+    def hexstr2bytes_generator(s: str):
         for h in chunks(s, 2):
             yield int(h, 16)
 
     return bytes(hexstr2bytes_generator(s))
 
 
-def xattr(key, filename):
+def xattr(key, filename) -> str:
     return re.sub(
         r'\s+', '',
         sp.run(('xattr', '-p', key, filename),
-               stdout=sp.PIPE).stdout.decode('utf-8'))
+               encoding='utf-8',
+               stdout=sp.PIPE).stdout)
 
 
 def main():
@@ -42,18 +43,19 @@ def main():
     has_multiple = len(args.files) > 1
     index = 1 if args.webpage else 0
     ret = 0
+    arg: str
     for arg in args.files:
         try:
-            val = plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
-                                                    arg)))[index]
+            val: str = plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
+                                                         arg)))[index]
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
         except Exception as e:
-            print(str(e), file=sys.stderr)
+            clz = str(type(e))[8:-2]
+            print(f'{clz}: {str(e)}', file=sys.stderr)
             ret = 1
         except KeyboardInterrupt:
-            print('Killed', file=sys.stderr)
             return 1
     return ret
 
