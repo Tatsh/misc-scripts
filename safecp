@@ -1,15 +1,15 @@
 #!/usr/bin/env python
-from __future__ import print_function, unicode_literals
 from os import stat, unlink, utime
 from os.path import (basename, isdir, isfile, join as path_join, realpath,
                      splitext)
+from typing import Optional
 import argparse
 import sys
 
 
-def safe_rename(fn, target, preserve):
+def safe_rename(fn: str, target: str, preserve: bool):
     if not isfile(target) and not isdir(target):
-        print('copy {} -> {}'.format(fn, target), file=sys.stderr)
+        print(f'copy {fn} -> {target}', file=sys.stderr)
         with open(target, 'wb+') as f:
             with open(fn, 'rb') as o:
                 f.write(o.read())
@@ -23,28 +23,25 @@ def safe_rename(fn, target, preserve):
     if isdir(target):
         target = path_join(target, basename(fn))
         return safe_rename(fn, target, preserve)
-
     renamed = False
     n = 1
     while not renamed:
         bfn, ext = splitext(target)
         while isfile(target):
             suffix = '-{:d}'.format(n)
-            target = '{}{}{}'.format(bfn, suffix, ext if ext else '')
+            last = ext if ext else ''
+            target = f'{bfn}{suffix}{last}'
             n += 1
         renamed = safe_rename(fn, target, preserve)
         n += 1
-
     return renamed
 
 
-def main():
+def main() -> int:
     is_mv = sys.argv[0].endswith('safemv')
-
     help_ = 'Copy files without clobbering existing files'
     if is_mv:
         help_ = 'Move {}'.format(help_[5:])
-
     parser = argparse.ArgumentParser(help_)
     parser.add_argument('-t',
                         '--target-dir',
@@ -53,13 +50,11 @@ def main():
     parser.add_argument('--no-preserve', action='store_true')
     parser.add_argument('files', nargs='*')
     args = parser.parse_args()
-    target = args.target_dir
-
+    target: Optional[str] = args.target_dir
     if target:
         target = realpath(target)
         if not isdir(target):
-            print('TARGET_DIR argument must be a directory, given: {}'.format(
-                target),
+            print(f'TARGET_DIR argument must be a directory, given: {target}',
                   file=sys.stderr)
             return 1
     else:
@@ -69,21 +64,22 @@ def main():
             return 1
         should_be_dir_last = len(args.files) > 2
         target = realpath(args.files.pop())
+        assert target is not None
         if should_be_dir_last and not isdir(target):
             print(
                 'Last argument must be a directory if specifying more than '
                 '2 files to move',
                 file=sys.stderr)
             return 1
-
     args.files = (realpath(x) for x in args.files)
+    fn: str
     for fn in args.files:
         if not safe_rename(fn, target, not args.no_preserve):
-            raise Exception('Unexpected error')
-
+            raise RuntimeError('Unexpected error')
     if is_mv:
         for fn in args.files:
             unlink(fn)
+    return 0
 
 
 if __name__ == '__main__':
