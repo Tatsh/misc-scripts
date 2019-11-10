@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 from os.path import basename
+from typing import Any, Dict
 import argparse
 import logging
 import sys
 
 from requests.adapters import HTTPAdapter
+from requests.structures import CaseInsensitiveDict
 import requests
 
 GET_URL = 'https://tools.usps.com/go/TrackConfirmAction'
@@ -12,7 +14,7 @@ POST_URL = ('https://tools.usps.com/go/TrackConfirmRequestUpdateAJAXAction'
             '.action')
 NAME1_EMPTY_VALUE = 'not required'
 MAX_RETRIES = 10
-HEADERS = {
+HEADERS = CaseInsensitiveDict({
     'Accept-Language':
     'en-US,en;q=0.8,en-GB;q=0.6',
     'Connection':
@@ -31,9 +33,10 @@ HEADERS = {
     'no-cache',
     'Cache-Control':
     'no-cache',
-}
+})
 
-if __name__ == '__main__':
+
+def main() -> int:
     parser = argparse.ArgumentParser(basename(sys.argv[0]))
     parser.add_argument('tracking_number',
                         nargs='+',
@@ -44,44 +47,38 @@ if __name__ == '__main__':
                         metavar='PHONE_NUMBER',
                         help='Phone number to send SMS to (US only)')
     parser.add_argument('-d', '--debug', action='store_true')
-
     args = parser.parse_args()
-    phone_number = args.phone_number[0]
+    phone_number: str = args.phone_number[0]
     log = logging.getLogger('requests.packages.urllib3')
     formatter = logging.Formatter('%(asctime)s - %(name)s - '
                                   '%(levelname)s - %(message)s')
     channel = logging.StreamHandler(sys.stderr)
-
     log.setLevel(logging.DEBUG if args.debug else logging.ERROR)
     channel.setLevel(logging.DEBUG if args.debug else logging.ERROR)
     channel.setFormatter(formatter)
     log.addHandler(channel)
-
     http_adapter = HTTPAdapter(max_retries=MAX_RETRIES)
     session = requests.Session()
-
     session.mount('http://', http_adapter)
     session.mount('https://', http_adapter)
     session.headers = HEADERS
-
     if '-' not in phone_number:
         if phone_number[0] == '1' and len(phone_number) == 11:
             phone_number = phone_number[1:]
             log.debug('Removed leading 1')
         parts = [phone_number[i:i + 3] for i in range(0, 10, 3)]
-        log.debug('Phone number parts: {}'.format(parts))
+        log.debug('Phone number parts: %s', parts)
         phone_number = '-'.join(parts[0:3]) + parts[3]
-        log.debug('Adjusted phone number: {}'.format(phone_number))
-
+        log.debug('Adjusted phone number: %s', phone_number)
+    ret = 0
+    arg: str
     for arg in args.tracking_number:
         r = session.get(GET_URL, params=dict(qtc_tLabels1=arg))
         r.raise_for_status()
         content = r.content.decode('utf-8')
-
         if 'could not locate the tracking information' in content:
-            log.error('Failed with tracking number {}'.format(arg))
+            log.error('Failed with tracking number %s', arg)
             continue
-
         data = dict(
             label=arg,
             textAll='on',
@@ -96,15 +93,20 @@ if __name__ == '__main__':
             smsNumber=phone_number,
             confirmSms='on',
         )
-        log.debug('POST data: {}'.format(data))
+        log.debug('POST data: %s', data)
         add_headers = {
             'X-Requested-With': 'XMLHttpRequest',
-            'Referer': '{}?qtc_tLabels1={}'.format(GET_URL, arg),
+            'Referer': f'{GET_URL}?qtc_tLabels1={arg}',
         }
         r = session.post(POST_URL, data=data, headers=add_headers)
         r.raise_for_status()
-        json = r.json()
-        log.debug('JSON response: {}'.format(json))
+        json: Dict[str, Any] = r.json()
+        log.debug('Response: %s', json)
+        if json.get('textServiceError') != 'false':
+            log.error('Failed with tracking number %s', arg)
+            ret = 1
+    return ret
 
-        if json.get('textServiceError', None) != 'false':
-            log.error('Failed with tracking number {}'.format(arg))
+
+if __name__ == '__main__':
+    sys.exit(main())
