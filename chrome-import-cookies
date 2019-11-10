@@ -1,80 +1,90 @@
 #!/usr/bin/env python
-
-import os
+from copy import deepcopy
+from datetime import datetime
+from os.path import expanduser
+from typing import Dict, Optional, Union, cast
+from urllib.parse import unquote as urldecode
+import re
 import sqlite3
 import sys
-import re
-from urllib.parse import unquote as urldecode
-from datetime import datetime
 
-try:
-    cookies_txt = sys.argv[1]
-except IndexError:
-    print('Usage: %s COOKIES_TXT_FILE' % sys.argv[0])
-    sys.exit(1)
-home = os.environ['HOME']
-sqlite_file = home + '/.config/chromium/Default/Cookies'
-conn = sqlite3.connect(sqlite_file, detect_types=sqlite3.PARSE_COLNAMES)
-c = conn.cursor()
-i = 0
-
-regex = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
-         r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
-         r'\t(?P<name>.*)\t(?P<value>.*)\n?')
-creation_utc = int(
+CREATION_UTC = int(
     (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
-
-columns = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
+COLUMNS = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
            'secure', 'httponly', 'has_expires', 'persistent',
            'last_access_utc')
+LEN_COLUMNS = len(COLUMNS)
+DB_PATHS = (expanduser('~/.config/chromium/Default/Cookies'),
+            expanduser('~/Library/Application Support/Google/Chrome/Cookies'))
+REGEX = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
+         r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
+         r'\t(?P<name>.*)\t(?P<value>.*)\n?')
 
-with open(cookies_txt) as f:
-    lines = f.readlines()
-    for line in lines:
-        match = re.match(regex, line)
 
-        if match is None:
-            print('Skipping line: %s' % line.strip())
-            continue
+def main():
+    try:
+        cookies_txt = sys.argv[1]
+    except IndexError:
+        print(f'Usage: {sys.argv[0]} COOKIES_TXT_FILE', file=sys.stderr)
+        sys.exit(1)
+    conn: Optional[sqlite3.Connection] = None
+    last_exc: Optional[Exception] = None
+    for p in DB_PATHS:
+        try:
+            with open(p, 'rb'):
+                pass
+            conn = sqlite3.connect(p, detect_types=sqlite3.PARSE_COLNAMES)
+            break
+        except (FileNotFoundError, sqlite3.OperationalError) as e:
+            last_exc = e
+    if not conn and last_exc:
+        raise last_exc
+    if not conn:
+        raise RuntimeError('Failed to connect to database')
+    try:
+        with open(cookies_txt) as f:
+            i = 0
+            lines = f.readlines()
+            c = conn.cursor()
+            for line in lines:
+                match = re.match(REGEX, line)
+                if not match:
+                    print(f'Skipping line: {line.strip()}', file=sys.stderr)
+                    continue
+                dic = cast(Dict[str, Union[int, str]],
+                           deepcopy(match.groupdict()))
+                dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
+                dic['value'] = urldecode(cast(str, dic['value']))
+                dic['path'] = urldecode(cast(str, dic['path']))
+                has_expires = persistent = 1
+                if dic['expires_utc'] == 0:
+                    has_expires = 0
+                    persistent = 0
+                dic['httponly'] = 1 if dic['httponly'] == 'TRUE' else 0
+                dic['secure'] = 1 if dic['secure'] == 'TRUE' else 0
+                c.execute(
+                    ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
+                     'AND path = ?'), (
+                         dic['host_key'],
+                         dic['name'],
+                         dic['path'],
+                     ))
+                cols = ','.join(COLUMNS)
+                col_args = ('?,' * LEN_COLUMNS)[:-1]
+                t = (CREATION_UTC + i, dic['host_key'], dic['name'],
+                     dic['value'], dic['path'], dic['expires_utc'],
+                     dic['secure'], dic['httponly'], has_expires, persistent,
+                     CREATION_UTC)
+                c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})',
+                          t)
+                i += 1
+    except FileNotFoundError:
+        print(f'Cookies file {cookies_txt} specified does not exist',
+              file=sys.stderr)
+    finally:
+        conn.commit()
+        conn.close()
 
-        dic = match.groupdict()
-        dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
-        dic['value'] = urldecode(dic['value'])
-        dic['path'] = urldecode(dic['path'])
 
-        has_expires = persistent = 1
-
-        if dic['expires_utc'] == 0:
-            has_expires = 0
-            persist = 0
-
-        if dic['httponly'] == 'TRUE':
-            dic['httponly'] = 1
-        else:
-            dic['httponly'] = 0
-
-        if dic['secure'] == 'TRUE':
-            dic['secure'] = 1
-        else:
-            dic['secure'] = 0
-
-        query = '''
-DELETE FROM cookies WHERE host_key = ? AND name = ? AND path = ?
-'''
-        c.execute(query, (
-            dic['host_key'],
-            dic['name'],
-            dic['path'],
-        ))
-
-        query = ('INSERT INTO cookies (%s) VALUES(%s)' %
-                 (','.join(columns), ('?,' * len(columns))[:-1]))
-        t = (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
-             dic['path'], dic['expires_utc'], dic['secure'], dic['httponly'],
-             has_expires, persistent, creation_utc)
-
-        c.execute(query, t)
-        i = i + 1
-
-conn.commit()
-conn.close()
+if __name__ == '__main__':
+    main()
