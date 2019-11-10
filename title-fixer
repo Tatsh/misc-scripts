@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-
-from __future__ import print_function
+from typing import Match, Optional, Sequence, cast
 import argparse
 import re
 import sys
@@ -153,45 +152,45 @@ mode_map = {
 }
 
 
-def get_name(word):
+def get_name(word: str) -> Optional[str]:
     word = word.lower()
     for name, output in names.items():
         if name.lower() == word:
             return output
+    return None
 
 
-def is_roman_numeral(string):
-    if len(string) == 0:
+def is_roman_numeral(string: str) -> bool:
+    if not len(string):
         return False
     # https://l.tat.sh/2HXEIyx
-    m = re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$',
-                 string, re.I)
-    return m is not None
+    return re.match(
+        r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
+        re.I) is not None
 
 
-def fix_apostrophes(word):
+def fix_apostrophes(word: str) -> str:
     if "'" not in word:
         return word
-
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
                   lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(),
                   word)
 
 
-def lower_stop(words,
-               modes=[ENGLISH_MODE],
-               disable_names=False,
-               ampersands=False):
+def lower_stop(words: str,
+               modes: Sequence[int] = [ENGLISH_MODE],
+               disable_names: bool = False,
+               ampersands: bool = False) -> str:
     original_words = words.strip().split()
-    words = words.strip().title().split()
-    name = get_name(words[0])
+    word_list = words.strip().title().split()
+    name = get_name(word_list[0])
 
     if name is not None:
         title = [name]
-    elif words[0].upper() == original_words[0]:
+    elif word_list[0].upper() == original_words[0]:
         title = [fix_apostrophes(original_words[0])]
     else:
-        title = [fix_apostrophes(words[0])]
+        title = [fix_apostrophes(word_list[0])]
 
     if is_roman_numeral(title[0]):
         title = [title[0].upper()]
@@ -202,7 +201,7 @@ def lower_stop(words,
     for mode in modes:
         to_lower_case_array = mode_map[mode]
         index = 1
-        for word in words[1:]:
+        for word in word_list[1:]:
             if disable_names is False:
                 name = get_name(word)
                 if name is not None:
@@ -229,15 +228,16 @@ def lower_stop(words,
             begin = end = ''
 
             if re.match(r'^\W', word):
-                begin = re.match(r'^(\W+)', word).groups()[0]
+                begin = cast(Match[str], re.match(r'^(\W+)', word)).groups()[0]
                 word = word[1:]
 
             if re.match(r'\w+\W$', word):
-                end = re.match(r'\w+(\W+)$', word).groups()[0]
+                end = cast(Match[str], re.match(r'\w+(\W+)$',
+                                                word)).groups()[0]
                 word = word[0:-1]
 
             if word.lower() in to_lower_case_array:
-                word = words[index] = word.lower()
+                word = word_list[index] = word.lower()
 
             if "'" in word:
                 word = fix_apostrophes(word)
@@ -266,20 +266,17 @@ def lower_stop(words,
 
             index += 1
 
-    title = ' '.join(title)
-
+    title_ = ' '.join(title)
     if ampersands:
-        title = title.replace(' and ', ' & ')
+        title_ = title_.replace(' and ', ' & ')
+    return title_
 
-    return title
 
-
-if __name__ == '__main__':
+def main() -> int:
     parser = argparse.ArgumentParser(
-        description='Title fixer for various '
-        'languages. Defaults to English mode. If any '
-        'option is specified without -e, English mode'
-        ' is disabled.')
+        description='Title fixer for various languages. Defaults to English '
+        'mode. If any option is specified without -e, English mode is '
+        'disabled.')
     parser.add_argument('titles',
                         metavar='TITLE',
                         type=argparse.FileType('r'),
@@ -317,13 +314,16 @@ if __name__ == '__main__':
                         help='Replace " and " with " & "',
                         default=False)
     args = parser.parse_args()
-
     if args.mode is None:
         args.mode = [ENGLISH_MODE]
-
     for title in args.titles:
         print(
             lower_stop(title,
                        args.mode,
                        args.no_names,
                        ampersands=args.ampersands))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
