@@ -6,7 +6,7 @@ if ! command -v open >/dev/null 2>&1; then
 fi
 orig=$(git remote get-url origin)
 if [ -n "$orig" ]; then
-    open "$(sed -r -e 's#^git@#https://#' \
+    "$cmd" "$(sed -r -e 's#^git@#https://#' \
                    -e 's#\.(com|org)\:#.\1/#' \
                    -e 's/\.git$//' <<< "$orig")"
 fi
