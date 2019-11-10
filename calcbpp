@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-
-# This is based on calcbpp which comes with mplayer tools (but not
-# mplayer2 on Gentoo)
-
+# This is based on calcbpp which comes with mplayer tools
 from math import floor
+from typing import List, Union, cast
 import argparse
+import sys
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-        description='Searches logs for a string or expression')
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description='Calculates bits per pixel')
     parser.add_argument('unscaled_resolution',
                         metavar='UNSCALED_RES',
                         help='Unscaled resolution in X:Y format')
@@ -24,9 +23,7 @@ if __name__ == '__main__':
                         metavar='RAW_AR',
                         default='720:480',
                         help='Raw aspect ratio in X:Y format')
-
     args = parser.parse_args()
-
     unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
     raw_aspect_width, raw_aspect_height = [
         int(x) for x in args.raw_ar.split(':')
@@ -35,45 +32,34 @@ if __name__ == '__main__':
         args.video_bitrate,
         args.fps,
     )
-    raw_aspect = raw_aspect_width / raw_aspect_height
-    encoded_at = args.aspect_ratio
-
-    if ':' in encoded_at:
-        encoded_at = [int(x) for x in encoded_at.split(':')]
+    raw_aspect: float = raw_aspect_width / raw_aspect_height
+    encoded_at: Union[str, List[int], float] = args.aspect_ratio
+    if ':' in cast(str, encoded_at):
+        encoded_at = [int(x) for x in cast(str, encoded_at).split(':')]
         encoded_at = encoded_at[0] / encoded_at[1]
-
-    scaled_width = float(unscaled_width) * (encoded_at / raw_aspect)
-    scaled_height = unscaled_height
+    scaled_width = float(unscaled_width) * (cast(float, encoded_at) /
+                                            raw_aspect)
+    scaled_height: str = unscaled_height
     picture_ar = float(scaled_width) / float(scaled_height)
-
-    print('Prescaled picture: %dx%d, AR %.2f' %
-          (int(scaled_width), int(scaled_height), float(picture_ar)))
-
+    print(f'Prescaled picture: {int(scaled_width):d}x{int(scaled_height):d}, '
+          f'AR {float(picture_ar):.2f}')
     width = 720
     while width >= 320:
         height = 16 * round(width / picture_ar / 16)
         diff = width / picture_ar - height
-
         if diff < 0 and diff % 0.5 == 0:
             diff = floor(diff) + 1
         else:
             diff = round(diff)
-
         new_ar = width / height
-        picture_ar_error = abs(100 - picture_ar / new_ar * 100)
-
-        args = (
-            width,
-            height,
-            diff,
-            new_ar,
-            picture_ar_error,
-            width,
-            height,
-            (int(bps) * 1000) / (width * height * float(fps)),
-        )
-
-        print('%dx%d, diff %3d, new AR %.2f, AR error %.2f%% scale=%d:%d '
-              'bpp: %.3f' % args)
-
+        picture_ar_error: float = abs(100 - picture_ar / new_ar * 100)
+        bpp: float = (int(bps) * 1000) / (width * height * float(fps))
+        print(f'{width:d}x{height:d}, diff {diff:3d}, new AR {new_ar:.2f}, '
+              f'AR error {picture_ar_error:.2f}%, '
+              f'scale={width:d}:{height:d} bpp: {bpp:.3f}')
         width -= 16
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
