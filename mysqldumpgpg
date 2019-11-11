@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-# encoding: utf-8
-
 # clean up: find . -maxdepth 1 -type d | tail -n +2 | xargs rm -fvR *.tar *.gpg
-# pip install sh python-gnupg MySQL-python
-
-from __future__ import print_function
+# pip install python-gnupg MySQL-python
 from datetime import datetime
 from os import environ as env, remove as rm
-from os.path import basename, join as path_join, realpath
+from os.path import basename, expanduser, join as path_join, realpath
+from typing import Optional
 import argparse
 import logging
 import signal
@@ -17,15 +14,28 @@ import sys
 from pretty_bad_protocol import gnupg
 import MySQLdb as mysql
 
-MYSQL_USER = 'tatsh'
+MYSQL_USER = env['USER']
 MYSQL_HOST = 'localhost'
 LOCK_WAIT_TIMEOUT = 10
-
 DB_BLACKLIST = (
     'information_schema',
     'mysql',
     'performance_schema',
 )
+
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         level: int = logging.WARNING) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(level)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(level)
+    log.addHandler(channel)
 
 
 def mysqldump(args, outpath):
@@ -39,28 +49,37 @@ def rm_if_exists(fn):
             pass
         rm(fn)
         return True
-    except IOError:
+    except FileNotFoundError:
         pass
-
     return False
 
 
-if __name__ == '__main__':
+def main() -> int:
     parser = argparse.ArgumentParser()
-
     parser.add_argument('--target',
                         '-t',
                         help='Target directory to store in',
                         required=True)
     parser.add_argument('--dry-run', default=False, action='store_true')
-    parser.add_argument('--gpg-home', default=path_join(env['HOME'], '.gnupg'))
+    parser.add_argument('--gpg-home', default=expanduser('~/.gnupg'))
     parser.add_argument('--user', '-U', help='MySQL user', default=MYSQL_USER)
     parser.add_argument('--host', help='MySQL host', default=MYSQL_HOST)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
-
     args = parser.parse_args()
+    setup_logging_stdout(level=logging.INFO if args.verbose else args.
+                         debug if args.debug else logging.WARNING)
+    assert log is not None
+    if args.debug:
+        log_ = logging.getLogger('gnupg')
+        log_.setLevel(logging.DEBUG)
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(logging.DEBUG)
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        log_.addHandler(ch)
     target_dir = realpath(args.target)
     time = datetime.today().strftime('%Y%m%d%H%M%S')
     dry_run = args.dry_run
@@ -68,94 +87,56 @@ if __name__ == '__main__':
     recipients = list(args.gpg_recipients)
     user = args.user
 
+    gpg = gnupg.GPG(homedir=gpg_home,
+                    verbose=args.verbose if not args.debug else 'expert',
+                    use_agent=True)
+    keys = gpg.list_keys(secret=True)
+    fingerprints = set()
+    for k in keys:
+        for uid in k['uids']:
+            if recipients[0] in uid:
+                fingerprints.add(k['fingerprint'])
+
     m = mysql.connect(user=user, db='information_schema', host=args.host)
     c = m.cursor()
     c.execute('SHOW DATABASES')
-    db_names = sorted([x[0] for x in c.fetchall()])
+    db_names = sorted(x[0] for x in c.fetchall())
 
-    for (i, db_name) in enumerate(db_names):
-        # Cannot dump information_schema
-        # No need for performance_schema
-        if not db_name or \
-                db_name in DB_BLACKLIST:
+    for i, db_name in enumerate(db_names):
+        if not db_name or db_name in DB_BLACKLIST:
             continue
-
-        fn = path_join(target_dir, '%s-%s.sql' % (
-            time,
-            db_name,
-        ))
-
-        print('Dumping "%s" to "%s"...' % (
-            db_name,
-            fn,
-        ))
-        mysqldump_args = [
-            '--add-drop-database',
-            '--add-drop-table',
-            '--comments',
-            '--complete-insert',
-            '--dump-date',
-            '--hex-blob',
-            '--max-allowed-packet=128M',
-            '--order-by-primary',
-            '--quick',
-            '--routines',
-            '--single-transaction',
-            '-h',
-            args.host,
-            '-u',
-            user,
-            db_name,
-        ]
+        fn = path_join(target_dir, f'{time}-{db_name}.sql')
+        log.info('Dumping "%s" to "%s"...', db_name, fn)
+        mysqldump_args = ('--add-drop-database', '--add-drop-table',
+                          '--comments', '--complete-insert', '--dump-date',
+                          '--hex-blob', '--max-allowed-packet=128M',
+                          '--order-by-primary', '--quick', '--routines',
+                          '--single-transaction', '-h', args.host, '-u', user,
+                          db_name)
 
         if dry_run:
-            print('mysqldump %s > %s' % (
-                ' '.join(mysqldump_args),
-                fn,
-            ))
-            print('gpg --status-fd-2 --no-tty --homedir %s --use-agent'
-                  ' --encrypt %s --armor --output %s.gpg' %
-                  (gpg_home, ' '.join(
-                      ['--recipient %s' % (x) for x in recipients]), fn))
-            print('rm %s.tar' % (fn, ))
+            log.info('mysqldump %s > %s', ' '.join(mysqldump_args), fn)
+            log.info(
+                'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
+                ' --encrypt %s --armor --output %s.gpg', gpg_home,
+                ' '.join(['--recipient %s' % (x) for x in recipients]), fn)
+            log.info('rm %s.tar', fn)
             continue
 
         try:
             mysqldump(mysqldump_args, fn)
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s"' % (fn, ), file=sys.stderr)
+            log.warning('Caught interrupt. Removing "%s"', fn)
             rm_if_exists(fn)
-            sys.exit(1)
+            return 1
         except sp.CalledProcessError as e:
-            print('{} failed with code {}'.format(e.cmd, e.returncode))
+            log.error('%s failed with code %d', e.cmd, e.returncode)
             rm_if_exists(fn)
-            sys.exit(1)
+            return 1
 
-        if args.debug:
-            log = logging.getLogger('gnupg')
-            log.setLevel(logging.DEBUG)
-            ch = logging.StreamHandler(sys.stdout)
-            ch.setLevel(logging.DEBUG)
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-            ch.setFormatter(formatter)
-            log.addHandler(ch)
-
-        gpg = gnupg.GPG(homedir=gpg_home,
-                        verbose=args.verbose if not args.debug else 'expert',
-                        use_agent=True)
-        keys = gpg.list_keys(secret=True)
-        fingerprints = set()
-        for k in keys:
-            for uid in k['uids']:
-                if recipients[0] in uid:
-                    fingerprints.add(k['fingerprint'])
-        output_fn = '%s.gpg' % (fn, )
-        print('Encrypting "%s" to "%s"' % (
-            basename(fn),
-            basename(output_fn),
-        ))
+        output_fn = f'{fn}.gpg'
+        log.info('Encrypting "%s" to "%s"', basename(fn), basename(output_fn))
         with open(fn, 'rb') as fp:
             try:
                 kwargs = dict(compress_algo='BZIP2', output=output_fn)
@@ -164,13 +145,17 @@ if __name__ == '__main__':
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 rm_if_exists(fn)
                 rm_if_exists(output_fn)
-                sys.exit(1)
-
+                return 1
             _fp = open(output_fn, 'rb')
             try:
                 assert len(_fp.read()) > 0
             finally:
                 _fp.close()
-
-        print('Removing %s' % (fn, ))
+        log.info('Removing %s', fn)
         rm(fn)
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
