@@ -1,11 +1,10 @@
 #!/usr/bin/env python
-from __future__ import print_function
 from base64 import standard_b64encode
 from datetime import datetime
-from enum import Enum, unique
 from os import unlink as rm, utime
 from os.path import splitext
 from shutil import copyfile
+from typing import AnyStr, TextIO, Union
 import json
 import re
 import subprocess as sp
@@ -13,7 +12,6 @@ import sys
 
 CUSTOM_ATOM_NAME = 'json'
 MIMETYPE = 'application/json'
-
 TAG_DESCRIPTION = 'youtube-dl metadata'
 MP4BOX_REM_ITEM_CMD = [
     'MP4Box',
@@ -22,91 +20,52 @@ MP4BOX_REM_ITEM_CMD = [
     None,  # MP4 filename
 ]
 # https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/
-MP4BOX_SET_META_CMD = [
+MP4BOX_SET_META_CMD = (
     'MP4Box',
     '-set-meta',
     'mp21',
     None,  # MP4 filename
-]
-MP4BOX_WRITE_CMD_TEMPLATE = [
-    'MP4Box',
-    '-add-item',
-    ':name=youtube-dl metadata:mime=application/json:encoding=utf8',
-    None,
-]
+)
+MP4BOX_WRITE_CMD_TEMPLATE = (
+    'MP4Box', '-add-item',
+    ':name=youtube-dl metadata:mime=application/json:encoding=utf8', None)
 ID3_TEXT_FRAME = 'TXXX'
-ID3TED_REMOVE_FRAME_TEMPLATE = [
+ID3TED_REMOVE_FRAME_TEMPLATE = (
     'id3ted',
     '--preserve-times',
     '--remove',
     ID3_TEXT_FRAME,
     None,  # MP3 filename
-]
-ID3TED_WRITE_CMD_TEMPLATE = [
-    'id3ted',
-    '--preserve-times',
-    '-3',
-    '--TXXX',
-    None,
-    None,
-]
+)
+ID3TED_WRITE_CMD_TEMPLATE = ('id3ted', '--preserve-times', '-3', '--TXXX',
+                             None, None)
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
 
-@unique
-class SubprocessKeywordArguments(Enum):
-    standard_output = 'stdout'
-    standard_error = 'stderr'
-
-
-@unique
-class StringEncodings(Enum):
-    utf8 = 'utf-8'
-
-
-@unique
-class JSONDataKeys(Enum):
-    upload_date = 'upload_date'
-
-
-@unique
-class FileModes(Enum):
-    readonly_binary = 'rb'
-    write_binary = 'wb'
-
-
-def get_digest(func, s):
-    h = func()
-    h.update(s)
-    return h.digest()
-
-
-def quiet_subprocess_check_call(*args, **kwargs):
+def quiet_subprocess_check_call(*args, **kwargs) -> None:
     try:
-        arg = sp.DEVNULL
+        arg: Union[int, TextIO] = sp.DEVNULL
     except AttributeError:
         arg = open('/dev/null')
-    kwargs[SubprocessKeywordArguments.standard_output.value] = arg
-    kwargs[SubprocessKeywordArguments.standard_error.value] = arg
-    sp.check_call(*args, **kwargs)
+    kwargs['stdout'] = arg
+    kwargs['stderr'] = arg
+    kwargs['check'] = True
+    sp.run(*args, **kwargs)
 
 
-def set_date(path, json_str):
-    data = json.loads(json_str.decode(StringEncodings.utf8.value))
+def set_date(path: str, json_str: bytes) -> None:
+    data = json.loads(json_str.decode('utf-8'))
     try:
-        upload_date = data[JSONDataKeys.upload_date.value]
+        upload_date = data['upload_date']
     except KeyError:
         return
     if not isinstance(upload_date, str):
         return
     seconds = datetime.strptime(upload_date, UPLOAD_DATE_FORMAT).timestamp()
-    utime(path, times=(
-        seconds,
-        seconds,
-    ))
+    utime(path, times=(seconds, seconds))
 
 
-def mp4box_add_json(filename, json_filename):
+def mp4box_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(MP4BOX_REM_ITEM_CMD)
     cmd[3] = filename
     try:
@@ -122,36 +81,32 @@ def mp4box_add_json(filename, json_filename):
     copyfile(json_filename, better_json_filename)
 
     cmd = list(MP4BOX_WRITE_CMD_TEMPLATE)
-    cmd[2] = '{}{}'.format(better_json_filename, cmd[2])
+    cmd[2] = f'{better_json_filename}{cmd[2]}'
     cmd[3] = filename
-
     quiet_subprocess_check_call(cmd)
+
     rm(better_json_filename)
     with open(json_filename, 'rb') as f:
         set_date(filename, f.read())
-
     return True
 
 
-def id3ted_add_json(filename, json_filename):
+def id3ted_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(ID3TED_REMOVE_FRAME_TEMPLATE)
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
-
     cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
-    with open(json_filename, FileModes.readonly_binary.value) as f:
+    with open(json_filename, 'rb') as f:
         new_json = f.read()
-
-    encoded = standard_b64encode(new_json).decode(StringEncodings.utf8.value)
-    cmd[-2] = '{}:{}'.format(encoded, TAG_DESCRIPTION)
+    encoded = standard_b64encode(new_json).decode('utf-8')
+    cmd[-2] = f'{encoded}:{TAG_DESCRIPTION}'
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
     set_date(filename, new_json)
-
     return True
 
 
-def isfile(path):
+def isfile(path: Union[AnyStr, int]) -> bool:
     try:
         with open(path):
             pass
@@ -160,20 +115,22 @@ def isfile(path):
     return True
 
 
-if __name__ == '__main__':
+def main() -> int:
     mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
     mp3_ext_regex = re.compile(r'\.mp3')
-
     for arg in sys.argv[1:]:
         json_filename = '{}.info.json'.format(splitext(arg)[0])
         if not isfile(json_filename):
             continue
-
         can_delete = False
         if re.search(mp4_ext_regex, arg):
             can_delete = mp4box_add_json(arg, json_filename)
         elif re.search(mp3_ext_regex, arg):
             can_delete = id3ted_add_json(arg, json_filename)
-
         if can_delete:
             rm(json_filename)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
