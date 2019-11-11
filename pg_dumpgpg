@@ -2,29 +2,44 @@
 # encoding: utf-8
 
 # clean up: find . -maxdepth 1 -type d | tail -n +2 | xargs rm -fvR *.tar *.gpg
-# pip install sh python-gnupg
+# pip install python-gnupg
 
-from __future__ import print_function
 from datetime import datetime
 from os import environ as env, remove as rm
 from os.path import basename, dirname, isdir, join as path_join, realpath
 from shutil import rmtree
+from typing import Optional
 import argparse
+import logging
 import re
 import signal
+import subprocess as sp
 import sys
 import tarfile
 
-from sh import psql, pg_dump, ErrorReturnCode_1
 import gnupg
 
-PG_USER = 'postgres'
+LOCK_WAIT_TIMEOUT = 10
 PG_HOST = 'localhost'
 PG_JOBS = 2
-LOCK_WAIT_TIMEOUT = 10
+PG_USER = 'postgres'
+
+log: Optional[logging.Logger] = None
 
 
-def rm_if_exists(fn):
+def setup_logging_stdout(name: Optional[str] = None,
+                         level: int = logging.WARNING) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(level)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(level)
+    log.addHandler(channel)
+
+
+def rm_if_exists(fn: str) -> bool:
     try:
         with open(fn, 'rb'):
             pass
@@ -32,13 +47,25 @@ def rm_if_exists(fn):
         return True
     except IOError:
         pass
-
     return False
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+def psql(*args) -> str:
+    return sp.run(('psql', ) + args,
+                  check=True,
+                  stdout=sp.PIPE,
+                  encoding='utf-8').stdout
 
+
+def pg_dump(*args) -> str:
+    return sp.run(('pg_dump', ) + args,
+                  check=True,
+                  stdout=sp.PIPE,
+                  encoding='utf-8').stdout
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
     parser.add_argument('--target',
                         '-t',
                         help='Target directory to store in',
@@ -57,89 +84,65 @@ if __name__ == '__main__':
                         type=int)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
-
     args = parser.parse_args()
+    setup_logging_stdout(
+        level=logging.DEBUG if args.verbose else logging.WARNING)
+    assert log is not None
     target_dir = realpath(args.target)
     time = datetime.today().strftime('%Y%m%d%H%M%S')
     dry_run = args.dry_run
     gpg_home = realpath(args.gpg_home)
     recipients = args.gpg_recipients
-    user = args.user
 
     gpg = gnupg.GPG(gnupghome=gpg_home, verbose=args.verbose, use_agent=True)
     gpg.encoding = 'utf-8'
 
-    psql_args = ['-X', '-w', '-U', args.user, '-h', args.host, '-l']
-
-    for (i, db_name) in enumerate(psql(psql_args, _iter=True)):
+    for i, db_name in enumerate(
+            psql('-X', '-w', '-U', args.user, '-h', args.host,
+                 '-l').splitlines()):
         if i < 3:  # Skip bad lines
             continue
 
         name = db_name.split('|')[0].strip()
-        fn = path_join(target_dir, '%s-%s' % (
-            time,
-            name,
-        ))
+        fn = path_join(target_dir, f'{time}-{name}')
 
         # Cannot dump template0
         # Also skip the '(x rows)' line at the end
-        if not name or name == 'template0' or \
-                re.match(r'^\(\d+ rows\)$', name):
+        if (not name or name == 'template0'
+                or re.match(r'^\(\d+ rows\)$', name)):
             continue
 
-        print('Dumping "%s" to "%s"...' % (
-            name,
-            fn,
-        ))
-        pg_dump_args = [
-            '-w',
-            '-C',
-            '--column-inserts',
-            '-c',
-            '-U',
-            args.user,
-            '-h',
-            args.host,
-            '-d',
-            name,
-            '-f',
-            fn,
-            '-Fd',
-            '-j',
-            str(args.jobs),
-            '-Z',
-            '9',
-            '--lock-wait-timeout=%d' % (LOCK_WAIT_TIMEOUT, ),
-        ]
+        log.info('Dumping "%s" to "%s"...', name, fn)
+        pg_dump_args = ('-w', '-C', '--column-inserts', '-c', '-U', args.user,
+                        '-h', args.host, '-d', name, '-f', fn, '-Fd', '-j',
+                        str(args.jobs), '-Z', '9',
+                        f'--lock-wait-timeout={LOCK_WAIT_TIMEOUT:d}')
 
         if dry_run:
-            print('pg_dump %s' % (' '.join(pg_dump_args), ))
-            print('pushd %s && tar cf %s.tar %s && popd' % (
-                dirname(fn),
-                basename(fn),
-                basename(fn),
-            ))
-            print('gpg --status-fd-2 --no-tty --homedir %s --use-agent'
-                  '--encrypt %s --armor --output %s.tar.gpg' %
-                  (gpg_home, ' '.join(
-                      ['--recipient %s' % (x) for x in recipients]), fn))
-            print('rm %s.tar' % (fn, ))
+            log.info('pg_dump %s', ' '.join(pg_dump_args))
+            log.info('pushd %s && tar cf %s.tar %s && popd', dirname(fn),
+                     basename(fn), basename(fn))
+            log.info(
+                'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
+                '--encrypt %s --armor --output %s.tar.gpg', gpg_home,
+                ' '.join('--recipient %s' % (x) for x in recipients), fn)
+            log.info('rm %s.tar', fn)
             continue
 
         try:
             out = pg_dump(pg_dump_args).strip()
-        except (KeyboardInterrupt, SystemExit, ErrorReturnCode_1):
+        except (KeyboardInterrupt, SystemExit, sp.CalledProcessError):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s"' % (fn, ), file=sys.stderr)
+            log.error('Caught interrupt. Removing "%s"', fn)
             if isdir(fn):
                 rmtree(fn)
-            sys.exit(1)
+            return 1
 
-        if len(out):
-            print(out, file=sys.stderr)
+        if out:
+            log.warning(out)
 
         tar_fn = '%s.tar' % (fn, )
-        print('Tar\'ing to "%s"' % (tar_fn, ))
+        log.info('Tar\'ing to "%s"', tar_fn)
         tar = tarfile.open(tar_fn, 'w')
 
         tar.add(fn, arcname=basename(fn))
@@ -147,18 +150,17 @@ if __name__ == '__main__':
             tar.close()
         except (KeyboardInterrupt, SystemExit):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            print('Caught interrupt. Removing "%s" and data' % (tar_fn, ),
-                  file=sys.stderr)
+            log.error('Caught interrupt. Removing "%s" and data', tar_fn)
             rmtree(fn)
             try:
                 with open(tar_fn, 'rb'):
                     pass
                 rm(tar_fn)
-            except IOError:
+            except FileNotFoundError:
                 pass
-            sys.exit(1)
+            return 1
 
-        print('Removing "%s"' % (fn, ))
+        log.info('Removing "%s"', fn)
         try:
             rmtree(fn)
         except (KeyboardInterrupt, SystemExit):
@@ -166,13 +168,11 @@ if __name__ == '__main__':
             if isdir(fn):
                 rmtree(fn)
             rm_if_exists(tar_fn)
-            sys.exit(1)
+            return 1
 
         output_fn = '%s.gpg' % (tar_fn, )
-        print('Encrypting "%s" to "%s"' % (
-            basename(tar_fn),
-            basename(output_fn),
-        ))
+        log.info('Encrypting "%s" to "%s"', basename(tar_fn),
+                 basename(output_fn))
         with open(tar_fn, 'rb') as fp:
             try:
                 gpg.encrypt_file(fp, recipients, output=output_fn)
@@ -182,7 +182,12 @@ if __name__ == '__main__':
                     rmtree(fn)
                 rm_if_exists(output_fn)
                 rm_if_exists(tar_fn)
-                sys.exit(1)
+                return 1
 
-        print('Removing "%s"' % (tar_fn, ))
+        log.info('Removing "%s"', tar_fn)
         rm(tar_fn)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
