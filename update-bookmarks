@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
-from typing import Iterable, Iterator, Optional, Union, List, Tuple
+from typing import List, Optional, Tuple, Union
 import argparse
 import logging
 import re
 import sys
-import warnings
 
 from bs4 import BeautifulSoup as Soup
-from gevent.pool import Pool
-import grequests
 from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
-from requests.models import Response
+import requests
 
 log: Optional[logging.Logger] = None
 
@@ -25,11 +22,11 @@ class FailedConnection:
     REASON_UNKNOWN = 5
 
     def __init__(self,
-                 request: grequests.AsyncRequest,
+                 response: requests.Response,
                  reason: int,
                  exc: Optional[Exception] = None):
-        self.request = request
-        self.url: str = request.url
+        self.response = response
+        self.url = response.url
         self.reason = reason
         self.exc = exc
 
@@ -42,7 +39,7 @@ class FailedConnection:
             return f'{self.url} has an unsupported schema'
         if self.reason == self.REASON_CONNECTION_ERROR:
             return f'Connection error: {self.exc}'
-        return 'Unspecified error'
+        return f'Unspecified error: {self.exc}'
 
 
 def setup_logging_stdout(name: Optional[str] = None,
@@ -52,50 +49,45 @@ def setup_logging_stdout(name: Optional[str] = None,
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
 
 
-def send(r: grequests.AsyncRequest
-         ) -> Union[grequests.AsyncRequest, FailedConnection]:
-    ret = r.send()
-    if hasattr(ret, 'exception') and ret.exception is not None:
-        if isinstance(ret.exception, InvalidURL):
-            if re.match(r'^file:///', r.url):
-                return FailedConnection(
-                    r, reason=FailedConnection.REASON_FILE_URL)
-            return FailedConnection(r,
-                                    reason=FailedConnection.REASON_INVALID_URL)
-        elif isinstance(ret.exception, InvalidSchema):
-            return FailedConnection(
-                r, reason=FailedConnection.REASON_INVALID_SCHEMA)
-        elif isinstance(ret.exception, ConnectionError):
-            return FailedConnection(
-                r,
-                exc=ret.exception,
-                reason=FailedConnection.REASON_CONNECTION_ERROR)
-        else:
-            return FailedConnection(r, reason=FailedConnection.REASON_UNKNOWN)
-    return ret
+def send(r: Optional[requests.Response]
+         ) -> Optional[Union[requests.Response, FailedConnection]]:
+    if not r:
+        return None
+    try:
+        r.raise_for_status()
+    except InvalidURL:
+        if re.match(r'^file:///', r.url):
+            return FailedConnection(r, reason=FailedConnection.REASON_FILE_URL)
+        return FailedConnection(r, reason=FailedConnection.REASON_INVALID_URL)
+    except InvalidSchema:
+        return FailedConnection(r,
+                                reason=FailedConnection.REASON_INVALID_SCHEMA)
+    except ConnectionError as e:
+        return FailedConnection(
+            r, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
+    except Exception as e:
+        return FailedConnection(r,
+                                exc=e,
+                                reason=FailedConnection.REASON_UNKNOWN)
+    return r
 
 
-def imap(requests: Iterable[grequests.AsyncRequest], size: int = 10
-         ) -> Iterator[Union[grequests.AsyncRequest, FailedConnection]]:
+def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
     assert log is not None
-    pool = Pool(size)
-    req: Union[grequests.AsyncRequest, FailedConnection]
-    for req in pool.imap(send, requests):
-        log.debug('Requesting "%s"', req.url)
-        if (isinstance(req, grequests.AsyncRequest)
-                and req.response is not None):
-            yield req.response
-        else:
-            yield req
-    pool.join()
+    try:
+        return session.head(uri)
+    except Exception as e:
+        log.exception(e)
+    return None
 
 
 def recursive_scan(soup: Soup,
+                   session: requests.Session,
                    last_level: int = 0,
                    size: int = 10,
                    verbose: bool = False):
@@ -106,16 +98,24 @@ def recursive_scan(soup: Soup,
         urls.append((title, a['href']))
     index = 0
     try_https: List[Tuple[str, str, int]] = []
-    req: Union[Response, FailedConnection]
-    for req in imap((grequests.get(u[1]) for u in urls), size=size):
+    req: Optional[Union[requests.Response, FailedConnection]]
+    for req in map(send, (head(session, u[1]) for u in urls)):
         url_data = urls[index]
+        if not req:
+            log.error('Failed connection: "%s" @ "%s", reason: other',
+                      url_data[0], url_data[1])
+            index += 1
+            continue
         if isinstance(req, FailedConnection):
             log.error('Failed connection: "%s" @ "%s", reason: %s',
                       url_data[0], url_data[1], req.strreason())
             index += 1
             continue
         if req.status_code != 200:
-            if req.status_code not in [401, 403]:
+            if req.status_code in (301, 302):
+                log.info('%d: "%s" @ "%s" -> now "%s"', req.status_code,
+                         url_data[0], url_data[1], req.headers['location'])
+            elif req.status_code not in [401, 403]:
                 log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
                           url_data[1])
             if url_data[1].startswith('https://'):
@@ -126,7 +126,10 @@ def recursive_scan(soup: Soup,
             log.debug('200: "%@" @ "%s"', url_data[1])
         index += 1
     index = 0
-    for req in imap((grequests.get(u[1]) for u in try_https), size=size):
+    for req in map(send, (head(session, u[1]) for u in urls)):
+        if not req:
+            index += 1
+            continue
         if isinstance(req, FailedConnection):
             log.error('Failed connection: "%s" @ "%s", reason: %s',
                       url_data[0], url_data[1], req.strreason())
@@ -177,10 +180,7 @@ def main() -> int:
                               dir=output_dir,
                               suffix='.html')[1]
         log.info('Writing output to "%s"', output_file)
-    soup = Soup(f.read(), 'lxml')
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        recursive_scan(soup)
+    recursive_scan(Soup(f.read(), 'lxml'), requests.Session())
     return 0
 
 
