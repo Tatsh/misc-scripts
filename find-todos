@@ -74,10 +74,7 @@ def _handle_listing(listing: List[str], outdir: str, top: str) -> None:
                                 break
                         except OSError:
                             pass
-                        try:
-                            makedirs(dirname(log_fn))
-                        except OSError:
-                            pass
+                        makedirs(dirname(log_fn), exist_ok=True)
                         if not found:
                             found = open(path_join(outdir, log_fn), 'w')
                             log.info('Writing to %s', found.name)
@@ -101,10 +98,7 @@ def _handle_listing(listing: List[str], outdir: str, top: str) -> None:
                 else:
                     dummy_log_fn = f'.{entry[len(top) + 1:]:s}.txt'
                     dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
-                    try:
-                        makedirs(dirname(dummy_log_fn))
-                    except OSError:
-                        pass
+                    makedirs(dirname(dummy_log_fn), exist_ok=True)
                     with open(dummy_log_fn, 'w+') as f:
                         f.write('Dummy\n')
                     setfiletime(dummy_log_fn, (unix_ts, unix_ts))

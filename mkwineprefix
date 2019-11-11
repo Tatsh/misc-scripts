@@ -25,10 +25,7 @@ _VERSION_MAPPING = {
 def wine(args: argparse.Namespace) -> int:
     prefix_name: str = args.prefix_name
     prefix_root = expanduser('~/.local/share/wineprefixes')
-    try:
-        makedirs(prefix_root, 0o755)
-    except OSError:
-        pass
+    makedirs(prefix_root, mode=0o755, exist_ok=True)
     target = path_join(prefix_root, prefix_name)
     o_target = target
     if isdir(target):

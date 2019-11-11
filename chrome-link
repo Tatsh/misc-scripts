@@ -124,10 +124,7 @@ def main():
     if is_linux:
         # Create .desktop file
         apps_dir = expanduser('~/.local/share/applications')
-        try:
-            makedirs(apps_dir)
-        except FileExistsError:
-            pass
+        makedirs(apps_dir, exist_ok=True)
         out_name = path_join(
             apps_dir,
             f'chrome-{args.name}-{args.profile_directory}.desktop'.replace(
@@ -182,10 +179,7 @@ Icon={args.icon}
             NSHighResolutionCapable=True,
         )
         for x in (contents_dir, macos_dir, res_dir):
-            try:
-                makedirs(x)
-            except FileExistsError:
-                pass
+            makedirs(x, exist_ok=True)
         subprocess.check_call([
             'iconutil', '-c', 'icns', iconset_dir, '-o',
             path_join(res_dir, 'app.icns')
