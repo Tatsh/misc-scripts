@@ -1,0 +1,90 @@
+#!/usr/bin/env python
+
+from bs4 import BeautifulSoup as Soup
+from gevent.pool import Pool
+from os.path import basename, dirname, splitext
+from requests.exceptions import ConnectionError, InvalidURL, InvalidSchema
+from tempfile import mkstemp
+import argparse
+import grequests
+import re
+
+class FailedConnection:
+    request = None
+    url = None
+
+    def __init__(self, request):
+        self.request = request
+        self.url = request.url
+
+
+def imap(requests, size=10):
+    pool = Pool(size)
+
+    def send(r):
+        try:
+            return r.send(stream=False)
+        except InvalidURL:
+            if re.match(r'^file:///', r.url):
+                return r
+
+            return FailedConnection(r)
+        except InvalidSchema:
+            return r
+        except ConnectionError:
+            return FailedConnection(r)
+
+    for i in pool.imap(send, requests):
+        #print('Requesting "%s"' % (i.url))
+        yield i
+
+    pool.join()
+
+
+def recursive_scan(soup, last_level=0, size=10, verbose=False):
+    dl = soup.body.select('a')
+    urls = []
+
+    for a in dl:
+        urls.append((' '.join(a.contents), a['href'],))
+
+    reqs = (grequests.get(u[1], verify=False) for u in urls)
+    index = 0
+    for req in imap(reqs, size=size):
+        url_data = urls[index]
+
+        if isinstance(req, FailedConnection) or isinstance(req, grequests.AsyncRequest):
+            print('000: "%s" <==> "%s"' % (url_data[0], url_data[1]))
+            index += 1
+            continue
+
+        if req.status_code != 200:
+            if req.status_code not in [401, 403]:
+                print('%d: "%s" <==> "%s"' % (req.status_code, url_data[0], url_data[1]))
+
+        index += 1
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('file', metavar='INFILE', type=argparse.FileType('rb'), nargs=1, help='Bookmark HTML file (usually exported from browser)')
+    parser.add_argument('-o', '--output', metavar='OUTFILE', nargs=1, help='File to output to (will be determined automatically if not specified)')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
+    parser.add_argument('-l', '--limit', type=int, help='Number of concurrent requests', default=10)
+
+    args = parser.parse_args()
+    verbose = not args.quiet
+    output_file = args.output
+    f = args.file[0]
+    in_filename = f.name
+
+    if not output_file:
+        output_dir = dirname(in_filename)
+        output_file = 'new-' + splitext(basename(in_filename))[0]
+        output_file = mkstemp(prefix=output_file, dir=output_dir, suffix='.html')[1]
+
+        if verbose:
+            print('Writing output to "%s"' % (output_file))
+
+    soup = Soup(f.read(), 'html5lib')
+    recursive_scan(soup)
