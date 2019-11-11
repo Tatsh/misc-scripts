@@ -17,11 +17,7 @@ import MySQLdb as mysql
 MYSQL_USER = env['USER']
 MYSQL_HOST = 'localhost'
 LOCK_WAIT_TIMEOUT = 10
-DB_BLACKLIST = (
-    'information_schema',
-    'mysql',
-    'performance_schema',
-)
+DB_BLACKLIST = ('information_schema', 'mysql', 'performance_schema')
 
 log: Optional[logging.Logger] = None
 
