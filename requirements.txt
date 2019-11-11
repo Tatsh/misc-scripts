@@ -1,6 +1,5 @@
 BeautifulSoup4
 PyYAML
-grequests
 lxml
 requests
 
