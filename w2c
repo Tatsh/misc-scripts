@@ -116,6 +116,11 @@ def make_target(str_val: str) -> str:
     return str_val
 
 
-if __name__ == '__main__':
+def main() -> int:
     for line in sys.stdin.readlines():
         print(make_target(line.strip()))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

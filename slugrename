@@ -3,9 +3,10 @@ from os.path import basename, dirname, join as path_join, splitext
 import argparse
 import os
 import re
+import sys
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('-y', '--dry-run', action='store_true')
     parser.add_argument('files', nargs='*')
@@ -23,7 +24,8 @@ def main():
             print(name)
         else:
             os.replace(arg, name)
+    return 0
 
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

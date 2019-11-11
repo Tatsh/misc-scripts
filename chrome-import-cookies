@@ -26,7 +26,7 @@ def main():
         cookies_txt = sys.argv[1]
     except IndexError:
         print(f'Usage: {sys.argv[0]} COOKIES_TXT_FILE', file=sys.stderr)
-        sys.exit(1)
+        return 1
     conn: Optional[sqlite3.Connection] = None
     last_exc: Optional[Exception] = None
     for p in DB_PATHS:
@@ -85,6 +85,8 @@ def main():
         conn.commit()
         conn.close()
 
+    return 0
+
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

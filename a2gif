@@ -3,15 +3,16 @@ from argparse import ArgumentParser
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
 from tempfile import mkstemp
+from typing import Sequence
 import subprocess as sp
 import sys
 
 
-def ffmpeg(args, **kwargs):
-    sp.check_call(['ffmpeg'] + args, **kwargs)
+def ffmpeg(args: Sequence[str], **kwargs) -> None:
+    sp.check_call(['ffmpeg'] + list(args), **kwargs)
 
 
-if __name__ == '__main__':
+def main() -> int:
     parser = ArgumentParser(description='Convert any video file to GIF')
     parser.add_argument('-ss',
                         metavar='TIME_START',
@@ -47,7 +48,7 @@ if __name__ == '__main__':
                       'palettegen').format(width=args.width, fps=args.fps)
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     ffmpeg_args += ['-i', input_video]
     if args.ss:
@@ -78,3 +79,9 @@ if __name__ == '__main__':
 
     close_fd(fd)
     unlink(palette_fn)
+
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -2,7 +2,13 @@
 import re
 import sys
 
-if __name__ == '__main__':
+
+def main() -> int:
     print(
         re.sub(r'[-\s_]+', '-',
                re.sub(r'[^\w\s-]', '', sys.argv[1]).strip().lower()))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
