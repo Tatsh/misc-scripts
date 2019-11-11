@@ -2,6 +2,7 @@
 from datetime import datetime
 from logging.handlers import SysLogHandler
 from os.path import realpath
+from typing import Optional, TextIO
 import argparse
 import logging
 import signal
@@ -16,18 +17,18 @@ except ImportError:
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
 
-logfh = None
-logyamlfh = None
-syslogh = None
+logfh: Optional[TextIO] = None
+syslogh: Optional[SysLogHandler] = None
 
 
 def speedtest(*args, **kwargs) -> sp.CompletedProcess:
     kwargs['check'] = True
-    kwargs['capture_output'] = True
+    kwargs['stdout'] = sp.PIPE
+    kwargs['encoding'] = 'utf-8'
     return sp.run(('speedtest', ) + args, **kwargs)
 
 
-def cleanup():
+def cleanup(logyamlfh: Optional[TextIO]):
     global logfh, syslogh
     if logfh:
         logfh.close()
@@ -38,9 +39,9 @@ def cleanup():
     logging.shutdown()
 
 
-def cleanup_and_exit(status=0):
-    cleanup()
-    sys.exit(status)
+def cleanup_and_exit(logyamlfh: Optional[TextIO], status=0):
+    cleanup(logyamlfh)
+    return status
 
 
 def ctrl_c(signum, frame):
@@ -48,10 +49,10 @@ def ctrl_c(signum, frame):
     raise SystemExit('Signal raised')
 
 
-def maybe_log_yaml(**kwargs):
-    if logyamlfh:
+def maybe_log_yaml(fh: Optional[TextIO], **kwargs):
+    if fh:
         kwargs['time'] = str(datetime.today())
-        logyamlfh.write(
+        fh.write(
             yaml.safe_dump([kwargs],
                            default_flow_style=False,
                            allow_unicode=True))
@@ -61,7 +62,7 @@ def get_line_value(s: str) -> str:
     return s.split(':')[1].strip().split(' ')[0].strip()
 
 
-if __name__ == '__main__':
+def main() -> int:
     signal.signal(signal.SIGINT, ctrl_c)
     logger = logging.getLogger('speedtest')
     logger.setLevel(logging.INFO)
@@ -74,10 +75,12 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     ping = dl = ul = share = None
+    logyamlfh: Optional[TextIO] = None
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
         logfh = open(args.log_file, 'a+')
+        assert logfh is not None
         if HAS_YAML:
             logyamlfh = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(logfh)
@@ -86,6 +89,7 @@ if __name__ == '__main__':
         logger.addHandler(channel)
     if args.syslog:
         syslogh = SysLogHandler(address='/dev/log')
+        assert syslogh is not None
         syslogh.setFormatter(LOG_FORMATTER)
         syslogh.setLevel(logging.INFO)
         logger.addHandler(syslogh)
@@ -96,8 +100,7 @@ if __name__ == '__main__':
         logger.addHandler(channel)
     logger.info('Running `speedtest --share --simple`')
     try:
-        for line in speedtest('--share',
-                              '--simple').stdout.decode('utf-8').split('\n'):
+        for line in speedtest('--share', '--simple').stdout.splitlines():
             if line.startswith('Ping: '):
                 ping = float(get_line_value(line))
             elif line.startswith('Download: '):
@@ -109,8 +112,8 @@ if __name__ == '__main__':
     except sp.CalledProcessError as e:
         logger.error('speedtest failed to run')
         if e.stderr:
-            logger.error(e.stderr.decode('utf-8'))
-        cleanup_and_exit(status=1)
+            logger.exception(e)
+        return cleanup_and_exit(logyamlfh, status=1)
     if ping > args.ping_threshold:
         logger.error(
             'Ping threshold higher than threshold. Got %0.03f, '
@@ -130,16 +133,19 @@ if __name__ == '__main__':
     logger.info('Download speed: %0.02f Mb/s', dl)
     logger.info('Upload speed: %0.02f Mb/s', ul)
     logger.info('Share URI: %s', share)
-    maybe_log_yaml(ping=ping, download=dl, upload=ul, share_uri=share)
-    if True in (not x for x in (
-            ping,
-            dl,
-            ul,
-            share,
-    )):
+    maybe_log_yaml(logyamlfh,
+                   ping=ping,
+                   download=dl,
+                   upload=ul,
+                   share_uri=share)
+    if True in (not x for x in (ping, dl, ul, share)):
         logger.error('Output not as expected (other error)')
-        cleanup_and_exit(status=1)
+        return cleanup_and_exit(logyamlfh, status=1)
     if failed:
         logger.error('Exiting with status 1')
-        cleanup_and_exit(status=1)
-    cleanup_and_exit()
+        return cleanup_and_exit(logyamlfh, status=1)
+    return cleanup_and_exit(logyamlfh)
+
+
+if __name__ == '__main__':
+    sys.exit(main())
