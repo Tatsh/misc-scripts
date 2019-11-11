@@ -1,90 +1,188 @@
 #!/usr/bin/env python
+from os.path import basename, dirname, splitext
+from tempfile import mkstemp
+from typing import Iterable, Iterator, Optional, Union, List, Tuple
+import argparse
+import logging
+import re
+import sys
+import warnings
 
 from bs4 import BeautifulSoup as Soup
 from gevent.pool import Pool
-from os.path import basename, dirname, splitext
-from requests.exceptions import ConnectionError, InvalidURL, InvalidSchema
-from tempfile import mkstemp
-import argparse
 import grequests
-import re
+from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
+from requests.models import Response
+
+log: Optional[logging.Logger] = None
+
 
 class FailedConnection:
-    request = None
-    url = None
+    REASON_CONNECTION_ERROR = 3
+    REASON_FILE_URL = 4
+    REASON_INVALID_SCHEMA = 2
+    REASON_INVALID_URL = 1
+    REASON_UNKNOWN = 5
 
-    def __init__(self, request):
+    def __init__(self,
+                 request: grequests.AsyncRequest,
+                 reason: int,
+                 exc: Optional[Exception] = None):
         self.request = request
-        self.url = request.url
+        self.url: str = request.url
+        self.reason = reason
+        self.exc = exc
+
+    def strreason(self):
+        if self.reason == self.REASON_INVALID_URL:
+            return f'{self.url} is not a valid URL'
+        if self.reason == self.REASON_FILE_URL:
+            return f'{self.url} is a file URL'
+        if self.reason == self.REASON_INVALID_SCHEMA:
+            return f'{self.url} has an unsupported schema'
+        if self.reason == self.REASON_CONNECTION_ERROR:
+            return f'Connection error: {self.exc}'
+        return 'Unspecified error'
 
 
-def imap(requests, size=10):
-    pool = Pool(size)
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
-    def send(r):
-        try:
-            return r.send(stream=False)
-        except InvalidURL:
+
+def send(r: grequests.AsyncRequest
+         ) -> Union[grequests.AsyncRequest, FailedConnection]:
+    ret = r.send()
+    if hasattr(ret, 'exception') and ret.exception is not None:
+        if isinstance(ret.exception, InvalidURL):
             if re.match(r'^file:///', r.url):
-                return r
+                return FailedConnection(
+                    r, reason=FailedConnection.REASON_FILE_URL)
+            return FailedConnection(r,
+                                    reason=FailedConnection.REASON_INVALID_URL)
+        elif isinstance(ret.exception, InvalidSchema):
+            return FailedConnection(
+                r, reason=FailedConnection.REASON_INVALID_SCHEMA)
+        elif isinstance(ret.exception, ConnectionError):
+            return FailedConnection(
+                r,
+                exc=ret.exception,
+                reason=FailedConnection.REASON_CONNECTION_ERROR)
+        else:
+            return FailedConnection(r, reason=FailedConnection.REASON_UNKNOWN)
+    return ret
 
-            return FailedConnection(r)
-        except InvalidSchema:
-            return r
-        except ConnectionError:
-            return FailedConnection(r)
 
-    for i in pool.imap(send, requests):
-        #print('Requesting "%s"' % (i.url))
-        yield i
-
+def imap(requests: Iterable[grequests.AsyncRequest], size: int = 10
+         ) -> Iterator[Union[grequests.AsyncRequest, FailedConnection]]:
+    assert log is not None
+    pool = Pool(size)
+    req: Union[grequests.AsyncRequest, FailedConnection]
+    for req in pool.imap(send, requests):
+        log.debug('Requesting "%s"', req.url)
+        if (isinstance(req, grequests.AsyncRequest)
+                and req.response is not None):
+            yield req.response
+        else:
+            yield req
     pool.join()
 
 
-def recursive_scan(soup, last_level=0, size=10, verbose=False):
-    dl = soup.body.select('a')
+def recursive_scan(soup: Soup,
+                   last_level: int = 0,
+                   size: int = 10,
+                   verbose: bool = False):
+    assert log is not None
     urls = []
-
-    for a in dl:
-        urls.append((' '.join(a.contents), a['href'],))
-
-    reqs = (grequests.get(u[1], verify=False) for u in urls)
+    for a in soup.body.select('a'):
+        title = ' '.join(a.contents)
+        urls.append((title, a['href']))
     index = 0
-    for req in imap(reqs, size=size):
+    try_https: List[Tuple[str, str, int]] = []
+    req: Union[Response, FailedConnection]
+    for req in imap((grequests.get(u[1]) for u in urls), size=size):
         url_data = urls[index]
-
-        if isinstance(req, FailedConnection) or isinstance(req, grequests.AsyncRequest):
-            print('000: "%s" <==> "%s"' % (url_data[0], url_data[1]))
+        if isinstance(req, FailedConnection):
+            log.error('Failed connection: "%s" @ "%s", reason: %s',
+                      url_data[0], url_data[1], req.strreason())
             index += 1
             continue
-
         if req.status_code != 200:
             if req.status_code not in [401, 403]:
-                print('%d: "%s" <==> "%s"' % (req.status_code, url_data[0], url_data[1]))
-
+                log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
+                          url_data[1])
+            if url_data[1].startswith('https://'):
+                try_https.append(
+                    (url_data[0], re.sub(r'^http\://', 'https://',
+                                         url_data[1]), index))
+        else:
+            log.debug('200: "%@" @ "%s"', url_data[1])
         index += 1
+    index = 0
+    for req in imap((grequests.get(u[1]) for u in try_https), size=size):
+        if isinstance(req, FailedConnection):
+            log.error('Failed connection: "%s" @ "%s", reason: %s',
+                      url_data[0], url_data[1], req.strreason())
+            index += 1
+            continue
+        if req.status_code != 200:
+            if req.status_code not in [401, 403]:
+                log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
+                          url_data[1])
+        else:
+            log.info('Replace with HTTPS: "%s"', try_https[index][1])
 
-if __name__ == '__main__':
+
+def main() -> int:
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('file', metavar='INFILE', type=argparse.FileType('rb'), nargs=1, help='Bookmark HTML file (usually exported from browser)')
-    parser.add_argument('-o', '--output', metavar='OUTFILE', nargs=1, help='File to output to (will be determined automatically if not specified)')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode')
-    parser.add_argument('-l', '--limit', type=int, help='Number of concurrent requests', default=10)
-
+    parser.add_argument(
+        'file',
+        metavar='INFILE',
+        type=argparse.FileType('rb'),
+        nargs=1,
+        help='Bookmark HTML file (usually exported from browser)')
+    parser.add_argument(
+        '-o',
+        '--output',
+        metavar='OUTFILE',
+        nargs=1,
+        help=('File to output to (will be determined automatically if not '
+              'specified)'))
+    parser.add_argument('-q',
+                        '--quiet',
+                        action='store_true',
+                        help='Quiet mode')
+    parser.add_argument('-l',
+                        '--limit',
+                        type=int,
+                        help='Number of concurrent requests',
+                        default=2)
     args = parser.parse_args()
-    verbose = not args.quiet
     output_file = args.output
     f = args.file[0]
     in_filename = f.name
-
+    setup_logging_stdout(verbose=not args.quiet)
+    assert log is not None
     if not output_file:
         output_dir = dirname(in_filename)
         output_file = 'new-' + splitext(basename(in_filename))[0]
-        output_file = mkstemp(prefix=output_file, dir=output_dir, suffix='.html')[1]
+        output_file = mkstemp(prefix=output_file,
+                              dir=output_dir,
+                              suffix='.html')[1]
+        log.info('Writing output to "%s"', output_file)
+    soup = Soup(f.read(), 'lxml')
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        recursive_scan(soup)
+    return 0
 
-        if verbose:
-            print('Writing output to "%s"' % (output_file))
 
-    soup = Soup(f.read(), 'html5lib')
-    recursive_scan(soup)
+if __name__ == '__main__':
+    sys.exit(main())
