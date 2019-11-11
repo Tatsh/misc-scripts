@@ -6,7 +6,6 @@ main() {
     socat - "${HOME}/.cache/mpv.sock" <<< "$json" ||
         mpv --player-operation-mode=pseudo-gui "$path"
 }
-
 for arg in "$@"; do
     [ -e "$arg" ] && main "$arg"
 done

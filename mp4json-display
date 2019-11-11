@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -e
-
 fn="$1"
-
 if [[ $fn == *.m4* ]] || [[ $fn == *.mp4 ]]; then
     MP4Box -dump-item 1:path=/dev/stdout "$fn"
 elif [[ $fn == *.mp3 ]]; then

@@ -1,15 +1,8 @@
 #!/usr/bin/env bash
-# usage:  import-cert.sh remote.host.name [port]
-
-usage() {
-    echo "Usage: $0 HOST [PORT]"
-}
-
 if [ -z "$1" ]; then
-    usage "$0"
+    echo "Usage: $0 HOST [PORT]"
     exit 1
 fi
-
 REMHOST=$1
 REMPORT=${2:-443}
 exec 6>&1
