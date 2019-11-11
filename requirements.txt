@@ -1,4 +1,7 @@
+BeautifulSoup4
 PyYAML
+grequests
+lxml
 requests
 
 # - burnrariso requires cksfv, unrar (GPL version works too), and cdrecord
