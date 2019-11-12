@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -e
-
 disc_id_out=$(cd-discid)
 disc_id=$(cut -d ' ' -f1 <<< "$disc_id_out")
 echo "Disc ID: ${disc_id}"
@@ -10,7 +9,6 @@ track_data=$(rev <<< "$disc_id_out" | cut -d ' ' -f1 | rev)
 
 # shellcheck disable=SC2086
 out=$(cddb_query -c off query "$track_data" $track_info)
-echo "$out"
 num_matches=$(head -n 1 <<< "$out" | sed -r -e 's/^Number of matches\: //')
 if [ -z "$RIPCD_TAKE_FIRST_MATCH" ]; then
     if [ -z "$num_matches" ] ||
