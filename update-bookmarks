@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
-from typing import List, Optional, Tuple, Union
+from typing import Any, List, Optional, TextIO, Tuple, Union, cast
 import argparse
 import logging
+import os
 import re
 import sys
 
-from bs4 import BeautifulSoup as Soup
+from bs4 import BeautifulSoup as Soup, Tag
 from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
 import requests
 
@@ -80,9 +81,9 @@ def send(r: Optional[requests.Response]
 def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
     assert log is not None
     try:
-        return session.head(uri)
+        return session.head(uri, timeout=5)
     except Exception as e:
-        log.exception(e)
+        log.error('Failed connection: %s (%s)', e, uri)
     return None
 
 
@@ -90,17 +91,21 @@ def recursive_scan(soup: Soup,
                    session: requests.Session,
                    last_level: int = 0,
                    size: int = 10,
-                   verbose: bool = False):
+                   verbose: bool = False
+                   ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, Any]]]:
     assert log is not None
+    ret: List[Tuple[str, str]] = []
+    errors = []
     urls = []
+    a: Tag
     for a in soup.body.select('a'):
         title = ' '.join(a.contents)
-        urls.append((title, a['href']))
+        urls.append((title, cast(str, a['href'])))
     index = 0
-    try_https: List[Tuple[str, str, int]] = []
     req: Optional[Union[requests.Response, FailedConnection]]
-    for req in map(send, (head(session, u[1]) for u in urls)):
-        url_data = urls[index]
+    url_data: Tuple[str, str]
+    for req, url_data in zip(map(send, (head(session, u[1]) for u in urls)),
+                             urls):
         if not req:
             log.error('Failed connection: "%s" @ "%s", reason: other',
                       url_data[0], url_data[1])
@@ -115,32 +120,15 @@ def recursive_scan(soup: Soup,
             if req.status_code in (301, 302):
                 log.info('%d: "%s" @ "%s" -> now "%s"', req.status_code,
                          url_data[0], url_data[1], req.headers['location'])
+                ret.append((url_data[1], req.headers['location']))
             elif req.status_code not in [401, 403]:
                 log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
                           url_data[1])
-            if url_data[1].startswith('https://'):
-                try_https.append(
-                    (url_data[0], re.sub(r'^http\://', 'https://',
-                                         url_data[1]), index))
+                errors.append(url_data)
         else:
             log.debug('200: "%@" @ "%s"', url_data[1])
         index += 1
-    index = 0
-    for req in map(send, (head(session, u[1]) for u in urls)):
-        if not req:
-            index += 1
-            continue
-        if isinstance(req, FailedConnection):
-            log.error('Failed connection: "%s" @ "%s", reason: %s',
-                      url_data[0], url_data[1], req.strreason())
-            index += 1
-            continue
-        if req.status_code != 200:
-            if req.status_code not in [401, 403]:
-                log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
-                          url_data[1])
-        else:
-            log.info('Replace with HTTPS: "%s"', try_https[index][1])
+    return ret, errors
 
 
 def main() -> int:
@@ -148,7 +136,7 @@ def main() -> int:
     parser.add_argument(
         'file',
         metavar='INFILE',
-        type=argparse.FileType('rb'),
+        type=argparse.FileType('r'),
         nargs=1,
         help='Bookmark HTML file (usually exported from browser)')
     parser.add_argument(
@@ -168,19 +156,47 @@ def main() -> int:
                         help='Number of concurrent requests',
                         default=2)
     args = parser.parse_args()
-    output_file = args.output
-    f = args.file[0]
-    in_filename = f.name
+    f: TextIO = args.file[0]
     setup_logging_stdout(verbose=not args.quiet)
     assert log is not None
-    if not output_file:
-        output_dir = dirname(in_filename)
-        output_file = 'new-' + splitext(basename(in_filename))[0]
-        output_file = mkstemp(prefix=output_file,
-                              dir=output_dir,
-                              suffix='.html')[1]
+    session = requests.Session()
+    session.headers.update({
+        'user-agent':
+        ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
+         'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 '
+         'Safari/537.36'),
+        'upgrade-insecure-requests':
+        '1',
+        'referer':
+        'https://www.google.com/',
+        'pragma':
+        'no-cache',
+        'dnt':
+        '1',
+        'cache-control':
+        'no-cache',
+    })
+    contents = f.read()
+    replacements, errors = recursive_scan(Soup(contents, 'lxml'),
+                                          requests.Session())
+    for find, repl in replacements:
+        contents = contents.replace(find, repl)
+    output_fd = None
+    if not args.output:
+        output_dir = dirname(f.name)
+        output_file = 'new-' + splitext(basename(f.name))[0]
+        output_fd, output_file = mkstemp(prefix=output_file,
+                                         dir=output_dir,
+                                         suffix='.html')
         log.info('Writing output to "%s"', output_file)
-    recursive_scan(Soup(f.read(), 'lxml'), requests.Session())
+    if output_fd:
+        os.write(output_fd, contents.encode('utf-8'))
+        os.close(output_fd)
+    else:
+        with open(args.output, 'w') as f:
+            f.write(contents)
+    log.info('Updated %d URLs', len(replacements))
+    log.info('%d URLs had unrecoverable errors', len(errors))
     return 0
 
 
