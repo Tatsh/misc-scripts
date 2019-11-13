@@ -1,26 +1,42 @@
 #!/usr/bin/env python
 from glob import glob
 from os import chmod, close, environ, makedirs, write
-from os.path import expanduser, join as path_join, splitext
+from os.path import basename, expanduser, join as path_join, splitext
 from tempfile import mkdtemp, mkstemp
-from urllib.parse import urlparse
+from typing import List, Optional
+from urllib.parse import urljoin, urlparse
 import argparse
+import logging
 import platform
 import plistlib
 import re
 import subprocess
 import sys
 
-try:
-    import requests
-    HAS_REQUESTS = True
-except ImportError:
-    HAS_REQUESTS = False
+from bs4 import BeautifulSoup, Tag
+import requests
 
 is_msys = len(environ.get('MSYSTEM_CHOST', '')) != 0
 is_windows = is_msys or len(''.join(platform.win32_ver())) != 0
 is_mac = bool(platform.mac_ver()[0])
 is_linux = not is_mac and not is_windows
+USER_AGENT = (
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
+    'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 Safari/537.36')
+
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
 
 def fix_msys_arg(s: str) -> str:
@@ -32,6 +48,7 @@ def main():
     if is_linux:
         chrome_command_kwargs = dict(default='chromium-browser')
     parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-c', '--chrome-command', **chrome_command_kwargs)
     parser.add_argument('-p', '--profile-directory', default='Default')
     parser.add_argument('-i', '--icon')
@@ -45,18 +62,41 @@ def main():
     parser.add_argument('name')
     parser.add_argument('url')
     args = parser.parse_args()
+    setup_logging_stdout(verbose=args.verbose)
     short_name = args.name.replace(' ', '')
-    if not args.icon and HAS_REQUESTS:
-        p = urlparse(args.url)
-        args.icon = f'{p.scheme}://{p.netloc}/favicon.ico'
-        r = requests.head(args.icon)
-        if r.status_code != 200:
+    session = requests.Session()
+    session.headers.update({'user-agent': USER_AGENT})
+    if not args.icon:
+        r = session.get(args.url)
+        s = BeautifulSoup(r.content, 'lxml')
+        options = ('link[rel="apple-touch-icon"]', 'link[rel="shortcut icon"]',
+                   'link[rel="icon"]', 'meta[name="msapplication-TileImage"]')
+        tags: List[Tag] = s.select(','.join(options))
+        if not tags:
             args.icon = None
-            if is_mac:
-                print('Need -i argument', file=sys.stderr)
-                return 1
-    if re.match(r'https?\://', args.icon or '') and HAS_REQUESTS:
-        r = requests.get(args.icon, stream=True)
+        sizes = [(0, urljoin(args.url, '/favicon.ico'))]
+        for tag in tags:
+            uri = tag.attrs.get('href', tag.attrs.get('content'))
+            if uri:
+                if 'sizes' in tag.attrs:
+                    size = int(tag['sizes'].split('x')[0])
+                    icon_uri = urljoin(args.url, uri)
+                    log.debug('Icon with size %dx%d at URI %s', size, size,
+                              icon_uri)
+                    sizes.append((size, icon_uri))
+                else:
+                    icon_uri = urljoin(args.url, uri)
+                    log.debug('Icon without size at URI %s', icon_uri)
+                    sizes.append((0, urljoin(args.url, icon_uri)))
+        args.icon = sorted(sizes, reverse=True, key=lambda x: x[0])[0][1]
+        log.debug('Using icon URI %s', args.icon)
+        if args.icon and session.get(args.icon).status_code != 200:
+            args.icon = None
+        if not args.icon and is_mac:
+            log.info('Need -i argument')
+            return 1
+    if re.match(r'https?\://', args.icon or ''):
+        r = session.get(args.icon, stream=True)
         icon_prefix, icon_ext = splitext(urlparse(args.icon).path)
         icon_ext = icon_ext.lower()
         if is_linux:
@@ -79,26 +119,53 @@ def main():
                 for chunk in r.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
-                subprocess.check_call(['convert', tmp_name, args.icon])
+                index = ''
+                if icon_ext == '.ico':
+                    index = str(
+                        list(
+                            enumerate(
+                                sorted(subprocess.check_output(
+                                    ['identify', '-format', '%w\n', tmp_name],
+                                    encoding='utf-8').splitlines(),
+                                       reverse=True)))[0][0])
+                    index = f'[{index}]'
+                subprocess.check_call(
+                    ['convert', f'{tmp_name}{index}', args.icon])
                 try:
                     with open(args.icon, 'rb'):
-                        pass
+                        if len(f.read()) <= 10:
+                            raise FileNotFoundError()
                 except FileNotFoundError:
                     args.icon = sorted(glob(f'{icon_prefix}-*.png'),
                                        reverse=True)[0]
         elif is_mac:
             if icon_ext != '.png':
+                log.debug('Converting icon to PNG')
                 fd, tmp_name = mkstemp(suffix=icon_ext)
                 fd2, args.icon = mkstemp(suffix='.png')
                 close(fd2)
                 for chunk in r.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
-                subprocess.check_call(['convert', tmp_name, args.icon])
+                index = ''
+                if icon_ext == '.ico':
+                    index = str(
+                        list(
+                            enumerate(
+                                sorted(subprocess.check_output(
+                                    ['identify', '-format', '%w\n', tmp_name],
+                                    encoding='utf-8').splitlines(),
+                                       reverse=True)))[0][0])
+                    index = f'[{index}]'
+                convert_args = ('convert', f'{tmp_name}{index}', args.icon)
+                log.debug('Executing: %s', ' '.join(convert_args))
+                subprocess.check_call(convert_args)
                 try:
-                    with open(args.icon, 'rb'):
-                        pass
+                    with open(args.icon, 'rb') as f:
+                        if len(f.read()) <= 10:
+                            raise FileNotFoundError()
                 except FileNotFoundError:
+                    icon_prefix = splitext(args.icon)[0]
                     args.icon = sorted(glob(f'{icon_prefix}-*.png'),
                                        reverse=True)[0]
             else:
@@ -231,9 +298,9 @@ link.WorkingDirectory = desktop;\n''')
         try:
             subprocess.check_call(['cscript', '//Nologo', script_js])
         except subprocess.CalledProcessError as e:
-            print(f'Caught exception: {e}', file=sys.stderr)
+            log.error(f'Caught exception: {e}')
             with open(script_js, 'r') as f:
-                print(f.read(), file=sys.stderr)
+                log.info(f.read())
 
 
 if __name__ == '__main__':
