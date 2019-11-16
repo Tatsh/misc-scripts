@@ -35,6 +35,8 @@ def _get_listing(newdir: str) -> List[str]:
             'CVS',
             '.mypy_cache',
             '__pycache__',
+            '.vscode',
+            '.ropeproject',
         ))
 
 
