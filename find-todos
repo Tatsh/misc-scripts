@@ -1,8 +1,9 @@
 #!/usr/bin/env python
+from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
-from os.path import dirname, isdir, join as path_join, realpath
-from typing import List, Optional, TextIO
+from os.path import basename, dirname, isdir, join as path_join, realpath
+from typing import List, Optional, Sequence, TextIO, Set
 import argparse
 import logging
 import re
@@ -13,22 +14,43 @@ import magic
 log = logging.getLogger('find-todos')
 
 
+def get_all_excludes(patterns: Sequence[str]) -> Set[str]:
+    ret: Set[str] = set()
+    for pathname in patterns:
+        entries = glob(pathname)
+        if entries:
+            ret |= set(realpath(x) for x in entries)
+        else:
+            ret.add(basename(pathname))
+    return ret
+
+
 def _get_listing(newdir: str) -> List[str]:
     return sorted(
         realpath(path_join(newdir, x)) for x in listdir(newdir)
         if not x.endswith('~') and not x.endswith('.svn-base') and x not in (
-            '.git', '.svn', '.hg', 'CVS'))
+            '.git',
+            '.svn',
+            '.hg',
+            'CVS',
+            '.mypy_cache',
+            '__pycache__',
+        ))
 
 
-def _handle_listing(listing: List[str], outdir: str, top: str) -> None:
+def _handle_listing(listing: List[str], outdir: str, top: str,
+                    exclusions: Set[str]) -> None:
     for entry in listing:
+        if (entry.startswith(outdir) or entry in exclusions
+                or entry == sys.argv[0] or basename(entry) in exclusions):
+            continue
         if isdir(entry):
-            _handle_listing(_get_listing(entry), outdir, top)
+            _handle_listing(_get_listing(entry), outdir, top, exclusions)
         else:
             try:
                 file_info: str = magic.from_file(entry, mime=True)
             except OSError as e:
-                log.error('%s', e.strerror)
+                log.error('%s: %s', entry, e.strerror)
                 continue
             log.debug('From magic: %s', file_info)
             if (file_info == 'application/octet-stream'
@@ -107,10 +129,15 @@ def _handle_listing(listing: List[str], outdir: str, top: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument('start', metavar='START_DIR')
-    parser.add_argument('target', metavar='TARGET')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-e',
+                        '--exclude',
+                        action='append',
+                        nargs='?',
+                        metavar='EXCLUDE_PATTERN')
+    parser.add_argument('start', metavar='START_DIR')
+    parser.add_argument('target', metavar='TARGET')
     args = parser.parse_args()
     if args.verbose or args.debug:
         log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -121,7 +148,8 @@ def main() -> int:
         channel.setFormatter(formatter)
         log.addHandler(channel)
     _handle_listing(_get_listing(args.start), realpath(args.target),
-                    realpath(args.start))
+                    realpath(args.start),
+                    get_all_excludes(args.exclude) if args.exclude else set())
     return 0
 
 
