@@ -45,7 +45,7 @@ def main() -> int:
                 KDE_SESSION_VERSION] = KDE_SESSION_VERSION_VALUE
         with p.open('wb') as f:
             plistlib.dump(data, f, sort_keys=False)
-        p.touch()
+        Path(fin).touch()
         log.info('Rewrote Info.plist for %s', fin)
     return 0
 
