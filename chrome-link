@@ -87,7 +87,7 @@ def main():
                 else:
                     icon_uri = urljoin(args.url, uri)
                     log.debug('Icon without size at URI %s', icon_uri)
-                    sizes.append((0, urljoin(args.url, icon_uri)))
+                    sizes.append((1, urljoin(args.url, icon_uri)))
         args.icon = sorted(sizes, reverse=True, key=lambda x: x[0])[0][1]
         log.debug('Using icon URI %s', args.icon)
         if args.icon and session.get(args.icon).status_code != 200:
