@@ -23,7 +23,6 @@ is_linux = not is_mac and not is_windows
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 Safari/537.36')
-
 log: Optional[logging.Logger] = None
 
 
@@ -41,6 +40,19 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 def fix_msys_arg(s: str) -> str:
     return s.replace('\n', ' ').replace('\\', '\\\\') if is_msys else s
+
+
+class MainArgs(argparse.Namespace):
+    categories: str
+    chrome_command: Optional[str]
+    comment: Optional[str]
+    hotkey: Optional[str]
+    icon: Optional[str]
+    name: str
+    profile_directory: str
+    url: str
+    verbose: bool
+    window_style: int
 
 
 def main():
@@ -61,9 +73,9 @@ def main():
         parser.add_argument('--hotkey')
     parser.add_argument('name')
     parser.add_argument('url')
-    args = parser.parse_args()
+    args: MainArgs = parser.parse_args()
     setup_logging_stdout(verbose=args.verbose)
-    short_name = args.name.replace(' ', '')
+    short_name: str = args.name.replace(' ', '')
     session = requests.Session()
     session.headers.update({'user-agent': USER_AGENT})
     if not args.icon:
@@ -76,7 +88,8 @@ def main():
             args.icon = None
         sizes = [(0, urljoin(args.url, '/favicon.ico'))]
         for tag in tags:
-            uri = tag.attrs.get('href', tag.attrs.get('content'))
+            uri: Optional[str] = tag.attrs.get('href',
+                                               tag.attrs.get('content'))
             if uri:
                 if 'sizes' in tag.attrs:
                     size = int(tag['sizes'].split('x')[0])
