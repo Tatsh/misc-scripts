@@ -132,7 +132,7 @@ def main():
                 subprocess.check_call(
                     ['convert', f'{tmp_name}{index}', args.icon])
                 try:
-                    with open(args.icon, 'rb'):
+                    with open(args.icon, 'rb') as f:
                         if len(f.read()) <= 10:
                             raise FileNotFoundError()
                 except FileNotFoundError:
