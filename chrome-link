@@ -159,7 +159,7 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
                 index = _ico_index(tmp_name)
             subprocess.check_call(('convert', f'{tmp_name}{index}', icon))
             try:
-                with open(icon, 'rb'):
+                with open(icon, 'rb') as f:
                     if len(f.read()) <= 10:
                         raise FileNotFoundError()
             except FileNotFoundError:
