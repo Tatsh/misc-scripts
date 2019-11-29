@@ -127,8 +127,8 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
                         session: requests.Session) -> Optional[str]:
     global log
     assert log is not None
-    if not re.match(r'https?\://', icon or ''):
-        return None
+    if not re.match(r'^https?\://', icon or ''):
+        return icon
     assert icon is not None
     r = session.get(icon, stream=True)
     icon_prefix, icon_ext = splitext(urlparse(icon).path)
