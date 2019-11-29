@@ -164,6 +164,7 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
                         raise FileNotFoundError()
             except FileNotFoundError:
                 icon = sorted(glob(f'{icon_prefix}-*.png'), reverse=True)[0]
+            os.unlink(tmp_name)
     elif IS_MAC:
         if icon_ext != '.png':
             log.debug('Converting icon from %s to PNG', icon_ext[1:].upper())
@@ -186,6 +187,7 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
             except FileNotFoundError:
                 icon_prefix = splitext(icon)[0]
                 icon = sorted(glob(f'{icon_prefix}-*.png'), reverse=True)[0]
+            os.unlink(tmp_name)
         else:
             fd, icon = mkstemp(suffix='.png')
             for chunk in r.iter_content(chunk_size=128):
