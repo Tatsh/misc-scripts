@@ -12,8 +12,9 @@ BOOTSTRAP_CSS_HASH = (
     'sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO')
 
 
-def flatten(items: Sequence[Union[str, bytes, List[Any]]]
-            ) -> Iterator[Union[Any, str, bytes]]:
+def flatten(
+    items: Sequence[Union[str, bytes, List[Any]]]
+) -> Iterator[Union[Any, str, bytes]]:
     """
     Yield items from any nested iterable.
     Credit: https://stackoverflow.com/a/40857703
@@ -46,9 +47,9 @@ def recurse_cwd(path: str,
             files.append('</ul></details></li>')
         else:
             isd = entry.is_dir(follow_symlinks=follow_symlinks)
-            claz = 'file' if not isd else 'dir'
+            class_ = 'file' if not isd else 'dir'
             slash = '' if not isd else '/'
-            files.append(f'<li class="{claz}">'
+            files.append(f'<li class="{class_}">'
                          f'<code>{escape(entry.name)}{slash}</code></li>')
     return files
 
