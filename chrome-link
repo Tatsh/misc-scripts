@@ -62,6 +62,11 @@ def _chrome_command_kwargs():
         default='chromium-browser')
 
 
+def _cygpath_win(path: str) -> str:
+    return subprocess.check_output(('cygpath', '-w', path),
+                                   encoding='utf-8').strip()
+
+
 def _parse_args() -> MainArgs:
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -97,11 +102,11 @@ def _get_icon_from_site(args: MainArgs,
         uri: Optional[str] = tag.attrs.get('href', tag.attrs.get('content'))
         if uri:
             if 'sizes' in tag.attrs:
-                size = int(tag['sizes'].split('x')[0])
-                icon_uri = urljoin(args.url, uri)
-                log.debug('Icon with size %dx%d at URI %s', size, size,
-                          icon_uri)
-                sizes.append((size, icon_uri))
+                for w, h in map(lambda x: map(int, x.split('x')),
+                                re.split(r'\s+', tag['sizes'])):
+                    icon_uri = urljoin(args.url, uri)
+                    log.debug('Icon with size %dx%d at URI %s', w, h, icon_uri)
+                    sizes.append((w if w > h else h, icon_uri))
             else:
                 icon_uri = urljoin(args.url, uri)
                 log.debug('Icon without size at URI %s', icon_uri)
@@ -199,12 +204,20 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
         if icon_ext != '.ico':
             log.debug('Converting icon from %s to ICO', icon_ext[1:].upper())
             fd, tmp_name = mkstemp(suffix=icon_ext)
-            fd2, icon = mkstemp(prefix=prefix, suffix='.ico', dir=roaming)
-            close(fd2)
+            icon = path_join(roaming, f'{prefix}.ico')
+            if Path(icon).exists():
+                fd2, icon = mkstemp(prefix=prefix, suffix='.ico', dir=roaming)
+                close(fd2)
             for chunk in r.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
-            subprocess.check_call(('convert', tmp_name, icon))
+            kwargs = {}
+            if IS_MSYS:
+                kwargs['PATH'] = '/mingw64/bin:{}'.format(environ['PATH'])
+            subprocess.check_call(
+                ('convert', _cygpath_win(tmp_name), '-define',
+                 'icon:auto-resize=128,64,48,32,16', _cygpath_win(icon)),
+                env=kwargs)
             os.unlink(tmp_name)
         else:
             log.debug('Using ICO file')
@@ -313,10 +326,10 @@ var desktop = ows.SpecialFolders('Desktop');
 var link = ows.CreateShortcut(desktop + '\\\\{args.name}.lnk');
 link.WorkingDirectory=desktop;\n''')
         assert args.chrome_command is not None
-        if IS_MSYS and args.chrome_command.startswith('/'):
+        if IS_MSYS and (args.chrome_command.startswith('/')
+                        or args.chrome_command.startswith('./')):
             args.chrome_command = _fix_msys_arg(
-                subprocess.check_output(('cygpath', '-w', args.chrome_command),
-                                        encoding='utf-8').strip())
+                _cygpath_win(args.chrome_command))
         default_icon = f'{args.chrome_command},0'
         props = dict(
             TargetPath=args.chrome_command,
@@ -324,7 +337,7 @@ link.WorkingDirectory=desktop;\n''')
                 map(lambda x: f'"{x}"',
                     (f'--app={args.url}',
                      f'--user-data-directory={args.profile_directory}')))),
-            IconLocation=_fix_msys_arg(args.icon)
+            IconLocation=_fix_msys_arg(_cygpath_win(args.icon))
             if args.icon else default_icon,
             WindowStyle=args.window_style,
         )
