@@ -213,11 +213,14 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
             close(fd)
             kwargs = {}
             if IS_MSYS:
-                kwargs['PATH'] = '/mingw64/bin:{}'.format(environ['PATH'])
+                kwargs['env'] = {
+                    **env,
+                    **dict(PATH='/mingw64/bin:{}'.format(environ['PATH']))
+                }
             subprocess.check_call(
                 ('convert', _cygpath_win(tmp_name), '-define',
                  'icon:auto-resize=128,64,48,32,16', _cygpath_win(icon)),
-                env=kwargs)
+                **kwargs)
             os.unlink(tmp_name)
         else:
             log.debug('Using ICO file')
