@@ -49,8 +49,8 @@ def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
 def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
     # Find if there is an ISO within the RAR f
     work = ['', '']
-    r = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE)
-    for line in r.stdout.decode('utf-8').split('\n'):
+    r = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE, encoding='utf-8')
+    for line in r.stdout.split('\n'):
         if 'iso' in line.lower():
             work = line.split()
             break
@@ -132,11 +132,11 @@ def check_requirements(skip_crc: bool) -> bool:
                 f'{apps_to_gentoo_packages[command_needed][0]}',
                 file=sys.stderr)
         else:
-            pkgs = ', '.join(apps_to_gentoo_packages[command_needed])
+            packages = ', '.join(apps_to_gentoo_packages[command_needed])
             print(
                 'If you are using Gentoo or a derivative with Gentoo\'s '
                 f'Portage tree, you can find "{command_needed}" in '
-                f'packages {pkgs}',
+                f'packages {packages}',
                 file=sys.stderr)
         return False
     return True

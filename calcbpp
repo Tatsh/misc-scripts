@@ -28,10 +28,7 @@ def main() -> int:
     raw_aspect_width, raw_aspect_height = [
         int(x) for x in args.raw_ar.split(':')
     ]
-    bps, fps = (
-        args.video_bitrate,
-        args.fps,
-    )
+    bps, fps = (args.video_bitrate, args.fps)
     raw_aspect: float = raw_aspect_width / raw_aspect_height
     encoded_at: Union[str, List[int], float] = args.aspect_ratio
     if ':' in cast(str, encoded_at):

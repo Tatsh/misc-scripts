@@ -12,8 +12,8 @@ def main() -> int:
         lines = sys.argv[1:]
     else:
         lines = sys.stdin.readlines()
-    original = ''.join([x.strip() for x in lines])
-    stripped = ''.join([strip_non_ascii(x.strip()) for x in lines])
+    original = ''.join(x.strip() for x in lines)
+    stripped = ''.join(strip_non_ascii(x.strip()) for x in lines)
     if len(original) != len(stripped):
         return 1
     return 0
