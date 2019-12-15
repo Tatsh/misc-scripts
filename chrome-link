@@ -4,7 +4,7 @@ from os import chmod, close, environ, makedirs, write
 from os.path import basename, expanduser, join as path_join, splitext
 from pathlib import Path
 from tempfile import mkdtemp, mkstemp
-from typing import List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 from urllib.parse import urljoin, urlparse
 import argparse
 import logging
@@ -211,10 +211,10 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
             for chunk in r.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
-            kwargs = {}
+            kwargs: Dict[str, Any] = {}
             if IS_MSYS:
                 kwargs['env'] = {
-                    **env,
+                    **environ,
                     **dict(PATH='/mingw64/bin:{}'.format(environ['PATH']))
                 }
             subprocess.check_call(
