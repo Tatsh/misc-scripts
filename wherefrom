@@ -1,11 +1,27 @@
 #!/usr/bin/env python
+from os.path import basename
+from typing import Optional
 import argparse
-import subprocess as sp
-import sys
+import logging
 import plistlib
 import re
+import subprocess as sp
+import sys
 
 KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
 
 def hexstr2bytes(s: str) -> bytes:
@@ -40,6 +56,8 @@ def main():
                         action='store_true',
                         help='Print the webpage URL')
     args = parser.parse_args()
+    setup_logging_stdout()
+    assert log is not None
     has_multiple = len(args.files) > 1
     index = 1 if args.webpage else 0
     ret = 0
@@ -53,7 +71,7 @@ def main():
             sys.stdout.write(f'{val}\n')
         except Exception as e:
             clz = str(type(e))[8:-2]
-            print(f'{clz}: {str(e)}', file=sys.stderr)
+            log.exception('%s: %s', clz, exc_info=e)
             ret = 1
         except KeyboardInterrupt:
             return 1

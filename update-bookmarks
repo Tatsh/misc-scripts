@@ -55,8 +55,9 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def send(r: Optional[requests.Response]
-         ) -> Optional[Union[requests.Response, FailedConnection]]:
+def send(
+    r: Optional[requests.Response]
+) -> Optional[Union[requests.Response, FailedConnection]]:
     if not r:
         return None
     try:
@@ -87,12 +88,13 @@ def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
     return None
 
 
-def recursive_scan(soup: Soup,
-                   session: requests.Session,
-                   last_level: int = 0,
-                   size: int = 10,
-                   verbose: bool = False
-                   ) -> Tuple[List[Tuple[str, str]], List[Tuple[str, Any]]]:
+def recursive_scan(
+    soup: Soup,
+    session: requests.Session,
+    last_level: int = 0,
+    size: int = 10,
+    verbose: bool = False
+) -> Tuple[List[Tuple[str, str]], List[Tuple[str, Any]]]:
     assert log is not None
     ret: List[Tuple[str, str]] = []
     errors = []
@@ -135,7 +137,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         'file',
-        metavar='INFILE',
+        metavar='IN_FILE',
         type=argparse.FileType('r'),
         nargs=1,
         help='Bookmark HTML file (usually exported from browser)')
