@@ -3,8 +3,23 @@ from copy import copy
 from os.path import basename
 from typing import Optional, Tuple
 import argparse
+import logging
 import subprocess as sp
 import sys
+
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
 
 def metaflac(*args) -> str:
@@ -15,12 +30,14 @@ def metaflac(*args) -> str:
 
 
 def main() -> int:
+    setup_logging_stdout()
+    assert log is not None
     invoked_as = basename(sys.argv[0])
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
         tag_requested = invoked_as.split('-')[1]
-        possible: Tuple[str, ...] = (tag_requested.title(),
-                                     tag_requested.upper(),
-                                     tag_requested.lower())
+        possible: Tuple[str,
+                        ...] = (tag_requested.title(), tag_requested.upper(),
+                                tag_requested.lower())
         if tag_requested.lower() == 'year':
             possible += ('Date', 'DATE', 'date')
         unfiltered_files = sys.argv[1:]
@@ -49,9 +66,9 @@ def main() -> int:
                         if val_int:
                             val = f'{val_int:02d}'
                     if show_filename:
-                        print(f'{filename}: {val}')
+                        log.info('%s: %s', filename, val)
                     else:
-                        print(val)
+                        log.info('%s', val)
                     break
         return 0
     parser = argparse.ArgumentParser()
@@ -87,13 +104,12 @@ def main() -> int:
             with open(args.picture, 'rb'):
                 metaflac_args.append(f'--import-picture-from={args.picture}')
         except IOError:
-            print(
-                f'Cannot add file "{args.picture}". Specified argument is '
-                'not supported',
-                file=sys.stderr)
+            log.error(
+                'Cannot add file "%s". Specified argument is not '
+                'supported', args.picture)
             return 1
     if len(metaflac_args) == 2:
-        print('Not doing anything', file=sys.stderr)
+        log.error('Not doing anything')
         return 1
     if destroy:
         metaflac(cleanup_args)

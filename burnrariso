@@ -74,12 +74,12 @@ def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
     return fn, int(work[i])
 
 
-def unrar_wodim_pipe(rar_filename: str,
-                     iso_filename: str,
-                     tsize: int,
-                     speed: int = 8,
-                     device_name: Optional[str] = None,
-                     verbose: bool = False) -> bool:
+def unrar_cdrecord_pipe(rar_filename: str,
+                        iso_filename: str,
+                        tsize: int,
+                        speed: int = 8,
+                        device_name: Optional[str] = None,
+                        verbose: bool = False) -> bool:
     assert log is not None
     unrar_args = (
         'unrar',
@@ -88,20 +88,21 @@ def unrar_wodim_pipe(rar_filename: str,
         rar_filename,
         iso_filename,
     )
-    wodim_args = [
+    cdrecord_args = [
         'cdrecord',
         f'speed={speed}',
         'driveropts=burnfree',
         f'tsize={tsize}',
     ]
     if device_name:
-        wodim_args.append(f'dev={device_name}')
-    wodim_args.extend(['-dao', '-eject', '-'])
+        cdrecord_args.append(f'dev={device_name}')
+    cdrecord_args.extend(['-dao', '-eject', '-'])
     if verbose:
-        wodim_args.append('-v')
-    log.debug('Command: %s | %s', ' '.join(unrar_args), ' '.join(wodim_args))
+        cdrecord_args.append('-v')
+    log.debug('Command: %s | %s', ' '.join(unrar_args),
+              ' '.join(cdrecord_args))
     r1 = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
-    r2 = sp.Popen(wodim_args, stdin=r1.stdout, close_fds=True)
+    r2 = sp.Popen(cdrecord_args, stdin=r1.stdout, close_fds=True)
     r1.stdout.close()
     r2.wait()
     r1.wait()
@@ -109,6 +110,7 @@ def unrar_wodim_pipe(rar_filename: str,
 
 
 def check_requirements(skip_crc: bool) -> bool:
+    assert log is not None
     try:
         sp.check_output(('which', 'unrar'))
         if not skip_crc:
@@ -116,28 +118,24 @@ def check_requirements(skip_crc: bool) -> bool:
         sp.check_output(('which', 'cdrecord'))
     except sp.CalledProcessError as e:
         command_needed = e.cmd.replace('which ', '')
-        print(
-            f'Your system is missing "{command_needed}" (or it is not in '
-            'PATH)',
-            file=sys.stderr)
+        log.error(f'Your system is missing "%s" (or it is not in PATH)',
+                  command_needed)
         apps_to_gentoo_packages = {
             'unrar': ['app-arch/unrar', 'app-arch/unrar-gpl'],
             'cksfv': ['app-arch/cksfv'],
             'cdrecord': ['app-cdr/cdrtools'],
         }
         if len(apps_to_gentoo_packages[command_needed]) == 1:
-            print(
+            log.info(
                 'If you are using Gentoo or a derivative with Gentoo\'s '
-                f'Portage tree, you can find "{command_needed}" in package '
-                f'{apps_to_gentoo_packages[command_needed][0]}',
-                file=sys.stderr)
+                'Portage tree, you can find "%s" in package %s',
+                command_needed, apps_to_gentoo_packages[command_needed][0])
         else:
             packages = ', '.join(apps_to_gentoo_packages[command_needed])
-            print(
+            log.info(
                 'If you are using Gentoo or a derivative with Gentoo\'s '
-                f'Portage tree, you can find "{command_needed}" in '
-                f'packages {packages}',
-                file=sys.stderr)
+                'Portage tree, you can find "%s" in packages %s',
+                command_needed, packages)
         return False
     return True
 
@@ -175,8 +173,7 @@ def main() -> int:
         return 1
     iso, tsize = find_iso_in_rar(rar_filename)
     if not tsize:
-        print(f'Unable to find ISO in RAR "{args.rar_filename}"',
-              file=sys.stderr)
+        log.error(f'Unable to find ISO in RAR "%s"', args.rar_filename)
         return 1
     else:
         log.debug('Found ISO %s with tsize %d', iso, tsize)
@@ -199,24 +196,22 @@ def main() -> int:
                 log.debug('Found SFV file via globbing: "%s"',
                           basename(sfv_filename))
         if not sfv_filename:
-            print(
-                'Cannot find SFV file to verify with '
-                '(you can run with --no-crc-check)',
-                file=sys.stderr)
+            log.error('Cannot find SFV file to verify with (you can run with '
+                      '--no-crc-check)')
             return 1
         if not crc_check_with_sfv(sfv_filename):
-            print('SFV verification failed', file=sys.stderr)
+            log.error('SFV verification failed')
             return 1
     if args.rar_test:
         log.info('Testing extraction')
         if not test_extraction(rar_filename, verbose=args.verbose):
-            print('Extraction test failed', file=sys.stderr)
+            log.error('Extraction test failed')
             return 1
         else:
             log.debug('Extraction test succeeded')
-    if not unrar_wodim_pipe(rar_filename, cast(str, iso), tsize, args.speed,
-                            args.device):
-        print('Write failed!', file=sys.stderr)
+    if not unrar_cdrecord_pipe(rar_filename, cast(str, iso), tsize, args.speed,
+                               args.device):
+        log.error('Write failed!')
         return 1
     return 0
 
