@@ -182,8 +182,8 @@ def main() -> int:
     log.info('Command: %s', ' '.join(command))
     p = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf-8')
     if p.returncode:
-        log.error(f'STDOUT: {p.stdout}')
-        log.error(f'STDERR: {p.stderr}', file=sys.stderr)
+        log.error(f'STDOUT: %s', p.stdout)
+        log.error(f'STDERR: %s', p.stderr)
         return p.returncode
     elif '-v' in mv_args or '--verbose' in mv_args:
         log.info(p.stdout)
