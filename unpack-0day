@@ -16,8 +16,8 @@ for dir in "$@"; do
         unzip -o "$i"
     done
     rm -f ./*.diz ./*.DIZ
-    outsfv=$(echo ./*.rar | sed -r -e 's/\.rar$/.sfv/')
-    cksfv -q ./*.r[0-9][0-9] ./*.part*.rar ./*.rar 2> /dev/null > "$outsfv" || true
+    out_sfv=$(echo ./*.rar | sed -r -e 's/\.rar$/.sfv/')
+    cksfv -q ./*.r[0-9][0-9] ./*.part*.rar ./*.rar 2> /dev/null > "$out_sfv" || true
     rm -f ./*.zip
     popd || continue
 done
