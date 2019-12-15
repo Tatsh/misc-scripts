@@ -109,9 +109,9 @@ def _handle_listing(listing: List[str], outdir: str, top: str,
                             caret='^' * len(m.group(0))))
                         ctx_count = 5
                 if found:
-                    fname = found.name
+                    filename = found.name
                     found.close()
-                    setfiletime(fname, (unix_ts, unix_ts))
+                    setfiletime(filename, (unix_ts, unix_ts))
                     found = None
                     try:
                         with open(dummy_log_fn, 'r'):

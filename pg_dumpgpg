@@ -142,7 +142,7 @@ def main() -> int:
             log.warning(out)
 
         tar_fn = '%s.tar' % (fn, )
-        log.info('Tar\'ing to "%s"', tar_fn)
+        log.info("Tar'ing to %s", tar_fn)
         tar = tarfile.open(tar_fn, 'w')
 
         tar.add(fn, arcname=basename(fn))

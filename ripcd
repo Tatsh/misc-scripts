@@ -1,130 +1,128 @@
 #!/usr/bin/env bash
-set -e
-disc_id_out=$(cd-discid)
-disc_id=$(cut -d ' ' -f1 <<< "$disc_id_out")
-echo "Disc ID: ${disc_id}"
-track_count=$(cut -d ' ' -f2 <<< "$disc_id_out")
-track_info=$(cut -d ' ' -f2-$((track_count + 2)) <<< "$disc_id_out")
-track_data=$(rev <<< "$disc_id_out" | cut -d ' ' -f1 | rev)
+main() {
+    local category artist album genre year album_dir wav_file flac_file i \
+        track_artist track_n title track_artist
+    local -r disc_id_out=$(cd-discid)
+    local -r disc_id=$(cut -d ' ' -f1 <<< "$disc_id_out")
+    local -r track_count=$(cut -d ' ' -f2 <<< "$disc_id_out")
+    local -r track_info=$(cut -d ' ' -f2-$((track_count + 2)) <<< "$disc_id_out")
+    local -r track_data=$(rev <<< "$disc_id_out" | cut -d ' ' -f1 | rev)
 
-# shellcheck disable=SC2086
-out=$(cddb_query -c off query "$track_data" $track_info)
-num_matches=$(head -n 1 <<< "$out" | sed -r -e 's/^Number of matches\: //')
-if [ -z "$RIPCD_TAKE_FIRST_MATCH" ]; then
-    if [ -z "$num_matches" ] ||
-        ((num_matches == 0)) ||
-        ((num_matches > 1)); then
-        echo 'Take a look at results:'
-        # shellcheck disable=SC2086
-        cddb_query -c off query "$track_data" $track_info
-        exit 1
-    fi
-fi
+    echo "Disc ID: ${disc_id}"
 
-category=
-while IFS=$'\n' read -r l; do
-    if grep -q -E ' +category\: ' <<< "$l"; then
-        category="$(cut -d ' ' -f4 <<< "$l")"
-        break
-    fi
-done <<< "$out"
-
-if [ -z "$category" ]; then
-    echo 'Failed to parse category' >&2
-    exit 1
-fi
-
-artist=
-album=
-genre=
-year=
-
-cddb_query -c off read "$category" "$disc_id" | while IFS=$'\n' read -r l; do
-    if grep -q -E '^Artist\: ' <<< "$l"; then
-        artist=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
-        echo "Album artist: ${artist}"
-    elif grep -q -E '^Title\: ' <<< "$l"; then
-        album=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
-        echo "Album: ${album}"
-    elif grep -q -E '^Genre\: ' <<< "$l"; then
-        genre=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
-        echo "Genre: ${genre}"
-    elif grep -q -E 'Year\: ' <<< "$l"; then
-        year=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
-        echo "Year: ${year}"
-    elif grep -q -E ' +\[[0-9]+\] +' <<< "$l"; then
-        track_number=$(cut -d' ' -f3 <<< "$l" | tr -d '[' | tr -d ']')
-        track_n=$(sed -r -e 's/^0+//' <<< "$track_number")
-        title=$(sed -r -e "s/\\s+\\[[0-9]+\\]\\s+(.*)' by [^\\(]+.*/\\1/" \
-            -e "s/^'//" -e "s:/:-:g" <<< "$l" |
-            perl -lpe 's/^\s+|\s+$//g')
-        track_artist=$(cut -d"'" -f3- <<< "$l" |
-            cut -d' ' -f3- |
-            sed -r -e 's/\s+\([0-9]+\:[0-9]+\)//' -e "s:/:-:g" |
-            perl -lpe 's/^\s+|\s+$//g')
-
-        if [ -z "$artist" ] ||
-            [ -z "$album" ] ||
-            [ -z "$genre" ] ||
-            [ -z "$year" ] ||
-            [ -z "$track_number" ] ||
-            [ -z "$track_n" ] ||
-            [ -z "$title" ] ||
-            [ -z "$track_artist" ]; then
-            echo 'Failed to find a field' >&2
-            continue
+    # shellcheck disable=SC2086
+    local -r out=$(cddb_query -c off query "$track_data" $track_info)
+    local -r num_matches=$(head -n 1 <<< "$out" | sed -r -e 's/^Number of matches\: //')
+    if [ -z "$RIPCD_TAKE_FIRST_MATCH" ]; then
+        if [ -z "$num_matches" ] ||
+            ((num_matches == 0)) ||
+            ((num_matches > 1)); then
+            echo 'Take a look at results:'
+            # shellcheck disable=SC2086
+            cddb_query -c off query "$track_data" $track_info
+            return 1
         fi
+    fi
 
-        album_dir="${artist}-${album}-${year}"
-        mkdir -p "$album_dir"
-
-        wavfile="${album_dir}/${track_number}-${track_artist}-${title}.wav"
-        flacfile="${album_dir}/${track_number}-${track_artist}-${title}.flac"
-        logfile="${album_dir}/${track_number}-${track_artist}-${title}.log"
-
-        if [ -f "$flacfile" ]; then
-            continue
+    while IFS=$'\n' read -r l; do
+        if grep -q -E ' +category\: ' <<< "$l"; then
+            category="$(cut -d ' ' -f4 <<< "$l")"
+            break
         fi
+    done <<< "$out"
 
-        #eject
-        #eject -t
-        #sleep 15
-        cdparanoia \
-            --never-skip=5 \
-            --log-debug="$logfile" \
-            --abort-on-skip \
-            "$track_n" \
-            "$wavfile"
-        if ! [ -f "$wavfile" ]; then
-            set +e
-            i=0
-            while ((i < 4)); do
-                echo "Attempt #$((i + 1)) / 4"
-                eject
-                eject -t
-                sleep 15
-                cdparanoia \
-                    --never-skip=5 \
-                    --log-debug="$logfile" \
-                    --abort-on-skip \
-                    "$track_n" \
-                    "$wavfile" && break
-                ((i++))
-            done
-            set -e
-            if ! [ -f "$wavfile" ]; then
+    if [ -z "$category" ]; then
+        echo 'Failed to parse category' >&2
+        return 1
+    fi
+
+    cddb_query -c off read "$category" "$disc_id" | while IFS=$'\n' read -r l; do
+        if grep -q -E '^Artist\: ' <<< "$l"; then
+            artist=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            echo "Album artist: ${artist}"
+        elif grep -q -E '^Title\: ' <<< "$l"; then
+            album=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            echo "Album: ${album}"
+        elif grep -q -E '^Genre\: ' <<< "$l"; then
+            genre=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            echo "Genre: ${genre}"
+        elif grep -q -E 'Year\: ' <<< "$l"; then
+            year=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            echo "Year: ${year}"
+        elif grep -q -E ' +\[[0-9]+\] +' <<< "$l"; then
+            track_number=$(cut -d' ' -f3 <<< "$l" | tr -d '[' | tr -d ']')
+            track_n=$(sed -r -e 's/^0+//' <<< "$track_number")
+            title=$(sed -r -e "s/\\s+\\[[0-9]+\\]\\s+(.*)' by [^\\(]+.*/\\1/" \
+                -e "s/^'//" -e "s:/:-:g" <<< "$l" |
+                perl -lpe 's/^\s+|\s+$//g')
+            track_artist=$(cut -d"'" -f3- <<< "$l" |
+                cut -d' ' -f3- |
+                sed -r -e 's/\s+\([0-9]+\:[0-9]+\)//' -e "s:/:-:g" |
+                perl -lpe 's/^\s+|\s+$//g')
+
+            if [ -z "$artist" ] ||
+                [ -z "$album" ] ||
+                [ -z "$genre" ] ||
+                [ -z "$year" ] ||
+                [ -z "$track_number" ] ||
+                [ -z "$track_n" ] ||
+                [ -z "$title" ] ||
+                [ -z "$track_artist" ]; then
+                echo 'Failed to find a field' >&2
                 continue
             fi
+
+            album_dir="${artist}-${album}-${year}"
+            mkdir -p "$album_dir"
+
+            wav_file="${album_dir}/${track_number}-${track_artist}-${title}.wav"
+            flac_file="${album_dir}/${track_number}-${track_artist}-${title}.flac"
+            log_file="${album_dir}/${track_number}-${track_artist}-${title}.log"
+
+            if [ -f "$flac_file" ]; then
+                continue
+            fi
+
+            #eject
+            #eject -t
+            #sleep 15
+            cdparanoia \
+                --never-skip=5 \
+                --log-debug="$log_file" \
+                --abort-on-skip \
+                "$track_n" \
+                "$wav_file"
+            if ! [ -f "$wav_file" ]; then
+                i=0
+                while ((i < 4)); do
+                    echo "Attempt #$((i + 1)) / 4" >&2
+                    eject
+                    eject -t
+                    sleep 15
+                    cdparanoia \
+                        --never-skip=5 \
+                        --log-debug="$log_file" \
+                        --abort-on-skip \
+                        "$track_n" \
+                        "$wav_file" && break
+                    ((i++))
+                done
+                if ! [ -f "$wav_file" ]; then
+                    continue
+                fi
+            fi
+            flac --delete-input-file -o "$flac_file" "$wav_file"
+            metaflac \
+                "--set-tag=ARTIST=${track_artist}" \
+                "--set-tag=TITLE=${title}" \
+                "--set-tag=TRACKNUMBER=${track_n}" \
+                "--set-tag=GENRE=${genre}" \
+                "--set-tag=ALBUM_ARTIST=${artist}" \
+                "--set-tag=YEAR=${year}" \
+                "--set-tag=ALBUM=${album}" \
+                "$flac_file"
         fi
-        flac --delete-input-file -o "$flacfile" "$wavfile"
-        metaflac \
-            "--set-tag=ARTIST=${track_artist}" \
-            "--set-tag=TITLE=${title}" \
-            "--set-tag=TRACKNUMBER=${track_n}" \
-            "--set-tag=GENRE=${genre}" \
-            "--set-tag=ALBUM_ARTIST=${artist}" \
-            "--set-tag=YEAR=${year}" \
-            "--set-tag=ALBUM=${album}" \
-            "$flacfile"
-    fi
-done
+    done
+}
+
+main "$@"

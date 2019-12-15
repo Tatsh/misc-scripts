@@ -4,12 +4,28 @@ from os.path import (basename, isdir, isfile, join as path_join, realpath,
                      splitext)
 from typing import Optional
 import argparse
+import logging
 import sys
+
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         level: int = logging.INFO) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(level)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(level)
+    log.addHandler(channel)
 
 
 def safe_rename(fn: str, target: str, preserve: bool):
+    assert log is not None
     if not isfile(target) and not isdir(target):
-        print(f'copy {fn} -> {target}', file=sys.stderr)
+        log.info('copy %s -> %s', fn, target)
         with open(target, 'wb+') as f:
             with open(fn, 'rb') as o:
                 f.write(o.read())
@@ -38,6 +54,8 @@ def safe_rename(fn: str, target: str, preserve: bool):
 
 
 def main() -> int:
+    setup_logging_stdout()
+    assert log is not None
     is_mv = sys.argv[0].endswith('safemv')
     help_ = 'Copy files without clobbering existing files'
     if is_mv:
@@ -54,24 +72,22 @@ def main() -> int:
     if target:
         target = realpath(target)
         if not isdir(target):
-            print(f'TARGET_DIR argument must be a directory, given: {target}',
-                  file=sys.stderr)
+            log.error('TARGET_DIR argument must be a directory, given: %s',
+                      target)
             return 1
     else:
         if len(args.files) < 2:
-            print('Must have file to move and target argument',
-                  file=sys.stderr)
+            log.error('Must have file to move and target argument')
             return 1
         should_be_dir_last = len(args.files) > 2
         target = realpath(args.files.pop())
         assert target is not None
         if should_be_dir_last and not isdir(target):
-            print(
+            log.error(
                 'Last argument must be a directory if specifying more than '
-                '2 files to move',
-                file=sys.stderr)
+                '2 files to move')
             return 1
-    args.files = (realpath(x) for x in args.files)
+    args.files = [realpath(x) for x in args.files]
     fn: str
     for fn in args.files:
         if not safe_rename(fn, target, not args.no_preserve):

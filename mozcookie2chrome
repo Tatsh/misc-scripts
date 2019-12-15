@@ -12,7 +12,7 @@ log: Optional[logging.Logger] = None
 
 
 def setup_logging_stdout(name: Optional[str] = None,
-                         level: int = logging.WARNING) -> None:
+                         level: int = logging.INFO) -> None:
     global log
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
@@ -85,10 +85,10 @@ def main() -> int:
                'expires_utc', 'secure', 'httponly', 'has_expires',
                'persistent', 'last_access_utc')
     cols = ','.join(columns)
-    qmarks = ('?,' * len(columns))[:-1]
+    question_marks = ('?,' * len(columns))[:-1]
     delete_query = ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
                     'AND path = ?')
-    insert_query = f'INSERT INTO cookies ({cols}) VALUES({qmarks})'
+    insert_query = f'INSERT INTO cookies ({cols}) VALUES({question_marks})'
     try:
         for dic in cookies:
             dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)

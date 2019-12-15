@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 from os import devnull, environ, makedirs
-from os.path import expanduser, isdir, join as path_join
+from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
 from shutil import rmtree
+from typing import Optional
 import argparse
+import logging
 import subprocess as sp
 import sys
 
@@ -20,17 +22,31 @@ _VERSION_MAPPING = {
     '98': 'win98',
     '95': 'win95'
 }
+log: Optional[logging.Logger] = None
+
+
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> None:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
 
 
 def wine(args: argparse.Namespace) -> int:
+    setup_logging_stdout()
+    assert log is not None
     prefix_name: str = args.prefix_name
     prefix_root = expanduser('~/.local/share/wineprefixes')
     makedirs(prefix_root, mode=0o755, exist_ok=True)
     target = path_join(prefix_root, prefix_name)
     o_target = target
     if isdir(target):
-        print('Not touching existing prefix at {}'.format(target),
-              file=sys.stderr)
+        log.error('Not touching existing prefix at %s', target)
         return 1
     arch = 'win32' if args.thirty2bit else 'win64'
     env = dict(WINEPREFIX=target,
@@ -55,7 +71,7 @@ def wine(args: argparse.Namespace) -> int:
     winetricks = sp.check_output(['which', 'winetricks'],
                                  encoding='utf-8').strip()
     if not winetricks:
-        print('Winetricks is not installed.', file=sys.stderr)
+        log.error('Winetricks is not installed.')
         return 1
     prefix_arg = 'prefix={}'.format(prefix_name)
     winetricks_args = [
@@ -74,22 +90,20 @@ def wine(args: argparse.Namespace) -> int:
                                  DISPLAY=environ.get('DISPLAY', ''),
                                  XAUTHORITY=environ.get('XAUTHORITY', '')))
     except sp.CalledProcessError as e:
-        print(
-            f'Winetricks exit code was {e.returncode} but it may have '
-            'succeeded',
-            file=sys.stderr)
-        print(e.output, file=sys.stderr)
+        log.warning('Winetricks exit code was %d but it may have succeeded',
+                    e.returncode)
+        log.warning('%s', e.output)
     except KeyboardInterrupt:
         rmtree(o_target)
         return 1
-    wprefix_env = quote('WINEPREFIX={}'.format(target))
+    wineprefix_env = quote('WINEPREFIX={}'.format(target))
     print(f'''Run `export WINEPREFIX={target}` before running wine or use env:
 
-env {wprefix_env} wine ...
+env {wineprefix_env} wine ...
 
 If you ran this with eval, your shell is ready.''',
           file=sys.stderr)
-    print(f'export {wprefix_env}')
+    print(f'export {wineprefix_env}')
     ps1_env = f'PS1={prefix_name}🍷$PS1'
     print(f'export {ps1_env}')
     return 0

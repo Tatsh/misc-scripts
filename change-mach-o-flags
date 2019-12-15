@@ -256,8 +256,7 @@ def main(me: str, args: Sequence[str]):
               or magic == MH_CIGAM_64):
             HandleMachOFile(executable_file, options)
         else:
-            raise MachOError(
-                '{} is not a Mach-O or fat file'.format(executable_file))
+            raise MachOError(f'{executable_file} is not a Mach-O or fat file')
     return 0
 
 
