@@ -4,7 +4,6 @@ from pathlib import Path
 from typing import Dict, Optional
 import logging
 import plistlib
-import subprocess as sp
 import sys
 
 HIGH_RES_KEY = 'NSHighResolutionCapable'
@@ -38,7 +37,7 @@ def main() -> int:
         with p.open('wb') as f:
             plistlib.dump(data, f, sort_keys=False)
         log.info('Rewrote Info.plist for %s', fin)
-        log.debug('Running `%s "%s"`', touch_cmd, fin)
+        log.debug('Running `touch "%s"`', fin)
         Path(fin).touch()
     return 0
 
