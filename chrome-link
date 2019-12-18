@@ -213,9 +213,10 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
             close(fd)
             kwargs: Dict[str, Any] = {}
             if IS_MSYS:
+                path = environ['PATH']
                 kwargs['env'] = {
                     **environ,
-                    **dict(PATH='/mingw64/bin:{}'.format(environ['PATH']))
+                    **dict(PATH=f'/mingw64/bin:{path}')
                 }
             subprocess.check_call(
                 ('convert', _cygpath_win(tmp_name), '-define',

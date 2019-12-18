@@ -73,7 +73,7 @@ def wine(args: argparse.Namespace) -> int:
     if not winetricks:
         log.error('Winetricks is not installed.')
         return 1
-    prefix_arg = 'prefix={}'.format(prefix_name)
+    prefix_arg = f'prefix={prefix_name}'
     winetricks_args = [
         winetricks, prefix_arg, _VERSION_MAPPING[args.windows_version[0]]
     ]
@@ -81,7 +81,7 @@ def wine(args: argparse.Namespace) -> int:
         winetricks_args.append('isolate_home')
         winetricks_args.append('sandbox')
     if args.vd != 'off':
-        winetricks_args.append('vd={}'.format(args.vd[0]))
+        winetricks_args.append(f'vd={args.vd[0]}')
     try:
         sp.check_output(winetricks_args,
                         encoding='utf-8',
@@ -96,7 +96,7 @@ def wine(args: argparse.Namespace) -> int:
     except KeyboardInterrupt:
         rmtree(o_target)
         return 1
-    wineprefix_env = quote('WINEPREFIX={}'.format(target))
+    wineprefix_env = quote(f'WINEPREFIX={target}')
     print(f'''Run `export WINEPREFIX={target}` before running wine or use env:
 
 env {wineprefix_env} wine ...

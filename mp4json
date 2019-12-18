@@ -119,7 +119,7 @@ def main() -> int:
     mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
     mp3_ext_regex = re.compile(r'\.mp3')
     for arg in sys.argv[1:]:
-        json_filename = '{}.info.json'.format(splitext(arg)[0])
+        json_filename = f'{splitext(arg)[0]}.info.json'
         if not isfile(json_filename):
             continue
         can_delete = False

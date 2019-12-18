@@ -37,15 +37,14 @@ def main() -> int:
     fd, palette_fn = mkstemp(prefix='a2gif-', suffix='.png')
     input_video = realpath(args.video_file)
     if not args.output:
-        output_file = path_join(
-            dirname(input_video),
-            '{}.gif'.format(splitext(basename(input_video))[0]))
+        output_file = path_join(dirname(input_video),
+                                f'{splitext(basename(input_video))[0]}.gif')
     else:
         output_file = args.output
     ffmpeg_args = ['-y']
 
-    palette_filter = ('fps={fps},scale={width}:-1:flags=lanczos,'
-                      'palettegen').format(width=args.width, fps=args.fps)
+    palette_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
+                      'palettegen')
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
         return 1
@@ -60,9 +59,8 @@ def main() -> int:
     ffmpeg_args += ['-vf', palette_filter, palette_fn]
     ffmpeg(ffmpeg_args)
 
-    video_filter = ('fps={fps},scale={width}:-1:flags=lanczos[x];'
-                    '[x][1:v]paletteuse').format(width=args.width,
-                                                 fps=args.fps)
+    video_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos[x];'
+                    '[x][1:v]paletteuse')
     ffmpeg_args = ['-y']
     if args.ss:
         ffmpeg_args += ['-ss', args.ss]

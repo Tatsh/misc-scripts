@@ -44,7 +44,7 @@ def safe_rename(fn: str, target: str, preserve: bool):
     while not renamed:
         bfn, ext = splitext(target)
         while isfile(target):
-            suffix = '-{:d}'.format(n)
+            suffix = f'-{n:d}'
             last = ext if ext else ''
             target = f'{bfn}{suffix}{last}'
             n += 1
@@ -59,7 +59,7 @@ def main() -> int:
     is_mv = sys.argv[0].endswith('safemv')
     help_ = 'Copy files without clobbering existing files'
     if is_mv:
-        help_ = 'Move {}'.format(help_[5:])
+        help_ = f'Move {help_[5:]}'
     parser = argparse.ArgumentParser(help_)
     parser.add_argument('-t',
                         '--target-dir',

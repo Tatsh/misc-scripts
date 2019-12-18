@@ -26,7 +26,7 @@ def add_times(times: Optional[Sequence[str]]) -> Optional[str]:
     frames = int((remainder_ms * 1000 * 75) / 1e6) + 1
     if minutes > 99 or seconds > 59 or frames > 75:
         return None
-    return '{:02d}:{:02d}:{:02d}'.format(minutes, seconds, frames)
+    return f'{minutes:02d}:{seconds:02d}:{frames:02d}'
 
 
 def main() -> int:
