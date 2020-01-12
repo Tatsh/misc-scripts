@@ -2,6 +2,7 @@ BeautifulSoup4
 PyYAML
 lxml
 requests
+typing-extensions
 
 # - burnrariso requires cksfv, unrar (GPL version works too), and cdrecord
 # - flac-* scripts require metaflac

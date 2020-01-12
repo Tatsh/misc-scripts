@@ -1,0 +1,141 @@
+#!/usr/bin/env python
+from datetime import date
+from itertools import chain
+from os.path import basename
+from typing import Any, Iterable, Optional, Sequence, Tuple, Union, cast
+import argparse
+import csv
+import json
+import logging
+import sys
+
+from typing_extensions import Literal, TypedDict
+
+log: Optional[logging.Logger] = None
+RootKey = Literal['bookmark_bar', 'other']
+MICROSECONDS_PER_SECOND = 1e6
+# https://github.com/chromium/chromium/blob/670ff74372d149d0ee4d733e2254a4a3d6b0ec6d/base/time/time.h#L499
+TIME_TO_MICROSECOND_OFFSET = 11644473600000000
+
+
+class SyncedDict(TypedDict):
+    children: Sequence[Any]
+    date_added: str
+    date_modified: str
+    guid: str
+    id: str
+    name: str
+    sync_transaction_version: str
+    type: str
+
+
+class MetaInfo(TypedDict):
+    last_visited_desktop: str
+
+
+class URL(TypedDict):
+    date_added: str
+    guid: str
+    id: str
+    meta_info: Optional[MetaInfo]
+    name: str
+    type: Literal['url']
+    url: str
+
+
+class Folder(TypedDict):
+    children: Sequence[Union['URL', Any]]  # URL or Folder
+    date_added: str
+    date_modified: str
+    guid: str
+    id: str
+    name: str
+    sync_transaction_version: str
+    synced: SyncedDict
+    type: Literal['folder']
+
+
+class RootsDict(TypedDict):
+    bookmark_bar: Folder
+    other: Folder
+    sync_transaction_version: str
+    synced: SyncedDict
+
+
+class Bookmarks(TypedDict):
+    checksum: str
+    roots: RootsDict
+    sync_metadata: str
+    version: int
+
+
+def _setup_logging_stdout(name: Optional[str] = None,
+                          verbose: bool = False) -> logging.Logger:
+    global log
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
+    return log
+
+
+def get_strings(
+        children: Sequence[Union[URL, Folder]],
+        ignore_empty_names: bool = False) -> Iterable[Tuple[str, str, str]]:
+    for x in children:
+        if x['type'] == 'folder':
+            yield from get_strings(cast(Folder, x)['children'])
+        elif x['type'] == 'url':
+            if not x['name'] and ignore_empty_names:
+                continue
+            # https://github.com/chromium/chromium/blob/d7b85bd859088e217edeaa38d8629f181247b5cb/base/time/time_now_posix.cc#L73
+            # This may be slightly off because tv.usec is not re-added but for
+            # date objects it may not matter
+            yield (date.fromtimestamp(
+                (int(x['date_added']) - TIME_TO_MICROSECOND_OFFSET) /
+                MICROSECONDS_PER_SECOND).strftime('%Y-%m-%d'), x['name'],
+                   cast(URL, x)['url'])
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Convert Chrome Bookmarks file to CSV')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('--ignore-empty-names',
+                        action='store_true',
+                        help='Skip bookmarks with empty names')
+    parser.add_argument(
+        'input',
+        metavar='INPUT',
+        type=argparse.FileType('r'),
+        help=('Input Bookmarks JSON file '
+              '(such as ~/.config/chromium/Default/Bookmarks)'))
+    parser.add_argument('output',
+                        metavar='OUTPUT',
+                        help='Output CSV file',
+                        type=argparse.FileType('w'))
+    args = parser.parse_args()
+    _setup_logging_stdout(verbose=args.verbose)
+    assert log is not None
+    try:
+        data: Bookmarks = json.load(args.input)
+        for root in ('bookmark_bar', 'other'):
+            data['roots'][cast(RootKey, root)]['children']
+    except (json.decoder.JSONDecodeError, KeyError):
+        log.error('Error: Does not seem like a Bookmarks file')
+        return 1
+    args.input.close()
+    csv.writer(args.output).writerows([('Date added', 'Name', 'URL')] + list(
+        chain.from_iterable(
+            get_strings(data['roots'][cast(RootKey, root)]['children'],
+                        ignore_empty_names=args.ignore_empty_names)
+            for root in ('bookmark_bar', 'other'))))
+    args.output.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
