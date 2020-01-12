@@ -137,9 +137,11 @@ def main() -> int:
         for root in ('bookmark_bar', 'other'):
             data['roots'][cast(RootKey, root)]['children']
     except (json.decoder.JSONDecodeError, KeyError):
+        args.output.close()
         log.error('Error: Does not seem like a Bookmarks file')
         return 1
-    args.input.close()
+    finally:
+        args.input.close()
     csv.writer(args.output).writerows([('Date added', 'Name', 'URL')] + list(
         chain.from_iterable(
             get_strings(data['roots'][cast(RootKey, root)]['children'],
