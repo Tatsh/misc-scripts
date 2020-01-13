@@ -9,7 +9,10 @@ import json
 import logging
 import sys
 
-from typing_extensions import Literal, TypedDict
+try:
+    from typing_extensions import Literal, TypedDict
+except ImportError:
+    from typing import Literal, TypedDict
 
 log: Optional[logging.Logger] = None
 RootKey = Literal['bookmark_bar', 'other']
