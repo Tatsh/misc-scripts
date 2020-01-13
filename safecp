@@ -22,7 +22,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def safe_rename(fn: str, target: str, preserve: bool):
+def safe_rename(fn: str, target: str, preserve: bool) -> bool:
     assert log is not None
     if not isfile(target) and not isdir(target):
         log.info('copy %s -> %s', fn, target)

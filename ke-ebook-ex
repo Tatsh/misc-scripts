@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
-from typing import Optional
+from typing import Iterable, Optional
 from zipfile import ZipFile
 import argparse
 import logging
@@ -24,10 +24,11 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def extract_rar_from_zip(zip_file: ZipFile):
+def extract_rar_from_zip(zip_file: ZipFile) -> Iterable[str]:
     for x in (x for x in zip_file.namelist()
               if re.search(r'\.r(?:ar|\d{2})$', x)):
         zip_file.extract(x)
+        yield x
 
 
 def unrar_x(rar: str) -> None:
@@ -53,7 +54,7 @@ def main() -> int:
         if len(zip_listing) == 0:
             log.warning('No zip files found. Skipping directory %s', _dir)
             continue
-        _rar_list = [extract_rar_from_zip(x) for x in zip_listing]
+        _rar_list = (extract_rar_from_zip(x) for x in zip_listing)
         extracted = [x for y in _rar_list for x in y]
         # Only need the .rar
         rar = [x for x in extracted if x.endswith('.rar')]

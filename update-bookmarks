@@ -31,7 +31,7 @@ class FailedConnection:
         self.reason = reason
         self.exc = exc
 
-    def strreason(self):
+    def strreason(self) -> str:
         if self.reason == self.REASON_INVALID_URL:
             return f'{self.url} is not a valid URL'
         if self.reason == self.REASON_FILE_URL:

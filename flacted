@@ -22,7 +22,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def metaflac(*args) -> str:
+def metaflac(*args: str) -> str:
     return sp.run(('metaflac', ) + args,
                   check=True,
                   stdout=sp.PIPE,
@@ -112,9 +112,9 @@ def main() -> int:
         log.error('Not doing anything')
         return 1
     if destroy:
-        metaflac(cleanup_args)
+        metaflac(*cleanup_args)
     metaflac_args.extend(args.files)
-    metaflac(metaflac_args)
+    metaflac(*metaflac_args)
     return 0
 
 

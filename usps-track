@@ -80,23 +80,23 @@ def main() -> int:
             log.error('Failed with tracking number %s', arg)
             continue
         data = dict(
-            label=arg,
-            textAll='on',
-            textFuture='on',
-            textToday='on',
-            textDnd='on',
-            textPickup='on',
-            textOA='on',
-            textAlert='on',
+            confirmSms='on',
             email1=NAME1_EMPTY_VALUE,
+            label=arg,
             name1=NAME1_EMPTY_VALUE,
             smsNumber=phone_number,
-            confirmSms='on',
+            textAlert='on',
+            textAll='on',
+            textDnd='on',
+            textFuture='on',
+            textOA='on',
+            textPickup='on',
+            textToday='on',
         )
         log.debug('POST data: %s', data)
         add_headers = {
-            'X-Requested-With': 'XMLHttpRequest',
             'Referer': f'{GET_URL}?qtc_tLabels1={arg}',
+            'X-Requested-With': 'XMLHttpRequest',
         }
         r = session.post(POST_URL, data=data, headers=add_headers)
         r.raise_for_status()

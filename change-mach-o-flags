@@ -74,7 +74,7 @@ disable the PIE bit as needed on already-linked executables.
 """
 
 from optparse import Values
-from typing import BinaryIO, Sequence, Tuple
+from typing import BinaryIO, Sequence, Tuple, cast
 import optparse
 import os
 import struct
@@ -132,7 +132,7 @@ def ReadUInt32(file: BinaryIO, endian: str) -> int:
     """
     bytes = CheckedRead(file, 4)
     (uint32, ) = struct.unpack(endian + 'I', bytes)
-    return uint32
+    return cast(int, uint32)
 
 
 def ReadMachHeader(file: BinaryIO, endian: str) -> Tuple[int, ...]:
@@ -158,7 +158,7 @@ def ReadFatArch(file: BinaryIO) -> Tuple[int, ...]:
     return cputype, cpusubtype, offset, size, align
 
 
-def WriteUInt32(file: BinaryIO, uint32: int, endian: str):
+def WriteUInt32(file: BinaryIO, uint32: int, endian: str) -> None:
     """Writes |uint32| as an unsigned 32-bit integer to the file-like |file|
   object, treating it as having endianness specified by |endian| (per the
   |struct| module)."""
@@ -167,7 +167,7 @@ def WriteUInt32(file: BinaryIO, uint32: int, endian: str):
     file.write(bytes)
 
 
-def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0):
+def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0) -> None:
     """
     Seeks the file-like |file| object to |offset|, reads its |mach_header|,
     and rewrites the header's |flags| field if appropriate. The header's
@@ -229,7 +229,7 @@ def HandleFatFile(file: BinaryIO,
         CheckedSeek(file, fat_arch_offset)
 
 
-def main(me: str, args: Sequence[str]):
+def main(me: str, args: Sequence[str]) -> int:
     parser = optparse.OptionParser('%prog [options] <executable_path>')
     parser.add_option('--executable-heap',
                       action='store_false',

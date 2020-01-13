@@ -4,7 +4,7 @@
 from datetime import datetime
 from os import environ as env, remove as rm
 from os.path import basename, expanduser, join as path_join, realpath
-from typing import Optional
+from typing import Optional, Tuple
 import argparse
 import logging
 import signal
@@ -34,12 +34,12 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def mysqldump(args, outpath):
+def mysqldump(args: Tuple[str, ...], outpath: str) -> None:
     with open(outpath, 'wb+') as f:
-        sp.run(['mysqldump'] + args, stdout=f, check=True)
+        sp.run(('mysqldump', ) + args, stdout=f, check=True)
 
 
-def rm_if_exists(fn):
+def rm_if_exists(fn: str) -> bool:
     try:
         with open(fn, 'rb'):
             pass

@@ -21,7 +21,7 @@ REGEX = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
          r'\t(?P<name>.*)\t(?P<value>.*)\n?')
 
 
-def main():
+def main() -> int:
     try:
         cookies_txt = sys.argv[1]
     except IndexError:

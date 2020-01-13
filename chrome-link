@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from dataclasses import dataclass
 from glob import glob
 from os import chmod, close, environ, makedirs, write
 from os.path import basename, expanduser, join as path_join, splitext
@@ -16,6 +17,7 @@ import subprocess
 import sys
 
 from bs4 import BeautifulSoup, Tag
+from typing_extensions import TypedDict
 import requests
 
 IS_MSYS = len(environ.get('MSYSTEM_CHOST', '')) != 0
@@ -44,7 +46,8 @@ def _fix_msys_arg(s: str) -> str:
     return s.replace('\n', ' ').replace('\\', '\\\\') if IS_MSYS else s
 
 
-class MainArgs(argparse.Namespace):
+@dataclass
+class MainArgs:
     categories: str
     chrome_command: Optional[str]
     comment: Optional[str]
@@ -57,9 +60,14 @@ class MainArgs(argparse.Namespace):
     window_style: int
 
 
-def _chrome_command_kwargs():
-    return dict(required=True) if not IS_LINUX else dict(
-        default='chromium-browser')
+class ChromeCommandKwArgs(TypedDict):
+    required: bool
+    default: Optional[str]
+
+
+def _chrome_command_kwargs() -> ChromeCommandKwArgs:
+    return dict(required=True, default=None) if not IS_LINUX else dict(
+        default='chromium-browser', required=False)
 
 
 def _cygpath_win(path: str) -> str:

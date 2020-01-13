@@ -3,12 +3,12 @@ from argparse import ArgumentParser
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
 from tempfile import mkstemp
-from typing import Sequence
+from typing import Any, Sequence
 import subprocess as sp
 import sys
 
 
-def ffmpeg(args: Sequence[str], **kwargs) -> None:
+def ffmpeg(args: Sequence[str], **kwargs: Any) -> None:
     sp.check_call(['ffmpeg'] + list(args), **kwargs)
 
 

@@ -95,7 +95,7 @@ tr_map = (
     ('ｒ', 'r'),
     ('ｓ', 's'),
     ('ｔ', 't'),
-    ('ｕ', ''),
+    ('ｕ', 'u'),
     ('ｖ', 'v'),
     ('ｗ', 'w'),
     ('ｘ', 'x'),
@@ -128,7 +128,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     log.addHandler(channel)
 
 
-def make_target(filename):
+def make_target(filename: str) -> str:
     for find, replace in tr_map:
         filename = filename.replace(find, replace)
     return filename

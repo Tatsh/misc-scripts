@@ -4,7 +4,7 @@ from datetime import datetime
 from os import unlink as rm, utime
 from os.path import splitext
 from shutil import copyfile
-from typing import AnyStr, TextIO, Union
+from typing import Any, AnyStr, Sequence, TextIO, Union, cast
 import json
 import re
 import subprocess as sp
@@ -13,12 +13,12 @@ import sys
 CUSTOM_ATOM_NAME = 'json'
 MIMETYPE = 'application/json'
 TAG_DESCRIPTION = 'youtube-dl metadata'
-MP4BOX_REM_ITEM_CMD = [
+MP4BOX_REM_ITEM_CMD = (
     'MP4Box',
     '-rem-item',
     '1',
     None,  # MP4 filename
-]
+)
 # https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/
 MP4BOX_SET_META_CMD = (
     'MP4Box',
@@ -42,7 +42,7 @@ ID3TED_WRITE_CMD_TEMPLATE = ('id3ted', '--preserve-times', '-3', '--TXXX',
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
 
-def quiet_subprocess_check_call(*args, **kwargs) -> None:
+def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
     try:
         arg: Union[int, TextIO] = sp.DEVNULL
     except AttributeError:
@@ -50,7 +50,7 @@ def quiet_subprocess_check_call(*args, **kwargs) -> None:
     kwargs['stdout'] = arg
     kwargs['stderr'] = arg
     kwargs['check'] = True
-    sp.run(*args, **kwargs)
+    sp.run(args, **kwargs)
 
 
 def set_date(path: str, json_str: bytes) -> None:
@@ -69,13 +69,13 @@ def mp4box_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(MP4BOX_REM_ITEM_CMD)
     cmd[3] = filename
     try:
-        quiet_subprocess_check_call(cmd)
+        quiet_subprocess_check_call(cast(Sequence[str], cmd))
     except sp.CalledProcessError:
         pass
 
     cmd = list(MP4BOX_SET_META_CMD)
     cmd[3] = filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(cast(Sequence[str], cmd))
 
     better_json_filename = 'info.json'
     copyfile(json_filename, better_json_filename)
@@ -83,7 +83,7 @@ def mp4box_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(MP4BOX_WRITE_CMD_TEMPLATE)
     cmd[2] = f'{better_json_filename}{cmd[2]}'
     cmd[3] = filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(cast(Sequence[str], cmd))
 
     rm(better_json_filename)
     with open(json_filename, 'rb') as f:
@@ -94,14 +94,14 @@ def mp4box_add_json(filename: str, json_filename: str) -> bool:
 def id3ted_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(ID3TED_REMOVE_FRAME_TEMPLATE)
     cmd[-1] = filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(cast(Sequence[str], cmd))
     cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
     with open(json_filename, 'rb') as f:
         new_json = f.read()
     encoded = standard_b64encode(new_json).decode('utf-8')
     cmd[-2] = f'{encoded}:{TAG_DESCRIPTION}'
     cmd[-1] = filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(cast(Sequence[str], cmd))
     set_date(filename, new_json)
     return True
 

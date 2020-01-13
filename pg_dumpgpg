@@ -50,14 +50,14 @@ def rm_if_exists(fn: str) -> bool:
     return False
 
 
-def psql(*args) -> str:
+def psql(*args: str) -> str:
     return sp.run(('psql', ) + args,
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
 
 
-def pg_dump(*args) -> str:
+def pg_dump(*args: str) -> str:
     return sp.run(('pg_dump', ) + args,
                   check=True,
                   stdout=sp.PIPE,
@@ -130,7 +130,7 @@ def main() -> int:
             continue
 
         try:
-            out = pg_dump(pg_dump_args).strip()
+            out = pg_dump(*pg_dump_args).strip()
         except (KeyboardInterrupt, SystemExit, sp.CalledProcessError):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
             log.error('Caught interrupt. Removing "%s"', fn)

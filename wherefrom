@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from os.path import basename
-from typing import Optional
+from typing import Iterable, Optional, Sequence, cast
 import argparse
 import logging
 import plistlib
@@ -25,18 +25,18 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def hexstr2bytes(s: str) -> bytes:
-    def chunks(l, n):
+    def chunks(l: str, n: int) -> Iterable[str]:
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    def hexstr2bytes_generator(s: str):
+    def hexstr2bytes_generator(s: str) -> Iterable[int]:
         for h in chunks(s, 2):
             yield int(h, 16)
 
     return bytes(hexstr2bytes_generator(s))
 
 
-def xattr(key, filename) -> str:
+def xattr(key: str, filename: str) -> str:
     return re.sub(
         r'\s+', '',
         sp.run(('xattr', '-p', key, filename),
@@ -44,7 +44,7 @@ def xattr(key, filename) -> str:
                stdout=sp.PIPE).stdout)
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description='Determine where downloaded files came from.')
     parser.add_argument('files',
@@ -64,8 +64,10 @@ def main():
     arg: str
     for arg in args.files:
         try:
-            val: str = plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
-                                                         arg)))[index]
+            val = cast(
+                Sequence[str],
+                plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
+                                                  arg))))[index]
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')

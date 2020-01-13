@@ -1,8 +1,9 @@
 #!/usr/bin/env python
+from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import SysLogHandler
 from os.path import realpath
-from typing import Optional, TextIO
+from typing import Any, NoReturn, Optional, TextIO, cast
 import argparse
 import logging
 import signal
@@ -16,40 +17,40 @@ except ImportError:
     HAS_YAML = False
 
 LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
+log_handle: Optional[TextIO] = None
+syslog_handle: Optional[SysLogHandler] = None
 
-logfh: Optional[TextIO] = None
-syslogh: Optional[SysLogHandler] = None
 
-
-def speedtest(*args, **kwargs) -> sp.CompletedProcess:
+def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess:
     kwargs['check'] = True
     kwargs['stdout'] = sp.PIPE
     kwargs['encoding'] = 'utf-8'
     return sp.run(('speedtest', ) + args, **kwargs)
 
 
-def cleanup(logyamlfh: Optional[TextIO]):
-    global logfh, syslogh
-    if logfh:
-        logfh.close()
-    if logyamlfh:
-        logyamlfh.close()
-    if syslogh:
-        syslogh.close()
+def cleanup(log_yaml_handle: Optional[TextIO] = None) -> None:
+    global log_handle, syslog_handle
+    if log_handle:
+        log_handle.close()
+    if log_yaml_handle:
+        log_yaml_handle.close()
+    if syslog_handle:
+        syslog_handle.close()
     logging.shutdown()
 
 
-def cleanup_and_exit(logyamlfh: Optional[TextIO], status=0):
-    cleanup(logyamlfh)
+def cleanup_and_exit(log_yaml_handle: Optional[TextIO] = None,
+                     status: int = 0) -> int:
+    cleanup(log_yaml_handle)
     return status
 
 
-def ctrl_c(signum, frame):
+def ctrl_c(signum: int, frame: Any) -> NoReturn:
     cleanup()
     raise SystemExit('Signal raised')
 
 
-def maybe_log_yaml(fh: Optional[TextIO], **kwargs):
+def maybe_log_yaml(fh: Optional[TextIO], **kwargs: Any) -> None:
     if fh:
         kwargs['time'] = str(datetime.today())
         fh.write(
@@ -60,6 +61,16 @@ def maybe_log_yaml(fh: Optional[TextIO], **kwargs):
 
 def get_line_value(s: str) -> str:
     return s.split(':')[1].strip().split(' ')[0].strip()
+
+
+@dataclass
+class Args:
+    download_threshold: float
+    upload_threshold: float
+    ping_threshold: float
+    syslog: bool
+    log_file: Optional[str]
+    verbose: bool
 
 
 def main() -> int:
@@ -73,26 +84,26 @@ def main() -> int:
     parser.add_argument('-s', '--syslog', action='store_true')
     parser.add_argument('-l', '--log-file', help='Debug log')
     parser.add_argument('-v', '--verbose', action='store_true')
-    args = parser.parse_args()
+    args = cast(Args, parser.parse_args())
     ping = dl = ul = share = None
-    logyamlfh: Optional[TextIO] = None
+    log_yaml_handle: Optional[TextIO] = None
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
-        logfh = open(args.log_file, 'a+')
-        assert logfh is not None
+        log_fh = open(args.log_file, 'a+')
+        assert log_fh is not None
         if HAS_YAML:
-            logyamlfh = open(args.log_file + '.yml', 'a+')
-        channel = logging.StreamHandler(logfh)
+            log_yaml_handle = open(args.log_file + '.yml', 'a+')
+        channel = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)
         logger.addHandler(channel)
     if args.syslog:
-        syslogh = SysLogHandler(address='/dev/log')
-        assert syslogh is not None
-        syslogh.setFormatter(LOG_FORMATTER)
-        syslogh.setLevel(logging.INFO)
-        logger.addHandler(syslogh)
+        syslog_h = SysLogHandler(address='/dev/log')
+        assert syslog_h is not None
+        syslog_h.setFormatter(LOG_FORMATTER)
+        syslog_h.setLevel(logging.INFO)
+        logger.addHandler(syslog_h)
     if args.verbose:
         channel = logging.StreamHandler(sys.stdout)
         channel.setFormatter(LOG_FORMATTER)
@@ -113,17 +124,20 @@ def main() -> int:
         logger.error('speedtest failed to run')
         if e.stderr:
             logger.exception(e)
-        return cleanup_and_exit(logyamlfh, status=1)
+        return cleanup_and_exit(log_yaml_handle, status=1)
+    assert ping is not None
     if ping > args.ping_threshold:
         logger.error(
             'Ping threshold higher than threshold. Got %0.03f, '
             'wanted at most %.03f.', ping, args.ping_threshold)
         failed = True
+    assert dl is not None
     if dl < args.download_threshold:
         logger.error(
             'Download speed threshold lower than threshold. '
             'Got %.03f, wanted at least %0.03f.', dl, args.download_threshold)
         failed = True
+    assert ul is not None
     if ul < args.upload_threshold:
         logger.error(
             'Upload speed threshold lower than threshold. '
@@ -133,18 +147,18 @@ def main() -> int:
     logger.info('Download speed: %0.02f Mb/s', dl)
     logger.info('Upload speed: %0.02f Mb/s', ul)
     logger.info('Share URI: %s', share)
-    maybe_log_yaml(logyamlfh,
+    maybe_log_yaml(log_yaml_handle,
                    ping=ping,
                    download=dl,
                    upload=ul,
                    share_uri=share)
     if True in (not x for x in (ping, dl, ul, share)):
         logger.error('Output not as expected (other error)')
-        return cleanup_and_exit(logyamlfh, status=1)
+        return cleanup_and_exit(log_yaml_handle, status=1)
     if failed:
         logger.error('Exiting with status 1')
-        return cleanup_and_exit(logyamlfh, status=1)
-    return cleanup_and_exit(logyamlfh)
+        return cleanup_and_exit(log_yaml_handle, status=1)
+    return cleanup_and_exit(log_yaml_handle)
 
 
 if __name__ == '__main__':
