@@ -14,7 +14,7 @@ REFERER = ('https://www.adp.com/tools-and-resources/calculators-and-tools/'
            'payroll-calculators/hourly-paycheck-calculator.aspx')
 
 
-def main():
+def main() -> int:
     parser = argparse.ArgumentParser(
         description=('This is a very basic '
                      'interface to the page here: '
@@ -123,6 +123,8 @@ def main():
     print('------------------')
     print('Fuckery   \033[1;31m{:8.2f}\033[0m'.format(gross_pay -
                                                       data['netPay']))
+
+    return 0
 
 
 if __name__ == '__main__':
