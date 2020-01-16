@@ -1,20 +1,75 @@
-#!/usr/bin/env bash
-main() {
-    if [ -z "$1" ] || [ -z "$2" ]; then
-        echo 'Usage: INPUT TITLE'
-        return 1
-    fi
-    local -r tmpfile=$(mktemp --suffix=.png)
-    local out
-    out=$(basename "$1")
-    out="${out%.*}-audio.mp4"
-    convert -size 1920x1080 xc:black -fill white -pointsize 50 \
-        -draw "gravity Center text 0,0 '${2}'" "$tmpfile"
-    ffmpeg -y -loop 1 -i "$tmpfile" -i "$1" -shortest -acodec copy \
-        -vcodec h264_nvenc -profile:v high -level 4.1 -preset llhq \
-        -pix_fmt yuv420p -coder:v cabac -b:v 1M -maxrate:v 1M \
-        "$out"
-    rm "$tmpfile"
-}
+#!/usr/bin/env python
+from os import close, unlink
+from os.path import basename, splitext
+from tempfile import mkstemp
+from typing import Tuple
+import argparse
+import subprocess as sp
+import sys
 
-main "$@"
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('input', help='Input audio file')
+    parser.add_argument('title', help='Title to show in video')
+    parser.add_argument('-N',
+                        '--nvenc',
+                        help='Use NVENC hardware encoding',
+                        action='store_true')
+    parser.add_argument(
+        '-V',
+        '--videotoolbox',
+        action='store_true',
+        help='Use VideoToolbox hardware encoding (only on macOS)')
+    args = parser.parse_args()
+    fd, tmp = mkstemp(suffix='.png')
+    close(fd)
+    unlink(tmp)
+    bn = basename(args.input)
+    out = f'{splitext(bn)[0]}-audio.mkv'
+    sp.run(('convert', '-size', '1920x1080', 'xc:black', '-fill', 'white',
+            '-pointsize', '50', '-draw',
+            f"gravity Center text 0,0 '{args.title}'", tmp),
+           check=True)
+    args_start: Tuple[str,
+                      ...] = ('ffmpeg', '-loglevel', 'warning', '-hide_banner',
+                              '-y', '-loop', '1', '-i', tmp, '-i', args.input,
+                              '-shortest', '-acodec', 'copy')
+    if args.nvenc:
+        args_start += (
+            '-vcodec',
+            'h264_nvenc',
+            '-profile:v',
+            'high',
+            '-level',
+            '1',
+            '-preset',
+            'llhq',
+            '-coder:v',
+            'cabac',
+            '-b:v',
+            '1M',
+        )
+    elif args.videotoolbox:
+        args_start += (
+            '-vcodec',
+            'hevc_videotoolbox',
+            '-profile:v',
+            'main',
+            '-level',
+            '1',
+            '-b:v',
+            '0.5M',
+        )
+    else:
+        args_start += ('-vcodec', 'libx265', '-crf', '20', '-level', '1',
+                       '-profile:v', 'main')
+    sp.run(args_start +
+           ('-pix_fmt', 'yuv420p', '-b:v', '1M', '-maxrate:v', '1M', out),
+           check=True)
+    unlink(tmp)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
