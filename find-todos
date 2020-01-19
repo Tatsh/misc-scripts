@@ -3,8 +3,9 @@ from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
 from os.path import basename, dirname, isdir, join as path_join, realpath
-from typing import List, Optional, Sequence, TextIO, Set
+from typing import AsyncIterable, Optional, Sequence, Set, TextIO
 import argparse
+import asyncio
 import logging
 import re
 import sys
@@ -25,29 +26,30 @@ def get_all_excludes(patterns: Sequence[str]) -> Set[str]:
     return ret
 
 
-def _get_listing(newdir: str) -> List[str]:
-    return sorted(
-        realpath(path_join(newdir, x)) for x in listdir(newdir)
-        if not x.endswith('~') and not x.endswith('.svn-base') and x not in (
-            '.git',
-            '.svn',
-            '.hg',
-            'CVS',
-            '.mypy_cache',
-            '__pycache__',
-            '.vscode',
-            '.ropeproject',
-        ))
+async def _get_listing(newdir: str) -> AsyncIterable[str]:
+    for x in sorted(
+            realpath(path_join(newdir, x)) for x in listdir(newdir) if
+            not x.endswith('~') and not x.endswith('.svn-base') and x not in (
+                '.git',
+                '.svn',
+                '.hg',
+                'CVS',
+                '.mypy_cache',
+                '__pycache__',
+                '.vscode',
+                '.ropeproject',
+            )):
+        yield x
 
 
-def _handle_listing(listing: List[str], outdir: str, top: str,
-                    exclusions: Set[str]) -> None:
-    for entry in listing:
+async def _handle_listing(listing: AsyncIterable[str], outdir: str, top: str,
+                          exclusions: Set[str]) -> None:
+    async for entry in listing:
         if (entry.startswith(outdir) or entry in exclusions
                 or entry == sys.argv[0] or basename(entry) in exclusions):
             continue
         if isdir(entry):
-            _handle_listing(_get_listing(entry), outdir, top, exclusions)
+            await _handle_listing(_get_listing(entry), outdir, top, exclusions)
         else:
             try:
                 file_info: str = magic.from_file(entry, mime=True)
@@ -149,9 +151,11 @@ def main() -> int:
         channel.setLevel(logging.INFO if args.verbose else logging.DEBUG)
         channel.setFormatter(formatter)
         log.addHandler(channel)
-    _handle_listing(_get_listing(args.start), realpath(args.target),
-                    realpath(args.start),
-                    get_all_excludes(args.exclude) if args.exclude else set())
+    asyncio.run(
+        _handle_listing(
+            _get_listing(args.start), realpath(args.target),
+            realpath(args.start),
+            get_all_excludes(args.exclude) if args.exclude else set()))
     return 0
 
 
