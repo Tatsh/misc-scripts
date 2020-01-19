@@ -1,6 +1,7 @@
 BeautifulSoup4
 PyYAML
 lxml
+python-magic
 requests
 typing-extensions
 
