@@ -12,7 +12,7 @@ import sys
 try:
     from typing_extensions import Literal, TypedDict
 except ImportError:
-    from typing import Literal, TypedDict
+    from typing import Literal, TypedDict  # type: ignore[misc]  # noqa: F821
 
 log: Optional[logging.Logger] = None
 RootKey = Literal['bookmark_bar', 'other']
