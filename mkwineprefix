@@ -4,7 +4,7 @@ from os import devnull, environ, makedirs
 from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
 from shutil import rmtree
-from typing import Dict, Optional, Sequence, cast
+from typing import Any, Dict, Optional, Sequence, cast
 import argparse
 import logging
 import subprocess as sp
@@ -37,22 +37,31 @@ class Args:
                                       '81', '2k', '98', '95']]
     sandbox: bool
     vd: str
+    verbose: bool
 
 
-def setup_logging_stdout(name: Optional[str] = None,
+def setup_logging_stderr(name: Optional[str] = None,
                          verbose: bool = False) -> None:
     global log
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stderr)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
 
 
+def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
+    assert log is not None
+    if kwargs.get('env'):
+        log.debug('Environment: %s', kwargs['env'])
+    log.debug('Running: %s', ' '.join(map(quote, args)))
+    return sp.run(args, **kwargs)
+
+
 def wine(args: Args) -> int:
-    setup_logging_stdout()
+    setup_logging_stderr(verbose=args.verbose)
     assert log is not None
     prefix_name: str = args.prefix_name
     prefix_root = expanduser('~/.local/share/wineprefixes')
@@ -71,18 +80,24 @@ def wine(args: Args) -> int:
         env['DISPLAY'] = ':0'
     if args.no_xdg:
         try:
-            sp.check_call(
-                ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides',
+            run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides',
                  '/t', 'REG_SZ', '/v', 'winemenubuilder.exe', '/f'),
                 env=env,
+                check=True,
                 stdout=open(devnull, 'w'),
                 stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)
             return 1
     target = quote(target)
-    winetricks = sp.check_output(('which', 'winetricks'),
-                                 encoding='utf-8').strip()
+    try:
+        winetricks: Optional[str] = run(('sh', '-c', 'command -v winetricks'),
+                                        stdout=sp.PIPE,
+                                        stderr=sp.PIPE,
+                                        check=True,
+                                        encoding='utf-8').stdout.strip()
+    except sp.CalledProcessError:
+        winetricks = None
     if not winetricks:
         log.error('Winetricks is not installed.')
         return 1
@@ -96,8 +111,7 @@ def wine(args: Args) -> int:
     if args.vd != 'off':
         winetricks_args.append(f'vd={args.vd[0]}')
     try:
-        env['WINEPREFIX'] = o_target
-        sp.check_output(winetricks_args, encoding='utf-8', env=env)
+        run(winetricks_args, check=True, stdout=sp.PIPE, encoding='utf-8')
     except sp.CalledProcessError as e:
         log.warning('Winetricks exit code was %d but it may have succeeded',
                     e.returncode)
@@ -144,6 +158,7 @@ def main() -> int:
                         nargs=1,
                         default='off',
                         help='Virtual desktop size, e.g. 1024x768.')
+    parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('prefix_name')
     return wine(cast(Args, parser.parse_args()))
 
