@@ -33,13 +33,13 @@ log: Optional[logging.Logger] = None
 def _setup_logging_stdout(name: Optional[str] = None,
                           verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    ret = logging.getLogger(name)
+    ret.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
+    ret.addHandler(channel)
+    return ret
 
 
 def _fix_msys_arg(s: str) -> str:
@@ -95,7 +95,6 @@ def _parse_args() -> MainArgs:
 
 def _get_icon_from_site(args: MainArgs,
                         session: requests.Session) -> Optional[str]:
-    global log
     assert log is not None
     if args.icon:
         return args.icon
@@ -110,11 +109,13 @@ def _get_icon_from_site(args: MainArgs,
         uri: Optional[str] = tag.attrs.get('href', tag.attrs.get('content'))
         if uri:
             if 'sizes' in tag.attrs:
-                for w, h in map(lambda x: map(int, x.split('x')),
-                                re.split(r'\s+', tag['sizes'])):
+                for width, height in map(lambda x: map(int, x.split('x')),
+                                         re.split(r'\s+', tag['sizes'])):
                     icon_uri = urljoin(args.url, uri)
-                    log.debug('Icon with size %dx%d at URI %s', w, h, icon_uri)
-                    sizes.append((w if w > h else h, icon_uri))
+                    log.debug('Icon with size %dx%d at URI %s', width, height,
+                              icon_uri)
+                    sizes.append(
+                        (width if width > height else height, icon_uri))
             else:
                 icon_uri = urljoin(args.url, uri)
                 log.debug('Icon without size at URI %s', icon_uri)
@@ -127,7 +128,6 @@ def _get_icon_from_site(args: MainArgs,
 
 
 def _ico_index(tmp_name: str) -> str:
-    global log
     assert log is not None
     id_out = subprocess.check_output(('identify', '-format', '%w\n', tmp_name),
                                      encoding='utf-8').strip().splitlines()
@@ -136,9 +136,8 @@ def _ico_index(tmp_name: str) -> str:
     return f'[{index}]'
 
 
-def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
+def _fetch_convert_icon(icon: Optional[str], short_name: str,
                         session: requests.Session) -> Optional[str]:
-    global log
     assert log is not None
     if not re.match(r'^https?\://', icon or ''):
         return icon
@@ -248,7 +247,6 @@ def _fetch_convert_icon(icon: Optional[str], name: str, short_name: str,
 
 def _create_desktop_file(args: MainArgs) -> None:
     # Create .desktop file
-    global log
     assert log is not None
     apps_dir = expanduser('~/.local/share/applications')
     makedirs(apps_dir, exist_ok=True)
@@ -322,12 +320,11 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
                 f"'--app={args.url}' "
                 f'--user-data-directory={args.profile_directory}\n')
     chmod(script, 0o755)
-    with open(path_join(contents_dir, 'Info.plist'), 'wb+') as g:
-        plistlib.dump(info_plist_data, g)
+    with open(path_join(contents_dir, 'Info.plist'), 'wb+') as info_plist_f:
+        plistlib.dump(info_plist_data, info_plist_f)
 
 
 def _create_shortcut(args: MainArgs) -> int:
-    global log
     assert log is not None
     # Generate a JScript file and run it
     fd, script_js = mkstemp(suffix='.js')
@@ -367,7 +364,7 @@ link.WorkingDirectory=desktop;\n''')
     try:
         subprocess.check_call(cscript_cmd)
     except subprocess.CalledProcessError as e:
-        log.error(f'Caught exception: {e}')
+        log.error('Caught exception: %s', e)
         with open(script_js, 'r') as f:
             log.info('Script:\n%s', f.read())
         return 1
@@ -385,7 +382,7 @@ def main() -> int:
     if not args.icon and IS_MAC:
         log.info('Need -i argument')
         return 1
-    args.icon = _fetch_convert_icon(args.icon, args.name, short_name, session)
+    args.icon = _fetch_convert_icon(args.icon, short_name, session)
     if IS_LINUX:
         _create_desktop_file(args)
     elif IS_MAC:
