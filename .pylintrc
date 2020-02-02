@@ -434,10 +434,12 @@ good-names=i,
            n,  # usually an integer,
            fd, # usually a file descriptor int
            T, U, V,  # type args
-           m   # regex match
+           m,   # regex match
+           log,
+           args
 
 # Include a hint for the correct naming format with invalid-name.
-include-naming-hint=no
+include-naming-hint=yes
 
 # Naming style matching correct inline iteration names.
 inlinevar-naming-style=any
@@ -454,11 +456,11 @@ method-naming-style=snake_case
 #method-rgx=
 
 # Naming style matching correct module names.
-module-naming-style=snake_case
+#module-naming-style=snake_case
 
 # Regular expression matching correct module names. Overrides module-naming-
 # style.
-#module-rgx=
+module-rgx=[a-z\-_]+
 
 # Colon-delimited sets of names that determine each other's naming style when
 # the name regexes allow several styles.
