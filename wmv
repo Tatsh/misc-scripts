@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os.path import basename
 from typing import Optional
 import argparse
@@ -6,8 +7,7 @@ import logging
 import subprocess as sp
 import sys
 
-log: Optional[logging.Logger] = None
-tr_map = (
+TR_MAP = (
     ('　', ' '),
     ('…', '...'),
     ('！', '!'),
@@ -116,9 +116,9 @@ tr_map = (
 )
 
 
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -126,10 +126,11 @@ def setup_logging_stdout(name: Optional[str] = None,
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def make_target(filename: str) -> str:
-    for find, replace in tr_map:
+    for find, replace in TR_MAP:
         filename = filename.replace(find, replace)
     return filename
 
@@ -153,8 +154,7 @@ def main() -> int:
     parser.add_argument('-T', '--no-target-directory', action='store_true')
     parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
     args = parser.parse_args()
-    setup_logging_stdout(verbose=args.verbose)
-    assert log is not None
+    log = setup_logging_stdout(verbose=args.verbose)
     special_values = (
         ('--backup', args.backup),
         ('--suffix', args.suffix),
@@ -173,19 +173,24 @@ def main() -> int:
         log.error('Cannot use -b and --backup simultaneously')
         return 1
     for arg, val in special_values:
-        if type(val) is str:
+        if isinstance(val, str):
             mv_args.append(f'{arg}={val}')
     for arg, val in bool_args:
         if val is True:
             mv_args.append(arg)
     command = ['mv'] + mv_args + [args.file[0], make_target(args.file[0])]
     log.info('Command: %s', ' '.join(command))
-    p = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf-8')
-    if p.returncode:
-        log.error(f'STDOUT: %s', p.stdout)
-        log.error(f'STDERR: %s', p.stderr)
-        return p.returncode
-    elif '-v' in mv_args or '--verbose' in mv_args:
+    try:
+        p = sp.run(command,
+                   stdout=sp.PIPE,
+                   stderr=sp.PIPE,
+                   encoding='utf-8',
+                   check=True)
+    except sp.CalledProcessError as e:
+        log.error('STDOUT: %s', e.output)
+        log.error('STDERR: %s', e.stderr)
+        return e.returncode
+    if '-v' in mv_args or '--verbose' in mv_args:
         log.info(p.stdout)
     return 0
 
