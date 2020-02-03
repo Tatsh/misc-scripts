@@ -73,33 +73,31 @@ linkers used are recent enough to support -pie. However, it's used to
 disable the PIE bit as needed on already-linked executables.
 """
 
-from optparse import Values
 from typing import BinaryIO, Sequence, Tuple, cast
-import optparse
+import argparse
 import os
 import struct
 import sys
 
 # <mach-o/fat.h>
-FAT_MAGIC = 0xcafebabe
 FAT_CIGAM = 0xbebafeca
+FAT_MAGIC = 0xcafebabe
 
 # <mach-o/loader.h>
-MH_MAGIC = 0xfeedface
 MH_CIGAM = 0xcefaedfe
-MH_MAGIC_64 = 0xfeedfacf
 MH_CIGAM_64 = 0xcffaedfe
 MH_EXECUTE = 0x2
-MH_PIE = 0x00200000
+MH_MAGIC = 0xfeedface
+MH_MAGIC_64 = 0xfeedfacf
 MH_NO_HEAP_EXECUTION = 0x01000000
+MH_PIE = 0x00200000
 
 
 class MachOError(Exception):
     """A class for exceptions thrown by this module."""
-    pass
 
 
-def CheckedSeek(file: BinaryIO, offset: int) -> None:
+def checked_seek(file: BinaryIO, offset: int) -> None:
     """
     Seeks the file-like object at |file| to offset |offset| and raises a
     MachOError if anything funny happens.
@@ -111,63 +109,65 @@ def CheckedSeek(file: BinaryIO, offset: int) -> None:
                          (offset, new_offset))
 
 
-def CheckedRead(file: BinaryIO, count: int) -> bytes:
+def checked_read(file: BinaryIO, count: int) -> bytes:
     """
     Reads |count| bytes from the file-like |file| object, raising a MachOError
     if any other number of bytes is read.
     """
-    bytes = file.read(count)
-    if len(bytes) != count:
+    bytes_ = file.read(count)
+    if len(bytes_) != count:
         raise MachOError('read: expected length %d, observed %d' %
-                         (count, len(bytes)))
-    return bytes
+                         (count, len(bytes_)))
+    return bytes_
 
 
-def ReadUInt32(file: BinaryIO, endian: str) -> int:
+def read_uint32(file: BinaryIO, endian: str) -> int:
     """
     Reads an unsigned 32-bit integer from the file-like |file| object,
     treating it as having endianness specified by |endian| (per the |struct|
     module), and returns it as a number. Raises a MachOError if the proper
     length of data can't be read from |file|.
     """
-    bytes = CheckedRead(file, 4)
-    (uint32, ) = struct.unpack(endian + 'I', bytes)
+    bytes_ = checked_read(file, 4)
+    (uint32, ) = struct.unpack(endian + 'I', bytes_)
     return cast(int, uint32)
 
 
-def ReadMachHeader(file: BinaryIO, endian: str) -> Tuple[int, ...]:
+def read_mach_header(file: BinaryIO, endian: str) -> Tuple[int, ...]:
     """Reads an entire |mach_header| structure (<mach-o/loader.h>) from the
   file-like |file| object, treating it as having endianness specified by
   |endian| (per the |struct| module), and returns a 7-tuple of its members
   as numbers. Raises a MachOError if the proper length of data can't be read
   from |file|."""
-    bytes = CheckedRead(file, 28)
+    bytes_ = checked_read(file, 28)
     (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds,
-     flags) = struct.unpack(endian + '7I', bytes)
+     flags) = struct.unpack(endian + '7I', bytes_)
     return magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds, flags
 
 
-def ReadFatArch(file: BinaryIO) -> Tuple[int, ...]:
+def read_fat_arch(file: BinaryIO) -> Tuple[int, ...]:
     """Reads an entire |fat_arch| structure (<mach-o/fat.h>) from the file-like
   |file| object, treating it as having endianness specified by |endian|
   (per the |struct| module), and returns a 5-tuple of its members as numbers.
   Raises a MachOError if the proper length of data can't be read from
   |file|."""
-    bytes = CheckedRead(file, 20)
-    cputype, cpusubtype, offset, size, align = struct.unpack('>5I', bytes)
+    bytes_ = checked_read(file, 20)
+    cputype, cpusubtype, offset, size, align = struct.unpack('>5I', bytes_)
     return cputype, cpusubtype, offset, size, align
 
 
-def WriteUInt32(file: BinaryIO, uint32: int, endian: str) -> None:
+def write_uint32(file: BinaryIO, uint32: int, endian: str) -> None:
     """Writes |uint32| as an unsigned 32-bit integer to the file-like |file|
   object, treating it as having endianness specified by |endian| (per the
   |struct| module)."""
-    bytes = struct.pack(endian + 'I', uint32)
-    assert len(bytes) == 4
-    file.write(bytes)
+    bytes_ = struct.pack(endian + 'I', uint32)
+    assert len(bytes_) == 4
+    file.write(bytes_)
 
 
-def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0) -> None:
+def handle_mach_o_file(file: BinaryIO,
+                       options: argparse.Namespace,
+                       offset: int = 0) -> None:
     """
     Seeks the file-like |file| object to |offset|, reads its |mach_header|,
     and rewrites the header's |flags| field if appropriate. The header's
@@ -179,8 +179,8 @@ def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0) -> None:
     be made.
     If already set or clear as specified by |options|, nothing is written.
     """
-    CheckedSeek(file, offset)
-    magic = ReadUInt32(file, '<')
+    checked_seek(file, offset)
+    magic = read_uint32(file, '<')
     if magic == MH_MAGIC or magic == MH_MAGIC_64:
         endian = '<'
     elif magic == MH_CIGAM or magic == MH_CIGAM_64:
@@ -188,9 +188,9 @@ def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0) -> None:
     else:
         raise MachOError('Mach-O file at offset %d has illusion of magic' %
                          offset)
-    CheckedSeek(file, offset)
+    checked_seek(file, offset)
     (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds,
-     flags) = ReadMachHeader(file, endian)
+     flags) = read_mach_header(file, endian)
     assert magic == MH_MAGIC or magic == MH_MAGIC_64
     if filetype != MH_EXECUTE:
         raise MachOError(
@@ -206,59 +206,59 @@ def HandleMachOFile(file: BinaryIO, options: Values, offset: int = 0) -> None:
     else:
         flags &= ~MH_PIE
     if flags != original_flags:
-        CheckedSeek(file, offset + 24)
-        WriteUInt32(file, flags, endian)
+        checked_seek(file, offset + 24)
+        write_uint32(file, flags, endian)
 
 
-def HandleFatFile(file: BinaryIO,
-                  options: Values,
-                  fat_offset: int = 0) -> None:
+def handle_fat_file(file: BinaryIO,
+                    options: argparse.Namespace,
+                    fat_offset: int = 0) -> None:
     """Seeks the file-like |file| object to |offset| and loops over its
   |fat_header| entries, calling HandleMachOFile for each."""
-    CheckedSeek(file, fat_offset)
-    magic = ReadUInt32(file, '>')
+    checked_seek(file, fat_offset)
+    magic = read_uint32(file, '>')
     assert magic == FAT_MAGIC
-    nfat_arch = ReadUInt32(file, '>')
-    for index in range(0, nfat_arch):
-        cputype, cpusubtype, offset, size, align = ReadFatArch(file)
+    nfat_arch = read_uint32(file, '>')
+    for _ in range(0, nfat_arch):
+        _cputype, _cpusubtype, offset, size, _align = read_fat_arch(file)
         assert size >= 28
         # HandleMachOFile will seek around. Come back here after calling it, in
         # case it sought.
         fat_arch_offset = file.tell()
-        HandleMachOFile(file, options, offset)
-        CheckedSeek(file, fat_arch_offset)
+        handle_mach_o_file(file, options, offset)
+        checked_seek(file, fat_arch_offset)
 
 
-def main(me: str, args: Sequence[str]) -> int:
-    parser = optparse.OptionParser('%prog [options] <executable_path>')
-    parser.add_option('--executable-heap',
-                      action='store_false',
-                      dest='no_heap_execution',
-                      default=True,
-                      help='Clear the MH_NO_HEAP_EXECUTION bit')
-    parser.add_option('--no-pie',
-                      action='store_false',
-                      dest='pie',
-                      default=True,
-                      help='Clear the MH_PIE bit')
+def main(args: Sequence[str]) -> int:
+    parser = argparse.ArgumentParser('%prog [options] <executable_path>')
+    parser.add_argument('--executable-heap',
+                        action='store_false',
+                        dest='no_heap_execution',
+                        default=True,
+                        help='Clear the MH_NO_HEAP_EXECUTION bit')
+    parser.add_argument('--no-pie',
+                        action='store_false',
+                        dest='pie',
+                        default=True,
+                        help='Clear the MH_PIE bit')
     options, loose_args = parser.parse_args(args)
     if len(loose_args) != 1:
         parser.print_usage()
         return 1
     executable_path = loose_args[0]
     with open(executable_path, 'rb+') as executable_file:
-        magic = ReadUInt32(executable_file, '<')
+        magic = read_uint32(executable_file, '<')
         if magic == FAT_CIGAM:
             # Check FAT_CIGAM and not FAT_MAGIC because the read was
             # little-endian.
-            HandleFatFile(executable_file, options)
+            handle_fat_file(executable_file, options)
         elif (magic == MH_MAGIC or magic == MH_CIGAM or magic == MH_MAGIC_64
               or magic == MH_CIGAM_64):
-            HandleMachOFile(executable_file, options)
+            handle_mach_o_file(executable_file, options)
         else:
             raise MachOError(f'{executable_file} is not a Mach-O or fat file')
     return 0
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[0], sys.argv[1:]))
+    sys.exit(main(sys.argv[1:]))
