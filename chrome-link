@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from dataclasses import dataclass
+from functools import lru_cache
 from glob import glob
 from os import chmod, close, environ, makedirs, write
 from os.path import basename, expanduser, join as path_join, splitext
@@ -18,7 +19,9 @@ import sys
 
 from bs4 import BeautifulSoup, Tag
 from typing_extensions import TypedDict
+from urllib3.exceptions import InsecureRequestWarning
 import requests
+import urllib3
 
 IS_MSYS = len(environ.get('MSYSTEM_CHOST', '')) != 0
 IS_WINDOWS = IS_MSYS or os.name == "nt"
@@ -27,16 +30,18 @@ IS_LINUX = not IS_MAC and not IS_WINDOWS
 USER_AGENT = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 Safari/537.36')
-log: Optional[logging.Logger] = None
 
 
+@lru_cache()
 def _setup_logging_stdout(name: Optional[str] = None,
                           verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     ret = logging.getLogger(name)
     ret.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setFormatter(
+        logging.Formatter(
+            '%(name)s: %(message)s' if verbose else '%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     ret.addHandler(channel)
     return ret
@@ -53,8 +58,9 @@ class MainArgs:
     comment: Optional[str]
     hotkey: Optional[str]
     icon: Optional[str]
+    insecure: bool
     name: str
-    profile_directory: str
+    profile_name: str
     url: str
     verbose: bool
     window_style: int
@@ -77,25 +83,48 @@ def _cygpath_win(path: str) -> str:
 
 def _parse_args() -> MainArgs:
     parser = argparse.ArgumentParser()
-    parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('-c', '--chrome-command', **_chrome_command_kwargs())
-    parser.add_argument('-p', '--profile-directory', default='Default')
-    parser.add_argument('-i', '--icon')
+    parser.add_argument('-v',
+                        '--verbose',
+                        action='store_true',
+                        help='Increase verbosity')
+    parser.add_argument('-c',
+                        '--chrome-command',
+                        help='Chrome command',
+                        **_chrome_command_kwargs())
+    parser.add_argument('-p',
+                        '--profile-name',
+                        default='Default',
+                        help='Profile name to use (not a path)')
+    parser.add_argument('-i', '--icon', help='URL or file path to icon')
+    parser.add_argument('-k',
+                        '--insecure',
+                        action='store_true',
+                        help='Disable verification of HTTPS certificates')
     if IS_LINUX:
-        parser.add_argument('-C', '--categories', default='Network;')
+        parser.add_argument('-C',
+                            '--categories',
+                            default='Network;',
+                            help='XDG category list')
     if not IS_MAC:
-        parser.add_argument('-d', '--comment')
+        parser.add_argument('-d', '--comment', help='Comment')
     if IS_WINDOWS:
-        parser.add_argument('--window-style', type=int, default=1)
-        parser.add_argument('--hotkey')
-    parser.add_argument('name')
-    parser.add_argument('url')
+        parser.add_argument('--window-style',
+                            type=int,
+                            default=1,
+                            help='Window style (int)')
+        parser.add_argument('--hotkey', help='Hotkey')
+    parser.add_argument('name', help='Name for the icon')
+    parser.add_argument('url', help='URL of the app')
     return cast(MainArgs, parser.parse_args())
+
+
+# pylint: disable=redefined-outer-name
 
 
 def _get_icon_from_site(args: MainArgs,
                         session: requests.Session) -> Optional[str]:
-    assert log is not None
+    log = _setup_logging_stdout(name='_get_icon_from_site',
+                                verbose=args.verbose)
     if args.icon:
         return args.icon
     r = session.get(args.url)
@@ -127,8 +156,8 @@ def _get_icon_from_site(args: MainArgs,
     return icon
 
 
-def _ico_index(tmp_name: str) -> str:
-    assert log is not None
+def _ico_index(tmp_name: str, verbose: Optional[bool] = False) -> str:
+    log = _setup_logging_stdout(name='_ico_index', verbose=verbose)
     id_out = subprocess.check_output(('identify', '-format', '%w\n', tmp_name),
                                      encoding='utf-8').strip().splitlines()
     log.debug('ICO sizes available: %s', ' '.join(id_out))
@@ -136,9 +165,11 @@ def _ico_index(tmp_name: str) -> str:
     return f'[{index}]'
 
 
-def _fetch_convert_icon(icon: Optional[str], short_name: str,
-                        session: requests.Session) -> Optional[str]:
-    assert log is not None
+def _fetch_convert_icon(icon: Optional[str],
+                        short_name: str,
+                        session: requests.Session,
+                        verbose: Optional[bool] = False) -> Optional[str]:
+    log = _setup_logging_stdout(name='_fetch_convert_icon', verbose=verbose)
     if not re.match(r'^https?\://', icon or ''):
         return icon
     assert icon is not None
@@ -168,7 +199,7 @@ def _fetch_convert_icon(icon: Optional[str], short_name: str,
             close(fd)
             index = ''
             if icon_ext == '.ico':
-                index = _ico_index(tmp_name)
+                index = _ico_index(tmp_name, verbose)
             subprocess.check_call(('convert', f'{tmp_name}{index}', icon))
             try:
                 with open(icon, 'rb') as f:
@@ -247,13 +278,13 @@ def _fetch_convert_icon(icon: Optional[str], short_name: str,
 
 def _create_desktop_file(args: MainArgs) -> None:
     # Create .desktop file
-    assert log is not None
+    log = _setup_logging_stdout(name='_create_desktop_file',
+                                verbose=args.verbose)
     apps_dir = expanduser('~/.local/share/applications')
     makedirs(apps_dir, exist_ok=True)
     out_name = path_join(
         apps_dir,
-        f'chrome-{args.name}-{args.profile_directory}.desktop'.replace(
-            ' ', ''))
+        f'chrome-{args.name}-{args.profile_name}.desktop'.replace(' ', ''))
     assert args.chrome_command is not None
     try_exec = args.chrome_command.replace(' ', r'\ ')
     with open(out_name, 'w+') as f:
@@ -266,12 +297,14 @@ TryExec={try_exec}
 Categories={args.categories or ''}
 Comment={args.comment or ''}
 Name={args.name}
-Exec={args.chrome_command} "--user-data-directory={args.profile_directory}"'''
+Exec={args.chrome_command} "--user-data-directory={args.profile_name}"'''
                 f''' "--app={args.url}"
 Icon={args.icon}
 ''')
     log.debug('Executing update-desktop-database')
-    subprocess.check_call(('update-desktop-database', apps_dir))
+    subprocess.check_call(('update-desktop-database', apps_dir),
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE)
 
 
 def _create_iconset(args: MainArgs) -> str:
@@ -297,7 +330,7 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     contents_dir = path_join(app_dir, 'Contents')
     macos_dir = path_join(contents_dir, 'MacOS')
     res_dir = path_join(contents_dir, 'Resources')
-    profile_dir_short = args.profile_directory.replace(' ', '')
+    profile_dir_short = args.profile_name.replace(' ', '')
     bundle_id = f'com.google.Chrome.app.{profile_dir_short}-{short_name}'
     info_plist_data = dict(
         CFBundleExecutable='app_mode_loader',
@@ -318,14 +351,14 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
         f.write('#!/usr/bin/env bash\n')
         f.write(f"open -n '{args.chrome_command}' --args "
                 f"'--app={args.url}' "
-                f'--user-data-directory={args.profile_directory}\n')
+                f'--user-data-directory={args.profile_name}\n')
     chmod(script, 0o755)
     with open(path_join(contents_dir, 'Info.plist'), 'wb+') as info_plist_f:
         plistlib.dump(info_plist_data, info_plist_f)
 
 
 def _create_shortcut(args: MainArgs) -> int:
-    assert log is not None
+    log = _setup_logging_stdout(name='_create_shortcut', verbose=args.verbose)
     # Generate a JScript file and run it
     fd, script_js = mkstemp(suffix='.js')
     close(fd)
@@ -345,7 +378,7 @@ link.WorkingDirectory=desktop;\n''')
             Arguments=_fix_msys_arg(' '.join(
                 map(lambda x: f'"{x}"',
                     (f'--app={args.url}',
-                     f'--user-data-directory={args.profile_directory}')))),
+                     f'--user-data-directory={args.profile_name}')))),
             IconLocation=_fix_msys_arg(_cygpath_win(args.icon))
             if args.icon else default_icon,
             WindowStyle=args.window_style,
@@ -372,17 +405,19 @@ link.WorkingDirectory=desktop;\n''')
 
 
 def main() -> int:
-    global log
     args = _parse_args()
-    log = _setup_logging_stdout(verbose=args.verbose)
-    short_name: str = args.name.replace(' ', '')
+    short_name = args.name.replace(' ', '')
     session = requests.Session()
+    if args.insecure:
+        urllib3.disable_warnings(category=InsecureRequestWarning)
+        session.verify = False
     session.headers.update({'user-agent': USER_AGENT})
     args.icon = _get_icon_from_site(args, session)
     if not args.icon and IS_MAC:
-        log.info('Need -i argument')
+        print('Need -i argument', file=sys.stderr)
         return 1
-    args.icon = _fetch_convert_icon(args.icon, short_name, session)
+    args.icon = _fetch_convert_icon(args.icon, short_name, session,
+                                    args.verbose)
     if IS_LINUX:
         _create_desktop_file(args)
     elif IS_MAC:
