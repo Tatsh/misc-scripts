@@ -1,21 +1,15 @@
 #!/usr/bin/env python
 from datetime import date
 from itertools import chain
-from os.path import basename
 from typing import Any, Iterable, Optional, Sequence, Tuple, Union, cast
 import argparse
 import csv
 import json
-import logging
 import sys
 
-try:
-    from typing_extensions import Literal, TypedDict
-except ImportError:
-    from typing import Literal, TypedDict  # type: ignore[misc]  # noqa: F821
+from typing_extensions import Literal, TypedDict
 
-log: Optional[logging.Logger] = None
-RootKey = Literal['bookmark_bar', 'other']
+RootKey = Literal['bookmark_bar', 'other']  # pylint: disable=invalid-name
 StringTuple = Tuple[str, Optional[str], str, str]
 MICROSECONDS_PER_SECOND = 1e6
 # https://github.com/chromium/chromium/blob/670ff74372d149d0ee4d733e2254a4a3d6b0ec6d/base/time/time.h#L499
@@ -73,19 +67,6 @@ class Bookmarks(TypedDict):
     version: int
 
 
-def _setup_logging_stdout(name: Optional[str] = None,
-                          verbose: bool = False) -> logging.Logger:
-    global log
-    name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
-    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
-
-
 def chrome_timestamp_to_date(timestamp: str) -> date:
     """
     https://github.com/chromium/chromium/blob/d7b85bd859088e217edeaa38d8629f181247b5cb/base/time/time_now_posix.cc#L73
@@ -112,18 +93,15 @@ def get_strings(children: Sequence[Union[URL, Folder]],
         elif x['type'] == 'url':
             if not x['name'] and ignore_empty_names:
                 continue
-
             name = x['name']
             if folder_names and prefix:
                 name = f'{prefix} » {name}'
-
             last_visited = None
             if 'meta_info' in x:
                 meta_info = cast(URL, x)['meta_info']
                 assert meta_info is not None
                 last_visited = chrome_timestamp_to_date(
                     meta_info['last_visited_desktop']).strftime('%Y-%m-%d')
-
             yield (chrome_timestamp_to_date(
                 x['date_added']).strftime('%Y-%m-%d'), last_visited, name,
                    cast(URL, x)['url'])
@@ -148,15 +126,15 @@ def main() -> int:
                         help='Output CSV file',
                         type=argparse.FileType('w'))
     args = parser.parse_args()
-    _setup_logging_stdout(verbose=args.verbose)
-    assert log is not None
     try:
-        data: Bookmarks = json.load(args.input)
+        data = cast(Bookmarks, json.load(args.input))
         for root in ('bookmark_bar', 'other'):
-            data['roots'][cast(RootKey, root)]['children']
-    except (json.decoder.JSONDecodeError, KeyError):
+            assert 'roots' in data
+            assert cast(RootKey, root) in data['roots']
+            assert 'children' in data['roots'][cast(RootKey, root)]
+    except (json.decoder.JSONDecodeError, KeyError, AssertionError):
         args.output.close()
-        log.error('Error: Does not seem like a Bookmarks file')
+        print('Does not seem like a Bookmarks file', file=sys.stderr)
         return 1
     finally:
         args.input.close()
