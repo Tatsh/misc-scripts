@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from dataclasses import dataclass
+from functools import lru_cache
 from os import devnull, environ, makedirs
 from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
@@ -12,7 +13,7 @@ import sys
 
 from typing_extensions import Literal
 
-_VERSION_MAPPING = {
+VERSION_MAPPING = {
     '10': 'win10',
     'vista': 'vista',
     '2k3': 'win2k3',
@@ -25,7 +26,6 @@ _VERSION_MAPPING = {
     '98': 'win98',
     '95': 'win95'
 }
-log: Optional[logging.Logger] = None
 
 
 @dataclass
@@ -40,29 +40,29 @@ class Args:
     verbose: bool
 
 
+@lru_cache()
 def setup_logging_stderr(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stderr)
-    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
-    assert log is not None
+    log = setup_logging_stderr(verbose=kwargs.pop('verbose', False))
     if kwargs.get('env'):
         log.debug('Environment: %s', kwargs['env'])
     log.debug('Running: %s', ' '.join(map(quote, args)))
-    return sp.run(args, **kwargs)
+    return sp.run(args, check=True, **kwargs)
 
 
 def wine(args: Args) -> int:
-    setup_logging_stderr(verbose=args.verbose)
-    assert log is not None
+    log = setup_logging_stderr(verbose=args.verbose)
     prefix_name: str = args.prefix_name
     prefix_root = expanduser('~/.local/share/wineprefixes')
     makedirs(prefix_root, mode=0o755, exist_ok=True)
@@ -103,7 +103,7 @@ def wine(args: Args) -> int:
         return 1
     prefix_arg = f'prefix={prefix_name}'
     winetricks_args = [
-        winetricks, prefix_arg, _VERSION_MAPPING[args.windows_version[0]]
+        winetricks, prefix_arg, VERSION_MAPPING[args.windows_version[0]]
     ]
     if args.sandbox:
         winetricks_args.append('isolate_home')
@@ -148,7 +148,7 @@ def main() -> int:
                         default=['xp'],
                         help='Windows version',
                         nargs=1,
-                        choices=_VERSION_MAPPING.keys())
+                        choices=VERSION_MAPPING.keys())
     parser.add_argument('-S',
                         '--sandbox',
                         action='store_true',

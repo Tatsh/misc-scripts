@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os.path import basename
 from typing import Iterable, Optional, Sequence, cast
 import argparse
@@ -9,12 +10,11 @@ import subprocess as sp
 import sys
 
 KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
-log: Optional[logging.Logger] = None
 
 
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -22,6 +22,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def hexstr2bytes(s: str) -> bytes:
@@ -30,8 +31,8 @@ def hexstr2bytes(s: str) -> bytes:
             yield l[i:i + n]
 
     def hexstr2bytes_generator(s: str) -> Iterable[int]:
-        for h in chunks(s, 2):
-            yield int(h, 16)
+        for hex_num in chunks(s, 2):
+            yield int(hex_num, 16)
 
     return bytes(hexstr2bytes_generator(s))
 
@@ -41,7 +42,8 @@ def xattr(key: str, filename: str) -> str:
         r'\s+', '',
         sp.run(('xattr', '-p', key, filename),
                encoding='utf-8',
-               stdout=sp.PIPE).stdout)
+               stdout=sp.PIPE,
+               check=True).stdout)
 
 
 def main() -> int:
@@ -56,8 +58,7 @@ def main() -> int:
                         action='store_true',
                         help='Print the webpage URL')
     args = parser.parse_args()
-    setup_logging_stdout()
-    assert log is not None
+    log = setup_logging_stdout()
     has_multiple = len(args.files) > 1
     index = 1 if args.webpage else 0
     ret = 0
@@ -71,9 +72,9 @@ def main() -> int:
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             clz = str(type(e))[8:-2]
-            log.exception('%s: %s', clz, exc_info=e)
+            log.exception('%s: %s', clz, e, exc_info=e)
             ret = 1
         except KeyboardInterrupt:
             return 1

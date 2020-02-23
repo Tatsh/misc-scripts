@@ -22,38 +22,27 @@ syslog_handle: Optional[SysLogHandler] = None
 
 
 def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess:
+    kwargs.pop('check')
+    kwargs.pop('stdout')
+    kwargs.pop('encoding')
     kwargs['check'] = True
     kwargs['stdout'] = sp.PIPE
     kwargs['encoding'] = 'utf-8'
-    return sp.run(('speedtest', ) + args, **kwargs)
-
-
-def cleanup(log_yaml_handle: Optional[TextIO] = None) -> None:
-    global log_handle, syslog_handle
-    if log_handle:
-        log_handle.close()
-    if log_yaml_handle:
-        log_yaml_handle.close()
-    if syslog_handle:
-        syslog_handle.close()
-    logging.shutdown()
-
-
-def cleanup_and_exit(log_yaml_handle: Optional[TextIO] = None,
-                     status: int = 0) -> int:
-    cleanup(log_yaml_handle)
-    return status
+    return sp.run(('speedtest', ) + args,
+                  check=True,
+                  stdout=sp.PIPE,
+                  encoding='utf-8',
+                  **kwargs)
 
 
 def ctrl_c(signum: int, frame: Any) -> NoReturn:
-    cleanup()
     raise SystemExit('Signal raised')
 
 
-def maybe_log_yaml(fh: Optional[TextIO], **kwargs: Any) -> None:
-    if fh:
+def maybe_log_yaml(handle: Optional[TextIO], **kwargs: Any) -> None:
+    if handle:
         kwargs['time'] = str(datetime.today())
-        fh.write(
+        handle.write(
             yaml.safe_dump([kwargs],
                            default_flow_style=False,
                            allow_unicode=True))
@@ -124,7 +113,7 @@ def main() -> int:
         logger.error('speedtest failed to run')
         if e.stderr:
             logger.exception(e)
-        return cleanup_and_exit(log_yaml_handle, status=1)
+        return 1
     assert ping is not None
     if ping > args.ping_threshold:
         logger.error(
@@ -154,11 +143,11 @@ def main() -> int:
                    share_uri=share)
     if True in (not x for x in (ping, dl, ul, share)):
         logger.error('Output not as expected (other error)')
-        return cleanup_and_exit(log_yaml_handle, status=1)
+        return 1
     if failed:
         logger.error('Exiting with status 1')
-        return cleanup_and_exit(log_yaml_handle, status=1)
-    return cleanup_and_exit(log_yaml_handle)
+        return 1
+    return 0
 
 
 if __name__ == '__main__':

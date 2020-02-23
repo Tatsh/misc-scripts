@@ -102,17 +102,17 @@ def unrar_cdrecord_pipe(rar_filename: str,
         rar_filename,
         iso_filename,
     )
-    cdrecord_args = [
+    cdrecord_args: Tuple[str, ...] = (
         'cdrecord',
         f'speed={speed}',
         'driveropts=burnfree',
         f'tsize={tsize}',
-    ]
+    )
     if device_name:
-        cdrecord_args.append(f'dev={device_name}')
-    cdrecord_args.extend(['-dao', '-eject', '-'])
+        cdrecord_args += (f'dev={device_name}', )
+    cdrecord_args += ('-dao', '-eject', '-')
     if verbose:
-        cdrecord_args.append('-v')
+        cdrecord_args += ('-v', )
     log.debug('Command: %s | %s', ' '.join(unrar_args),
               ' '.join(cdrecord_args))
     first = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
@@ -189,8 +189,7 @@ def main() -> int:
     if not tsize:
         log.error('Unable to find ISO in RAR "%s"', args.rar_filename)
         return 1
-    else:
-        log.debug('Found ISO %s with tsize %d', iso, tsize)
+    log.debug('Found ISO %s with tsize %d', iso, tsize)
     assert iso is not None
     if not args.crc_test:
         # See if file without .rar/.001/etc exists first
@@ -221,8 +220,7 @@ def main() -> int:
         if not test_extraction(rar_filename, verbose=args.verbose):
             log.error('Extraction test failed')
             return 1
-        else:
-            log.debug('Extraction test succeeded')
+        log.debug('Extraction test succeeded')
     if not unrar_cdrecord_pipe(rar_filename, iso, tsize, args.speed,
                                args.device):
         log.error('Write failed!')

@@ -3,13 +3,13 @@ from argparse import ArgumentParser
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
 from tempfile import mkstemp
-from typing import Any, Sequence
+from typing import Any, Iterable, Tuple
 import subprocess as sp
 import sys
 
 
-def ffmpeg(args: Sequence[str], **kwargs: Any) -> None:
-    sp.check_call(['ffmpeg'] + list(args), **kwargs)
+def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
+    sp.check_call(('ffmpeg', ) + tuple(args), **kwargs)
 
 
 def main() -> int:
@@ -32,7 +32,6 @@ def main() -> int:
     parser.add_argument('-gifflags', help='See `ffmpeg -h encoder=gif`')
     parser.add_argument('-o', '--output', help='Output file')
     parser.add_argument('video_file')
-
     args = parser.parse_args()
     fd, palette_fn = mkstemp(prefix='a2gif-', suffix='.png')
     input_video = realpath(args.video_file)
@@ -41,43 +40,37 @@ def main() -> int:
                                 f'{splitext(basename(input_video))[0]}.gif')
     else:
         output_file = args.output
-    ffmpeg_args = ['-y']
-
+    ffmpeg_args: Tuple[str, ...] = ('-y', )
     palette_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
                       'palettegen')
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
         return 1
-
-    ffmpeg_args += ['-i', input_video]
+    ffmpeg_args += ('-i', input_video)
     if args.ss:
-        ffmpeg_args += ['-ss', args.ss]
+        ffmpeg_args += ('-ss', args.ss)
     if args.to:
-        ffmpeg_args += ['-to', args.to]
+        ffmpeg_args += ('-to', args.to)
     if args.t:
-        ffmpeg_args += ['-t', args.t]
-    ffmpeg_args += ['-vf', palette_filter, palette_fn]
+        ffmpeg_args += ('-t', args.t)
+    ffmpeg_args += ('-vf', palette_filter, palette_fn)
     ffmpeg(ffmpeg_args)
-
     video_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos[x];'
                     '[x][1:v]paletteuse')
-    ffmpeg_args = ['-y']
+    ffmpeg_args = ('-y', )
     if args.ss:
-        ffmpeg_args += ['-ss', args.ss]
+        ffmpeg_args += ('-ss', args.ss)
     if args.to:
-        ffmpeg_args += ['-to', args.to]
+        ffmpeg_args += ('-to', args.to)
     if args.t:
-        ffmpeg_args += ['-t', args.t]
-    ffmpeg_args += [
-        '-i', input_video, '-i', palette_fn, '-filter_complex', video_filter
-    ]
+        ffmpeg_args += ('-t', args.t)
+    ffmpeg_args += ('-i', input_video, '-i', palette_fn, '-filter_complex',
+                    video_filter)
     if args.gifflags:
-        ffmpeg_args += ['-gifflags', args.gifflags]
-    ffmpeg(ffmpeg_args + [output_file])
-
+        ffmpeg_args += ('-gifflags', args.gifflags)
+    ffmpeg(ffmpeg_args + (output_file, ))
     close_fd(fd)
     unlink(palette_fn)
-
     return 0
 
 

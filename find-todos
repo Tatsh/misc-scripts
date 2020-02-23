@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
@@ -12,7 +13,18 @@ import sys
 
 import magic
 
-log = logging.getLogger('find-todos')
+
+@lru_cache()
+def setup_logging_stdout(name: Optional[str] = None,
+                         verbose: bool = False) -> logging.Logger:
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = logging.StreamHandler(sys.stdout)
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
+    return log
 
 
 def get_all_excludes(patterns: Sequence[str]) -> Set[str]:
@@ -42,8 +54,12 @@ async def _get_listing(newdir: str) -> AsyncIterable[str]:
         yield x
 
 
-async def _handle_listing(listing: AsyncIterable[str], outdir: str, top: str,
-                          exclusions: Set[str]) -> None:
+async def _handle_listing(listing: AsyncIterable[str],
+                          outdir: str,
+                          top: str,
+                          exclusions: Set[str],
+                          verbose: bool = False) -> None:
+    log = setup_logging_stdout(verbose=verbose)
     async for entry in listing:
         if (entry.startswith(outdir) or entry in exclusions
                 or entry == sys.argv[0] or basename(entry) in exclusions):
@@ -143,19 +159,13 @@ def main() -> int:
     parser.add_argument('start', metavar='START_DIR')
     parser.add_argument('target', metavar='TARGET')
     args = parser.parse_args()
-    if args.verbose or args.debug:
-        log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-        formatter = logging.Formatter(log_format)
-        channel = logging.StreamHandler(sys.stderr)
-        log.setLevel(logging.INFO if args.verbose else logging.DEBUG)
-        channel.setLevel(logging.INFO if args.verbose else logging.DEBUG)
-        channel.setFormatter(formatter)
-        log.addHandler(channel)
-    asyncio.run(
-        _handle_listing(
-            _get_listing(args.start), realpath(args.target),
-            realpath(args.start),
-            get_all_excludes(args.exclude) if args.exclude else set()))
+    asyncio.run(_handle_listing(
+        _get_listing(args.start),
+        realpath(args.target),
+        realpath(args.start),
+        get_all_excludes(args.exclude) if args.exclude else set(),
+        verbose=args.verbose or args.debug),
+                debug=args.debug)
     return 0
 
 

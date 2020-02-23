@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os import stat, unlink, utime
 from os.path import (basename, isdir, isfile, join as path_join, realpath,
                      splitext)
@@ -7,23 +8,22 @@ import argparse
 import logging
 import sys
 
-log: Optional[logging.Logger] = None
 
-
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         level: int = logging.INFO) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
-    log.setLevel(level)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    channel.setLevel(level)
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def safe_rename(fn: str, target: str, preserve: bool) -> bool:
-    assert log is not None
+    log = setup_logging_stdout()
     if not isfile(target) and not isdir(target):
         log.info('copy %s -> %s', fn, target)
         with open(target, 'wb+') as f:
@@ -54,8 +54,7 @@ def safe_rename(fn: str, target: str, preserve: bool) -> bool:
 
 
 def main() -> int:
-    setup_logging_stdout()
-    assert log is not None
+    log = setup_logging_stdout()
     is_mv = sys.argv[0].endswith('safemv')
     help_ = 'Copy files without clobbering existing files'
     if is_mv:

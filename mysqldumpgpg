@@ -2,6 +2,7 @@
 # clean up: find . -maxdepth 1 -type d | tail -n +2 | xargs rm -fvR *.tar *.gpg
 # pip install python-gnupg MySQL-python
 from datetime import datetime
+from functools import lru_cache
 from os import environ as env, remove as rm
 from os.path import basename, expanduser, join as path_join, realpath
 from typing import Optional, Tuple
@@ -19,19 +20,18 @@ MYSQL_HOST = 'localhost'
 LOCK_WAIT_TIMEOUT = 10
 DB_BLACKLIST = ('information_schema', 'mysql', 'performance_schema')
 
-log: Optional[logging.Logger] = None
 
-
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         level: int = logging.WARNING) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
-    log.setLevel(level)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    channel.setLevel(level)
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def mysqldump(args: Tuple[str, ...], outpath: str) -> None:
@@ -39,11 +39,11 @@ def mysqldump(args: Tuple[str, ...], outpath: str) -> None:
         sp.run(('mysqldump', ) + args, stdout=f, check=True)
 
 
-def rm_if_exists(fn: str) -> bool:
+def rm_if_exists(filename: str) -> bool:
     try:
-        with open(fn, 'rb'):
+        with open(filename, 'rb'):
             pass
-        rm(fn)
+        rm(filename)
         return True
     except FileNotFoundError:
         pass
@@ -64,18 +64,16 @@ def main() -> int:
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
     args = parser.parse_args()
-    setup_logging_stdout(level=logging.INFO if args.verbose else args.
-                         debug if args.debug else logging.WARNING)
-    assert log is not None
+    log = setup_logging_stdout(verbose=args.verbose or args.debug)
     if args.debug:
         log_ = logging.getLogger('gnupg')
         log_.setLevel(logging.DEBUG)
-        ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(logging.DEBUG)
+        channel = logging.StreamHandler(sys.stdout)
+        channel.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        ch.setFormatter(formatter)
-        log_.addHandler(ch)
+        channel.setFormatter(formatter)
+        log_.addHandler(channel)
     target_dir = realpath(args.target)
     time = datetime.today().strftime('%Y%m%d%H%M%S')
     dry_run = args.dry_run
@@ -98,7 +96,7 @@ def main() -> int:
     c.execute('SHOW DATABASES')
     db_names = sorted(x[0] for x in c.fetchall())
 
-    for i, db_name in enumerate(db_names):
+    for db_name in db_names:
         if not db_name or db_name in DB_BLACKLIST:
             continue
         fn = path_join(target_dir, f'{time}-{db_name}.sql')
@@ -115,7 +113,7 @@ def main() -> int:
             log.info(
                 'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
                 ' --encrypt %s --armor --output %s.gpg', gpg_home,
-                ' '.join(['--recipient %s' % (x) for x in recipients]), fn)
+                ' '.join('--recipient %s' % (x) for x in recipients), fn)
             log.info('rm %s.tar', fn)
             continue
 

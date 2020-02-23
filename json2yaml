@@ -5,21 +5,22 @@ import sys
 
 import yaml
 
+YD_ARGS: Dict[str, Any] = dict(default_flow_style=False, indent=2)
+
 
 def main() -> int:
-    yd_args: Dict[str, Any] = dict(default_flow_style=False, indent=2)
     # argv mode
     if len(sys.argv) >= 2:
         for arg in sys.argv[1:]:
             try:
                 with open(arg, 'r') as f:
-                    print(yaml.dump(json.loads(f.read().strip()), **yd_args))
+                    print(yaml.dump(json.loads(f.read().strip()), **YD_ARGS))
             except FileNotFoundError:
                 return 1
         return 0
     # stdin mode
     for arg in sys.stdin.readlines():
-        print(yaml.dump(json.loads(arg.strip()), **yd_args))
+        print(yaml.dump(json.loads(arg.strip()), **YD_ARGS))
     return 0
 
 

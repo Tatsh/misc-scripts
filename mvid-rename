@@ -4,13 +4,13 @@ from shutil import rmtree
 import sys
 
 
-def _rename_and_trash(d: str) -> None:
+def _rename_and_trash(dir_: str) -> None:
     try:
-        with open(f'{d}/{basename(d).lower()}.mkv', 'rb') as _in:
-            new_file = realpath(f'{d}/../{basename(d)}.mkv')
+        with open(f'{dir_}/{basename(dir_).lower()}.mkv', 'rb') as _in:
+            new_file = realpath(f'{dir_}/../{basename(dir_)}.mkv')
             with open(new_file, 'wb+') as out:
                 out.write(_in.read())
-            rmtree(d)
+            rmtree(dir_)
     except IOError:
         pass
 

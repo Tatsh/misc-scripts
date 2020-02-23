@@ -52,7 +52,7 @@ def _fix_msys_arg(s: str) -> str:
 
 
 @dataclass
-class MainArgs:
+class MainArgs:  # pylint: disable=too-many-instance-attributes
     categories: str
     chrome_command: Optional[str]
     comment: Optional[str]
@@ -165,10 +165,11 @@ def _ico_index(tmp_name: str, verbose: Optional[bool] = False) -> str:
     return f'[{index}]'
 
 
-def _fetch_convert_icon(icon: Optional[str],
-                        short_name: str,
-                        session: requests.Session,
-                        verbose: Optional[bool] = False) -> Optional[str]:
+def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statements
+        icon: Optional[str],
+        short_name: str,
+        session: requests.Session,
+        verbose: Optional[bool] = False) -> Optional[str]:
     log = _setup_logging_stdout(name='_fetch_convert_icon', verbose=verbose)
     if not re.match(r'^https?\://', icon or ''):
         return icon

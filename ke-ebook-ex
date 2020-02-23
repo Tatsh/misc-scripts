@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
 from typing import Iterable, Optional
@@ -9,19 +10,18 @@ import re
 import subprocess as sp
 import sys
 
-log: Optional[logging.Logger] = None
 
-
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def extract_rar_from_zip(zip_file: ZipFile) -> Iterable[str]:
@@ -36,8 +36,7 @@ def unrar_x(rar: str) -> None:
 
 
 def main() -> int:
-    setup_logging_stdout()
-    assert log is not None
+    log = setup_logging_stdout()
     parser = argparse.ArgumentParser()
     parser.add_argument('directories', nargs='+')
     args = parser.parse_args()

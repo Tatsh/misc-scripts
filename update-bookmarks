@@ -1,7 +1,8 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
-from typing import Any, List, Optional, TextIO, Tuple, Union, cast
+from typing import Any, Optional, Sequence, TextIO, Tuple, Union, cast
 import argparse
 import logging
 import os
@@ -11,8 +12,6 @@ import sys
 from bs4 import BeautifulSoup as Soup, Tag
 from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
 import requests
-
-log: Optional[logging.Logger] = None
 
 
 class FailedConnection:
@@ -43,9 +42,9 @@ class FailedConnection:
         return f'Unspecified error: {self.exc}'
 
 
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -53,6 +52,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def send(
@@ -72,7 +72,7 @@ def send(
     except ConnectionError as e:
         return FailedConnection(
             r, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         return FailedConnection(r,
                                 exc=e,
                                 reason=FailedConnection.REASON_UNKNOWN)
@@ -80,10 +80,10 @@ def send(
 
 
 def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
-    assert log is not None
+    log = setup_logging_stdout()
     try:
         return session.head(uri, timeout=5)
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         log.error('Failed connection: %s (%s)', e, uri)
     return None
 
@@ -91,12 +91,10 @@ def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
 def recursive_scan(
     soup: Soup,
     session: requests.Session,
-    last_level: int = 0,
-    size: int = 10,
     verbose: bool = False
-) -> Tuple[List[Tuple[str, str]], List[Tuple[str, Any]]]:
-    assert log is not None
-    ret: List[Tuple[str, str]] = []
+) -> Tuple[Sequence[Tuple[str, str]], Sequence[Tuple[str, Any]]]:
+    log = setup_logging_stdout(verbose=verbose)
+    ret = []
     errors = []
     urls = []
     a: Tag
@@ -128,7 +126,7 @@ def recursive_scan(
                           url_data[1])
                 errors.append(url_data)
         else:
-            log.debug('200: "%@" @ "%s"', url_data[1])
+            log.debug('200: "%s"', url_data[1])
         index += 1
     return ret, errors
 
@@ -159,8 +157,7 @@ def main() -> int:
                         default=2)
     args = parser.parse_args()
     f: TextIO = args.file[0]
-    setup_logging_stdout(verbose=not args.quiet)
-    assert log is not None
+    log = setup_logging_stdout(verbose=not args.quiet)
     session = requests.Session()
     session.headers.update({
         'user-agent':

@@ -49,7 +49,7 @@ def main() -> int:
     parser.add_argument('-d', '--debug', action='store_true')
     args = parser.parse_args()
     phone_number: str = args.phone_number[0]
-    log = logging.getLogger('requests.packages.urllib3')
+    log = logging.getLogger('urllib3')
     formatter = logging.Formatter('%(asctime)s - %(name)s - '
                                   '%(levelname)s - %(message)s')
     channel = logging.StreamHandler(sys.stderr)

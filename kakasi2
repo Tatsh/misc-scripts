@@ -5,6 +5,7 @@
 # the Shift-JIS encoding scheme. Note that not every kanji is in the Shift-JIS
 # encoding.
 from copy import copy
+from functools import lru_cache
 from os import environ as env
 from os.path import basename, join as path_join
 from typing import Optional
@@ -31,19 +32,19 @@ JIS_ASCII_MAP = (
     (u'×', 'x'),
 )
 KAKASI_HELP_LOOK_FOR = 'KAKASI - Kanji Kana Simple Inverter  Version 2.3.4'
-log: Optional[logging.Logger] = None
 
 
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
+    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def find_bin(name: str,
@@ -56,11 +57,12 @@ def find_bin(name: str,
                 if os.access(f.name, os.X_OK):
                     r = sp.Popen([candidate, help_cmd],
                                  stdout=sp.PIPE,
-                                 stderr=sp.PIPE)
+                                 stderr=sp.PIPE,
+                                 encoding='utf-8')
                     r.wait()
                     for line in (r.stderr.read().splitlines() +
                                  r.stdout.read().splitlines()):
-                        line_ = line.decode('utf-8').strip()
+                        line_ = line.strip()
                         if look_for in line_:
                             return candidate
         except FileNotFoundError:
@@ -77,8 +79,7 @@ def find_iconv() -> Optional[str]:
 
 
 def main() -> int:
-    setup_logging_stdout()
-    assert log is not None
+    log = setup_logging_stdout()
     kakasi_bin = find_kakasi()
     iconv = find_iconv()
 
@@ -131,7 +132,7 @@ def main() -> int:
         out, err = iconv_to_sjis.communicate(word)
         err_s = err.decode('utf-8').strip()
         if err_s:
-            log.error(f"'%s': Conversion to Shift-JIS failed (%s)", word_s,
+            log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s,
                       err_s)
             continue
 

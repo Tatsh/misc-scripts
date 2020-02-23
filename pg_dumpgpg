@@ -5,6 +5,7 @@
 # pip install python-gnupg
 
 from datetime import datetime
+from functools import lru_cache
 from os import environ as env, remove as rm
 from os.path import basename, dirname, isdir, join as path_join, realpath
 from shutil import rmtree
@@ -24,19 +25,18 @@ PG_HOST = 'localhost'
 PG_JOBS = 2
 PG_USER = 'postgres'
 
-log: Optional[logging.Logger] = None
 
-
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         level: int = logging.WARNING) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
-    log.setLevel(level)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    channel.setLevel(level)
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def rm_if_exists(fn: str) -> bool:
@@ -85,9 +85,7 @@ def main() -> int:
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
     args = parser.parse_args()
-    setup_logging_stdout(
-        level=logging.DEBUG if args.verbose else logging.WARNING)
-    assert log is not None
+    log = setup_logging_stdout(verbose=args.verbose)
     target_dir = realpath(args.target)
     time = datetime.today().strftime('%Y%m%d%H%M%S')
     dry_run = args.dry_run

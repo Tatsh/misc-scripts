@@ -36,82 +36,91 @@ def main() -> int:
     args = parser.parse_args()
     check_date = int(datetime.now().timestamp() * 1000)
     gross_pay = args.hours * args.pay_rate
-
-    payload = {
-        "checkDate": check_date,
-        "state": args.state.upper(),
-        "rates": [{
-            "payRate": str(args.pay_rate),
-            "hours": str(args.hours),
-        }],
-        "grossPay": str(gross_pay),
-        "grossPayType": "PAY_PER_PERIOD",
-        "grossPayYTD": "0",
-        "payFrequency": "MONTHLY",
-        "exemptFederal": "false",
-        "exemptFica": "false",
-        "exemptMedicare": "false",
-        "federalFilingStatusType": "SINGLE",
-        "federalAllowances": "0",
-        "additionalFederalWithholding": "0",
-        "roundFederalWithholding": "false",
-        "print": {
-            "id": "",
-            "employeeName": "",
-            "employeeAddressLine1": "",
-            "employeeAddressLine2": "",
-            "employeeAddressLine3": "",
-            "checkNumber": "",
-            "checkNumberOnCheck": "false",
-            "checkDate": check_date,
-            "remarks": "",
-            "companyNameOnCheck": "false",
-            "companyName": "",
-            "companyAddressLine1": "",
-            "companyAddressLine2": "",
-            "companyAddressLine3": ""
-        },
-        "otherIncome": [],
-        "payCodes": [],
-        "stockOptions": [],
-        "stateInfo": {
-            "parms": [{
-                "name": "TOTALALLOWANCES",
-                "value": "0"
-            }, {
-                "name": "additionalStateWithholding",
-                "value": "0"
-            }, {
-                "name": "SPOUSEBLINDNESS",
-                "value": "false"
-            }, {
-                "name": "stateExemption",
-                "value": "false"
-            }, {
-                "name": "PERSONALBLINDNESS",
-                "value": "false"
-            }, {
-                "name": "HEADOFHOUSEHOLD",
-                "value": "false"
-            }, {
-                "name": "FULLTIMESTUDENT",
-                "value": "false"
-            }]
-        },
-        "voluntaryDeductions": [],
-        "presetDeductions": []
-    }
-
     r = requests.post(POST_URI,
                       headers={
                           'pcc-api-key': API_KEY,
                           'referer': REFERER,
                           'origin': 'https://www.adp.com',
                       },
-                      json=payload)
+                      json={
+                          'checkDate':
+                          check_date,
+                          'state':
+                          args.state.upper(),
+                          'rates': [{
+                              'payRate': str(args.pay_rate),
+                              'hours': str(args.hours),
+                          }],
+                          'grossPay':
+                          str(gross_pay),
+                          'grossPayType':
+                          'PAY_PER_PERIOD',
+                          'grossPayYTD':
+                          '0',
+                          'payFrequency':
+                          'MONTHLY',
+                          'exemptFederal':
+                          'false',
+                          'exemptFica':
+                          'false',
+                          'exemptMedicare':
+                          'false',
+                          'federalFilingStatusType':
+                          'SINGLE',
+                          'federalAllowances':
+                          '0',
+                          'additionalFederalWithholding':
+                          '0',
+                          'roundFederalWithholding':
+                          'false',
+                          'print': {
+                              'id': '',
+                              'employeeName': '',
+                              'employeeAddressLine1': '',
+                              'employeeAddressLine2': '',
+                              'employeeAddressLine3': '',
+                              'checkNumber': '',
+                              'checkNumberOnCheck': 'false',
+                              'checkDate': check_date,
+                              'remarks': '',
+                              'companyNameOnCheck': 'false',
+                              'companyName': '',
+                              'companyAddressLine1': '',
+                              'companyAddressLine2': '',
+                              'companyAddressLine3': ''
+                          },
+                          'otherIncome': [],
+                          'payCodes': [],
+                          'stockOptions': [],
+                          'stateInfo': {
+                              'parms': [{
+                                  'name': 'TOTALALLOWANCES',
+                                  'value': '0'
+                              }, {
+                                  'name': 'additionalStateWithholding',
+                                  'value': '0'
+                              }, {
+                                  'name': 'SPOUSEBLINDNESS',
+                                  'value': 'false'
+                              }, {
+                                  'name': 'stateExemption',
+                                  'value': 'false'
+                              }, {
+                                  'name': 'PERSONALBLINDNESS',
+                                  'value': 'false'
+                              }, {
+                                  'name': 'HEADOFHOUSEHOLD',
+                                  'value': 'false'
+                              }, {
+                                  'name': 'FULLTIMESTUDENT',
+                                  'value': 'false'
+                              }]
+                          },
+                          'voluntaryDeductions': [],
+                          'presetDeductions': []
+                      })
     r.raise_for_status()
     data = r.json()['content']
-
     print('Gross     \033[1;32m{:8.2f}\033[0m'.format(gross_pay))
     print('Federal   \033[1;32m{:8.2f}\033[0m'.format(data['federal']))
     print('FICA      \033[1;32m{:8.2f}\033[0m'.format(data['fica']))

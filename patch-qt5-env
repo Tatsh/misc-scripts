@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from functools import lru_cache
 from os.path import basename
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -9,24 +10,22 @@ import sys
 ENVIRONMENT_VARS_KEY = 'LSEnvironment'
 QT_QPA_PLATFORMTHEME = 'QT_QPA_PLATFORMTHEME'
 
-log: Optional[logging.Logger] = None
 
-
+@lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
-                         level: int = logging.WARNING) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
-    log.setLevel(level)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
-    channel.setLevel(level)
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def main() -> int:
-    setup_logging_stdout()
-    assert log is not None
+    log = setup_logging_stdout()
     for fin in sys.argv[1:]:
         p = Path(fin).joinpath('Contents', 'Info.plist')
         if not p.exists():
