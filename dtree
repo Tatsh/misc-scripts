@@ -2,7 +2,7 @@
 from html import escape
 from os import chdir, scandir
 from os.path import basename, realpath
-from typing import Any, Iterable, List, Sequence, Union, cast
+from typing import Any, Iterable, Iterator, List, Union, cast
 import argparse
 import sys
 
@@ -13,8 +13,8 @@ BOOTSTRAP_CSS_HASH = (
 
 
 def flatten(
-    items: Sequence[Union[str, bytes, List[Any]]]
-) -> Iterable[Union[Any, str, bytes]]:
+    items: Iterable[Union[str, bytes, List[Any]]]
+) -> Iterator[Union[Any, str, bytes]]:
     """
     Yield items from any nested iterable.
     Credit: https://stackoverflow.com/a/40857703

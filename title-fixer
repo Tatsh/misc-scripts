@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from typing import Mapping, Match, Optional, Sequence, Tuple, cast
+from typing import Iterable, Mapping, Match, Optional, Tuple, cast
 import argparse
 import re
 import sys
@@ -115,7 +115,7 @@ def fix_apostrophes(word: str) -> str:
 
 
 def lower_stop(words: str,
-               modes: Sequence[int] = (ENGLISH_MODE, ),
+               modes: Iterable[int] = (ENGLISH_MODE, ),
                disable_names: bool = False,
                ampersands: bool = False) -> str:
     original_words = words.strip().split()

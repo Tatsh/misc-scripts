@@ -2,7 +2,7 @@
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
-from typing import Iterable, Optional
+from typing import Iterator, Optional
 from zipfile import ZipFile
 import argparse
 import logging
@@ -24,7 +24,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     return log
 
 
-def extract_rar_from_zip(zip_file: ZipFile) -> Iterable[str]:
+def extract_rar_from_zip(zip_file: ZipFile) -> Iterator[str]:
     for x in (x for x in zip_file.namelist()
               if re.search(r'\.r(?:ar|\d{2})$', x)):
         zip_file.extract(x)

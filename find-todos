@@ -4,7 +4,7 @@ from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
 from os.path import basename, dirname, isdir, join as path_join, realpath
-from typing import AsyncIterable, Optional, Sequence, Set, TextIO
+from typing import AsyncIterable, Iterable, Optional, Set, TextIO
 import argparse
 import asyncio
 import logging
@@ -27,7 +27,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     return log
 
 
-def get_all_excludes(patterns: Sequence[str]) -> Set[str]:
+def get_all_excludes(patterns: Iterable[str]) -> Set[str]:
     ret: Set[str] = set()
     for pathname in patterns:
         entries = glob(pathname)
