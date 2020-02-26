@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from dataclasses import dataclass
 from functools import lru_cache
 from os import devnull, environ, makedirs
@@ -12,6 +13,11 @@ import subprocess as sp
 import sys
 
 from typing_extensions import Literal
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 VERSION_MAPPING = {
     '10': 'win10',
@@ -160,6 +166,8 @@ def main() -> int:
                         help='Virtual desktop size, e.g. 1024x768.')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('prefix_name')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     return wine(cast(Args, parser.parse_args()))
 
 

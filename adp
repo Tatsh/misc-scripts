@@ -1,9 +1,15 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from datetime import datetime
 import argparse
 import sys
 
 import requests
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 # Find the API key by looking at requests on this page
 # http://www.symmetry.com/try-it-for-free/calculators
@@ -33,6 +39,8 @@ def main() -> int:
                         type=int,
                         help='Hours worked in a month.',
                         default=160)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     check_date = int(datetime.now().timestamp() * 1000)
     gross_pay = args.hours * args.pay_rate

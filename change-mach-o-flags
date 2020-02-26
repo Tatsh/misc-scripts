@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+# PYTHON_ARGCOMPLETE_OK
 # Copyright (c) 2011 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
@@ -78,6 +79,11 @@ import argparse
 import os
 import struct
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 # <mach-o/fat.h>
 FAT_CIGAM = 0xbebafeca
@@ -241,6 +247,8 @@ def main(args: Sequence[str]) -> int:
                         dest='pie',
                         default=True,
                         help='Clear the MH_PIE bit')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     options, loose_args = parser.parse_args(args)
     if len(loose_args) != 1:
         parser.print_usage()

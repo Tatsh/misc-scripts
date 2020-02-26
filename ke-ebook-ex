@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
@@ -9,6 +10,11 @@ import logging
 import re
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 
 @lru_cache()
@@ -39,6 +45,8 @@ def main() -> int:
     log = setup_logging_stdout()
     parser = argparse.ArgumentParser()
     parser.add_argument('directories', nargs='+')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     _dir: str
     for _dir in args.directories:

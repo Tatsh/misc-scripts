@@ -1,7 +1,13 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 import argparse
 import re
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 
 def main() -> int:
@@ -12,6 +18,8 @@ def main() -> int:
                         default=sys.stdin,
                         nargs='*',
                         help='Strings to process')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     strings = args.strings
     print(re.sub(r'\s+', '_', ' '.join(strings)))

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
@@ -12,6 +13,11 @@ import sys
 from bs4 import BeautifulSoup as Soup, Tag
 from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
 import requests
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 
 class FailedConnection:
@@ -155,6 +161,8 @@ def main() -> int:
                         type=int,
                         help='Number of concurrent requests',
                         default=2)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     f: TextIO = args.file[0]
     log = setup_logging_stdout(verbose=not args.quiet)

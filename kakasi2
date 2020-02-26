@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 # Compatibility script for KAKASI.
 # KAKASI was written in 1999 and supports various JIS encodings but does not
 # support Unicode. This script uses iconv to bridge as much as possible with
@@ -14,6 +15,11 @@ import logging
 import os
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 # NOTE For anything not here, use unidecode
 JIS_ASCII_MAP = (
@@ -100,6 +106,8 @@ def main() -> int:
     parser.add_argument('--allow-non-ascii',
                         action='store_true',
                         default=False)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     words = args.words
     iconv_to_args = [

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from copy import copy
 from functools import lru_cache
 from os.path import basename
@@ -7,6 +8,11 @@ import argparse
 import logging
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 
 @lru_cache()
@@ -81,6 +87,8 @@ def main() -> int:
     parser.add_argument('-p', '--picture')
     parser.add_argument('-D', '--delete-all-before', action='store_true')
     parser.add_argument('files', metavar='FILES', nargs='+')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
     cleanup_args = copy(metaflac_args)

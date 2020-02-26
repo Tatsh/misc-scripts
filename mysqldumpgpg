@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 # clean up: find . -maxdepth 1 -type d | tail -n +2 | xargs rm -fvR *.tar *.gpg
 # pip install python-gnupg MySQL-python
 from datetime import datetime
@@ -14,6 +15,11 @@ import sys
 
 from pretty_bad_protocol import gnupg
 import MySQLdb as mysql
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 MYSQL_USER = env['USER']
 MYSQL_HOST = 'localhost'
@@ -63,6 +69,8 @@ def main() -> int:
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('--debug', '-d', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     log = setup_logging_stdout(verbose=args.verbose or args.debug)
     if args.debug:

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from argparse import ArgumentParser
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
@@ -6,6 +7,11 @@ from tempfile import mkstemp
 from typing import Any, Iterable, Tuple
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 
 def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
@@ -32,6 +38,8 @@ def main() -> int:
     parser.add_argument('-gifflags', help='See `ffmpeg -h encoder=gif`')
     parser.add_argument('-o', '--output', help='Output file')
     parser.add_argument('video_file')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     fd, palette_fn = mkstemp(prefix='a2gif-', suffix='.png')
     input_video = realpath(args.video_file)

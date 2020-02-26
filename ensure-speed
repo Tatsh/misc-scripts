@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import SysLogHandler
@@ -9,6 +10,11 @@ import logging
 import signal
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 try:
     import yaml
@@ -73,6 +79,8 @@ def main() -> int:
     parser.add_argument('-s', '--syslog', action='store_true')
     parser.add_argument('-l', '--log-file', help='Debug log')
     parser.add_argument('-v', '--verbose', action='store_true')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = cast(Args, parser.parse_args())
     ping = dl = ul = share = None
     log_yaml_handle: Optional[TextIO] = None

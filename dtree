@@ -1,10 +1,16 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from html import escape
 from os import chdir, scandir
 from os.path import basename, realpath
 from typing import Any, Iterable, Iterator, List, Union, cast
 import argparse
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 BOOTSTRAP_CSS_URI = (
     'https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css')
@@ -61,6 +67,8 @@ def main() -> int:
     parser.add_argument('dir', nargs=1)
     parser.add_argument('-s', '--follow-symlinks', action='store_true')
     parser.add_argument('-d', '--depth', default=1, type=int)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     chdir(args.dir[0])
     title = basename(realpath(args.dir[0]))

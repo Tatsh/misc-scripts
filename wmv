@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename
 from typing import Optional
@@ -6,6 +7,11 @@ import argparse
 import logging
 import subprocess as sp
 import sys
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
 
 TR_MAP = (
     ('　', ' '),
@@ -153,6 +159,8 @@ def main() -> int:
     parser.add_argument('-t', '--target-directory')
     parser.add_argument('-T', '--no-target-directory', action='store_true')
     parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
     args = parser.parse_args()
     log = setup_logging_stdout(verbose=args.verbose)
     special_values = (
