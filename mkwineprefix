@@ -64,6 +64,7 @@ def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
     if kwargs.get('env'):
         log.debug('Environment: %s', kwargs['env'])
     log.debug('Running: %s', ' '.join(map(quote, args)))
+    kwargs.pop('check')
     return sp.run(args, check=True, **kwargs)
 
 
