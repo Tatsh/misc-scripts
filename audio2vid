@@ -7,6 +7,9 @@ from typing import Tuple
 import argparse
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
@@ -15,7 +18,7 @@ except ImportError:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('input', help='Input audio file')
     parser.add_argument('title', help='Title to show in video')
     parser.add_argument('-N',
@@ -29,12 +32,12 @@ def main() -> int:
         help='Use VideoToolbox hardware encoding (only on macOS)')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args: Final = parser.parse_args()
     fd, tmp = mkstemp(suffix='.png')
     close(fd)
     unlink(tmp)
-    bn = basename(args.input)
-    out = f'{splitext(bn)[0]}-audio.mkv'
+    bn: Final = basename(args.input)
+    out: Final = f'{splitext(bn)[0]}-audio.mkv'
     sp.run(('convert', '-size', '1920x1080', 'xc:black', '-fill', 'white',
             '-pointsize', '50', '-draw',
             f"gravity Center text 0,0 '{args.title}'", tmp),

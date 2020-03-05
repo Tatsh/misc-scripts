@@ -2,6 +2,8 @@
 from typing import Iterable
 import sys
 
+from typing_extensions import Final
+
 
 def strip_non_ascii(k: Iterable[str]) -> str:
     return ''.join(x for x in k if ord(x) < 128)
@@ -12,8 +14,8 @@ def main() -> int:
         lines = sys.argv[1:]
     else:
         lines = sys.stdin.readlines()
-    original = ''.join(x.strip() for x in lines)
-    stripped = ''.join(strip_non_ascii(x.strip()) for x in lines)
+    original: Final = ''.join(x.strip() for x in lines)
+    stripped: Final = ''.join(strip_non_ascii(x.strip()) for x in lines)
     if len(original) != len(stripped):
         return 1
     return 0

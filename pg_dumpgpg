@@ -1,10 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-# encoding: utf-8
-
 # clean up: find . -maxdepth 1 -type d | tail -n +2 | xargs rm -fvR *.tar *.gpg
 # pip install python-gnupg
-
 from datetime import datetime
 from functools import lru_cache
 from os import environ as env, remove as rm
@@ -19,26 +16,29 @@ import subprocess as sp
 import sys
 import tarfile
 
+from typing_extensions import Final
+
 import gnupg
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
 
-LOCK_WAIT_TIMEOUT = 10
-PG_HOST = 'localhost'
-PG_JOBS = 2
-PG_USER = 'postgres'
+LOCK_WAIT_TIMEOUT: Final = 10
+PG_HOST: Final = 'localhost'
+PG_JOBS: Final = 2
+PG_USER: Final = 'postgres'
 
 
 @lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -71,7 +71,7 @@ def pg_dump(*args: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('--target',
                         '-t',
                         help='Target directory to store in',
@@ -92,15 +92,17 @@ def main() -> int:
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    log = setup_logging_stdout(verbose=args.verbose)
-    target_dir = realpath(args.target)
-    time = datetime.today().strftime('%Y%m%d%H%M%S')
-    dry_run = args.dry_run
-    gpg_home = realpath(args.gpg_home)
-    recipients = args.gpg_recipients
+    args: Final = parser.parse_args()
+    log: Final = setup_logging_stdout(verbose=args.verbose)
+    target_dir: Final = realpath(args.target)
+    time: Final = datetime.today().strftime('%Y%m%d%H%M%S')
+    dry_run: Final = args.dry_run
+    gpg_home: Final = realpath(args.gpg_home)
+    recipients: Final = args.gpg_recipients
 
-    gpg = gnupg.GPG(gnupghome=gpg_home, verbose=args.verbose, use_agent=True)
+    gpg: Final = gnupg.GPG(gnupghome=gpg_home,
+                           verbose=args.verbose,
+                           use_agent=True)
     gpg.encoding = 'utf-8'
 
     for i, db_name in enumerate(

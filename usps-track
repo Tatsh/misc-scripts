@@ -8,19 +8,20 @@ import sys
 
 from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
+from typing_extensions import Final
 import requests
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
-
-GET_URL = 'https://tools.usps.com/go/TrackConfirmAction'
-POST_URL = ('https://tools.usps.com/go/TrackConfirmRequestUpdateAJAXAction'
-            '.action')
-NAME1_EMPTY_VALUE = 'not required'
-MAX_RETRIES = 10
-HEADERS = CaseInsensitiveDict({
+GET_URL: Final = 'https://tools.usps.com/go/TrackConfirmAction'
+POST_URL: Final = ('https://tools.usps.com/go/'
+                   'TrackConfirmRequestUpdateAJAXAction.action')
+NAME1_EMPTY_VALUE: Final = 'not required'
+MAX_RETRIES: Final = 10
+HEADERS: Final = CaseInsensitiveDict({
     'Accept-Language':
     'en-US,en;q=0.8,en-GB;q=0.6',
     'Connection':
@@ -43,7 +44,7 @@ HEADERS = CaseInsensitiveDict({
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(basename(sys.argv[0]))
+    parser: Final = argparse.ArgumentParser(basename(sys.argv[0]))
     parser.add_argument('tracking_number',
                         nargs='+',
                         metavar='TRACKING_NUMBER',
@@ -55,18 +56,18 @@ def main() -> int:
     parser.add_argument('-d', '--debug', action='store_true')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args: Final = parser.parse_args()
     phone_number: str = args.phone_number[0]
-    log = logging.getLogger('urllib3')
-    formatter = logging.Formatter('%(asctime)s - %(name)s - '
+    log: Final = logging.getLogger('urllib3')
+    formatter: Final = logging.Formatter('%(asctime)s - %(name)s - '
                                   '%(levelname)s - %(message)s')
-    channel = logging.StreamHandler(sys.stderr)
+    channel: Final = logging.StreamHandler(sys.stderr)
     log.setLevel(logging.DEBUG if args.debug else logging.ERROR)
     channel.setLevel(logging.DEBUG if args.debug else logging.ERROR)
     channel.setFormatter(formatter)
     log.addHandler(channel)
-    http_adapter = HTTPAdapter(max_retries=MAX_RETRIES)
-    session = requests.Session()
+    http_adapter: Final = HTTPAdapter(max_retries=MAX_RETRIES)
+    session: Final = requests.Session()
     session.mount('http://', http_adapter)
     session.mount('https://', http_adapter)
     session.headers = HEADERS
@@ -74,7 +75,7 @@ def main() -> int:
         if phone_number[0] == '1' and len(phone_number) == 11:
             phone_number = phone_number[1:]
             log.debug('Removed leading 1')
-        parts = [phone_number[i:i + 3] for i in range(0, 10, 3)]
+        parts: Final = [phone_number[i:i + 3] for i in range(0, 10, 3)]
         log.debug('Phone number parts: %s', parts)
         phone_number = '-'.join(parts[0:3]) + parts[3]
         log.debug('Adjusted phone number: %s', phone_number)

@@ -1,20 +1,16 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-# PYTHON_ARGCOMPLETE_OK
 from typing import Iterable, Iterator
 from urllib.parse import unquote_plus, urlparse
 import argparse
 import sys
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+
+from typing_extensions import Final
 
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
 
 
 def parse(values: Iterable[str],
@@ -29,19 +25,17 @@ def parse(values: Iterable[str],
 
 
 def main() -> int:
-    is_netloc = sys.argv[0].endswith('netloc')
-    parser = argparse.ArgumentParser()
+    is_netloc: Final = sys.argv[0].endswith('netloc')
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('-e', '--encoding', default='utf-8')
     parser.add_argument('-r', '--errors', default='replace')
-    is_atty = sys.stdin.isatty()
+    is_atty: Final = sys.stdin.isatty()
     if is_atty:
         parser.add_argument('string', nargs='*')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    if argcomplete:
-        argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    arg = args.string if is_atty else sys.stdin.readlines()
+    args: Final = parser.parse_args()
+    arg: Final = args.string if is_atty else sys.stdin.readlines()
     for x in parse(arg,
                    is_netloc=is_netloc,
                    encoding=args.encoding,

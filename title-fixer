@@ -4,20 +4,22 @@ from typing import Iterable, Mapping, Match, Optional, Tuple, cast
 import argparse
 import re
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
-
-ENGLISH_MODE = 1
-JAPANESE_MODE = 1 << 1
-CHINESE_MODE = 1 << 2
-ARABIC_MODE = 1 << 3
-ENGLISH_ORDINAL_RE = r'(\d+)(st|nd|rd|th)'
+ENGLISH_MODE: Final = 1
+JAPANESE_MODE: Final = 1 << 1
+CHINESE_MODE: Final = 1 << 2
+ARABIC_MODE: Final = 1 << 3
+ENGLISH_ORDINAL_RE: Final = r'(\d+)(st|nd|rd|th)'
 # non-strict, not including words like below, forms of to be, forms of
 #   you/he/etc, or words like 'call'
-STOP_WORDS = (
+STOP_WORDS: Final = (
     'a',
     'an',
     'and',
@@ -56,18 +58,18 @@ STOP_WORDS = (
     'within',
     'without')
 # English abbreviations for period removal
-ENGLISH_ABBREV = ('feat', 'mr', 'mrs', 'ms', 'vs')
+ENGLISH_ABBREV: Final = ('feat', 'mr', 'mrs', 'ms', 'vs')
 # Only really common ones
-JAPANESE_PARTICLES = ('de', 'e', 'ga', 'ha', 'ka', 'kana', 'ne', 'ni', 'no',
-                      'to', 'wa', 'wo')
-CHINESE_PARTICLES = ('de', 'ge', 'he', 'le', 'ma')
+JAPANESE_PARTICLES: Final = ('de', 'e', 'ga', 'ha', 'ka', 'kana', 'ne', 'ni',
+                             'no', 'to', 'wa', 'wo')
+CHINESE_PARTICLES: Final = ('de', 'ge', 'he', 'le', 'ma')
 # NOTE This list is not yet complete
-ARABIC_STOPS = ('al', 'ala', 'alayhi', 'alayka', 'alayya', 'an', 'anhu',
-                'anka', 'anni', 'bi', 'biha', 'bihi', 'bika', 'fi', 'fihi',
-                'fika', 'fiya', 'ila', 'ilayhi', 'ilayka', 'ilayya', 'lahu',
-                'laka', 'li', 'maa', 'maahu', 'maaka', 'mai', 'min', 'minhu',
-                'minka', 'minni', 'wa')
-NAMES = {
+ARABIC_STOPS: Final = ('al', 'ala', 'alayhi', 'alayka', 'alayya', 'an', 'anhu',
+                       'anka', 'anni', 'bi', 'biha', 'bihi', 'bika', 'fi',
+                       'fihi', 'fika', 'fiya', 'ila', 'ilayhi', 'ilayka',
+                       'ilayya', 'lahu', 'laka', 'li', 'maa', 'maahu', 'maaka',
+                       'mai', 'min', 'minhu', 'minka', 'minni', 'wa')
+NAMES: Final = {
     'S3RL': 'S3RL',
     'mcdonald': 'McDonald',
     "mcdonald's": "McDonald's",
@@ -87,7 +89,7 @@ NAMES = {
     'Wkwebview': 'WKWebView',
     'Whats': "What's"
 }
-MODE_MAP: Mapping[int, Tuple[str, ...]] = {
+MODE_MAP: Final[Mapping[int, Tuple[str, ...]]] = {
     ENGLISH_MODE: STOP_WORDS,
     CHINESE_MODE: CHINESE_PARTICLES,
     JAPANESE_MODE: JAPANESE_PARTICLES,
@@ -124,7 +126,7 @@ def lower_stop(words: str,
                modes: Iterable[int] = (ENGLISH_MODE, ),
                disable_names: bool = False,
                ampersands: bool = False) -> str:
-    original_words = words.strip().split()
+    original_words: Final = words.strip().split()
     word_list = words.strip().title().split()
     name = get_name(word_list[0])
 
@@ -138,8 +140,8 @@ def lower_stop(words: str,
     if is_roman_numeral(title[0]):
         title = [title[0].upper()]
 
-    last_index = len(original_words) - 1
-    ignore_roman = ['mix']
+    last_index: Final = len(original_words) - 1
+    ignore_roman: Final = ['mix']
 
     for mode in modes:
         to_lower_case_array = MODE_MAP[mode]
@@ -216,7 +218,7 @@ def lower_stop(words: str,
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser: Final = argparse.ArgumentParser(
         description='Title fixer for various languages. Defaults to English '
         'mode. If any option is specified without -e, English mode is '
         'disabled.')
@@ -258,7 +260,7 @@ def main() -> int:
                         default=False)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args: Final = parser.parse_args()
     if args.mode is None:
         args.mode = [ENGLISH_MODE]
     for title in args.titles:

@@ -9,20 +9,22 @@ import logging
 import os
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
 
-
 @lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -30,10 +32,10 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
-    log = setup_logging_stdout('crc_check_with_sfv', verbose=verbose)
-    cwd = os.getcwd()
-    sfv_dir = os.path.dirname(os.path.abspath(sfv_filename))
-    args = ('cksfv', '-f', sfv_filename)
+    log: Final = setup_logging_stdout('crc_check_with_sfv', verbose=verbose)
+    cwd: Final = os.getcwd()
+    sfv_dir: Final = os.path.dirname(os.path.abspath(sfv_filename))
+    args: Final = ('cksfv', '-f', sfv_filename)
     log.debug('%s', ' '.join(args))
     os.chdir(sfv_dir)
     try:
@@ -46,8 +48,8 @@ def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
 
 
 def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
-    log = setup_logging_stdout('test_extraction', verbose=verbose)
-    args = ['unrar', 't']
+    log: Final = setup_logging_stdout('test_extraction', verbose=verbose)
+    args: Final = ['unrar', 't']
     if not verbose:
         args.append('-inul')
     args.append(rar_filename)
@@ -100,7 +102,7 @@ def unrar_cdrecord_pipe(rar_filename: str,
                         speed: int = 8,
                         device_name: Optional[str] = None,
                         verbose: bool = False) -> bool:
-    log = setup_logging_stdout('unrar_cdrecord_pipe', verbose)
+    log: Final = setup_logging_stdout('unrar_cdrecord_pipe', verbose)
     unrar_args = (
         'unrar',
         'p',
@@ -121,8 +123,8 @@ def unrar_cdrecord_pipe(rar_filename: str,
         cdrecord_args += ('-v', )
     log.debug('Command: %s | %s', ' '.join(unrar_args),
               ' '.join(cdrecord_args))
-    first = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
-    second = sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True)
+    first: Final = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
+    second: Final = sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True)
     first.stdout.close()
     second.wait()
     first.wait()
@@ -130,7 +132,7 @@ def unrar_cdrecord_pipe(rar_filename: str,
 
 
 def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
-    log = setup_logging_stdout('check_requirements', verbose)
+    log: Final = setup_logging_stdout('check_requirements', verbose)
     try:
         sp.check_output(('which', 'unrar'))
         if not skip_crc:
@@ -162,7 +164,7 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser: Final = argparse.ArgumentParser(
         description='Burns an ISO found in a RAR file without extracting')
     parser.add_argument('-v',
                         help='enables verbose mode',
@@ -188,9 +190,9 @@ def main() -> int:
     parser.add_argument('rar_filename', help='Base RAR file name')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    rar_filename = os.path.realpath(args.rar_filename)
-    log = setup_logging_stdout(verbose=args.verbose)
+    args: Final = parser.parse_args()
+    rar_filename: Final = os.path.realpath(args.rar_filename)
+    log: Final = setup_logging_stdout(verbose=args.verbose)
     if not check_requirements(args.crc_test):
         return 1
     iso, tsize = find_iso_in_rar(rar_filename)
@@ -202,7 +204,7 @@ def main() -> int:
     if not args.crc_test:
         # See if file without .rar/.001/etc exists first
         filename_without_ext, _ = os.path.splitext(args.rar_filename)
-        sfv_filenames = (
+        sfv_filenames: Final = (
             f'{filename_without_ext}.sfv',
             f'{filename_without_ext}.SFV',
         )
@@ -212,7 +214,7 @@ def main() -> int:
                 sfv_filename = name
                 log.debug('Found SFV file: "%s"', basename(name))
         if not sfv_filename:
-            globbed = glob.glob('*.sfv')
+            globbed: Final = glob.glob('*.sfv')
             if globbed:
                 log.debug('Found SFV file via globbing: "%s"',
                           basename(globbed[0]))

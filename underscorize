@@ -3,15 +3,17 @@
 import argparse
 import re
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
 
-
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser: Final = argparse.ArgumentParser(
         description='Replaces white space with underscores')
     parser.add_argument('strings',
                         metavar='STRING',
@@ -20,8 +22,8 @@ def main() -> int:
                         help='Strings to process')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    strings = args.strings
+    args: Final = parser.parse_args()
+    strings: Final = args.strings
     print(re.sub(r'\s+', '_', ' '.join(strings)))
     return 0
 

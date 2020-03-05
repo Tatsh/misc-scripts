@@ -12,7 +12,9 @@ import logging
 import re
 import sys
 
+from typing_extensions import Final
 import magic
+
 try:
     import argcomplete
 except ImportError:
@@ -24,9 +26,9 @@ except ImportError:
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -65,7 +67,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                           top: str,
                           exclusions: Set[str],
                           verbose: bool = False) -> None:
-    log = setup_logging_stdout(verbose=verbose)
+    log: Final = setup_logging_stdout(verbose=verbose)
     async for entry in listing:
         if (entry.startswith(outdir) or entry in exclusions
                 or entry == sys.argv[0] or basename(entry) in exclusions):
@@ -154,7 +156,7 @@ async def _handle_listing(listing: AsyncIterable[str],
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-e',
@@ -166,7 +168,7 @@ def main() -> int:
     parser.add_argument('target', metavar='TARGET')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args: Final = parser.parse_args()
     asyncio.run(_handle_listing(
         _get_listing(args.start),
         realpath(args.target),

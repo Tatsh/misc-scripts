@@ -7,11 +7,13 @@ from tempfile import mkstemp
 from typing import Any, Iterable, Tuple
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
 
 
 def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
@@ -19,7 +21,7 @@ def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
 
 
 def main() -> int:
-    parser = ArgumentParser(description='Convert any video file to GIF')
+    parser: Final = ArgumentParser(description='Convert any video file to GIF')
     parser.add_argument('-ss',
                         metavar='TIME_START',
                         help='Time start specification')
@@ -40,17 +42,18 @@ def main() -> int:
     parser.add_argument('video_file')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args: Final = parser.parse_args()
     fd, palette_fn = mkstemp(prefix='a2gif-', suffix='.png')
-    input_video = realpath(args.video_file)
+    input_video: Final = realpath(args.video_file)
     if not args.output:
         output_file = path_join(dirname(input_video),
                                 f'{splitext(basename(input_video))[0]}.gif')
     else:
         output_file = args.output
     ffmpeg_args: Tuple[str, ...] = ('-y', )
-    palette_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
-                      'palettegen')
+    palette_filter: Final = (
+        f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
+        'palettegen')
     if args.to and args.t:
         print('Cannot use -to and -t arguments at same time', file=sys.stderr)
         return 1
@@ -63,8 +66,9 @@ def main() -> int:
         ffmpeg_args += ('-t', args.t)
     ffmpeg_args += ('-vf', palette_filter, palette_fn)
     ffmpeg(ffmpeg_args)
-    video_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos[x];'
-                    '[x][1:v]paletteuse')
+    video_filter: Final = (
+        f'fps={args.fps},scale={args.width}:-1:flags=lanczos[x];'
+        '[x][1:v]paletteuse')
     ffmpeg_args = ('-y', )
     if args.ss:
         ffmpeg_args += ('-ss', args.ss)

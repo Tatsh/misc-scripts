@@ -9,21 +9,24 @@ import plistlib
 import re
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
-KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
+KEY_WHEREFROMS: Final = 'com.apple.metadata:kMDItemWhereFroms'
 
 
 @lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -52,7 +55,7 @@ def xattr(key: str, filename: str) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser: Final = argparse.ArgumentParser(
         description='Determine where downloaded files came from.')
     parser.add_argument('files',
                         metavar='FILE',
@@ -64,9 +67,9 @@ def main() -> int:
                         help='Print the webpage URL')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    has_multiple = len(args.files) > 1
-    index = 1 if args.webpage else 0
+    args: Final = parser.parse_args()
+    has_multiple: Final = len(args.files) > 1
+    index: Final = 1 if args.webpage else 0
     ret = 0
     arg: str
     for arg in args.files:

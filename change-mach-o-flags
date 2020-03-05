@@ -79,6 +79,9 @@ import argparse
 import os
 import struct
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
@@ -86,17 +89,17 @@ except ImportError:
 
 
 # <mach-o/fat.h>
-FAT_CIGAM = 0xbebafeca
-FAT_MAGIC = 0xcafebabe
+FAT_CIGAM: Final = 0xbebafeca
+FAT_MAGIC: Final = 0xcafebabe
 
 # <mach-o/loader.h>
-MH_CIGAM = 0xcefaedfe
-MH_CIGAM_64 = 0xcffaedfe
-MH_EXECUTE = 0x2
-MH_MAGIC = 0xfeedface
-MH_MAGIC_64 = 0xfeedfacf
-MH_NO_HEAP_EXECUTION = 0x01000000
-MH_PIE = 0x00200000
+MH_CIGAM: Final = 0xcefaedfe
+MH_CIGAM_64: Final = 0xcffaedfe
+MH_EXECUTE: Final = 0x2
+MH_MAGIC: Final = 0xfeedface
+MH_MAGIC_64: Final = 0xfeedfacf
+MH_NO_HEAP_EXECUTION: Final = 0x01000000
+MH_PIE: Final = 0x00200000
 
 
 class MachOError(Exception):
@@ -109,7 +112,7 @@ def checked_seek(file: BinaryIO, offset: int) -> None:
     MachOError if anything funny happens.
     """
     file.seek(offset, os.SEEK_SET)
-    new_offset = file.tell()
+    new_offset: Final = file.tell()
     if new_offset != offset:
         raise MachOError('seek: expected offset %d, observed %d' %
                          (offset, new_offset))
@@ -120,7 +123,7 @@ def checked_read(file: BinaryIO, count: int) -> bytes:
     Reads |count| bytes from the file-like |file| object, raising a MachOError
     if any other number of bytes is read.
     """
-    bytes_ = file.read(count)
+    bytes_: Final = file.read(count)
     if len(bytes_) != count:
         raise MachOError('read: expected length %d, observed %d' %
                          (count, len(bytes_)))
@@ -134,7 +137,7 @@ def read_uint32(file: BinaryIO, endian: str) -> int:
     module), and returns it as a number. Raises a MachOError if the proper
     length of data can't be read from |file|.
     """
-    bytes_ = checked_read(file, 4)
+    bytes_: Final = checked_read(file, 4)
     (uint32, ) = struct.unpack(endian + 'I', bytes_)
     return cast(int, uint32)
 
@@ -145,7 +148,7 @@ def read_mach_header(file: BinaryIO, endian: str) -> Tuple[int, ...]:
   |endian| (per the |struct| module), and returns a 7-tuple of its members
   as numbers. Raises a MachOError if the proper length of data can't be read
   from |file|."""
-    bytes_ = checked_read(file, 28)
+    bytes_: Final = checked_read(file, 28)
     (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds,
      flags) = struct.unpack(endian + '7I', bytes_)
     return magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds, flags
@@ -157,7 +160,7 @@ def read_fat_arch(file: BinaryIO) -> Tuple[int, ...]:
   (per the |struct| module), and returns a 5-tuple of its members as numbers.
   Raises a MachOError if the proper length of data can't be read from
   |file|."""
-    bytes_ = checked_read(file, 20)
+    bytes_: Final = checked_read(file, 20)
     cputype, cpusubtype, offset, size, align = struct.unpack('>5I', bytes_)
     return cputype, cpusubtype, offset, size, align
 
@@ -166,7 +169,7 @@ def write_uint32(file: BinaryIO, uint32: int, endian: str) -> None:
     """Writes |uint32| as an unsigned 32-bit integer to the file-like |file|
   object, treating it as having endianness specified by |endian| (per the
   |struct| module)."""
-    bytes_ = struct.pack(endian + 'I', uint32)
+    bytes_: Final = struct.pack(endian + 'I', uint32)
     assert len(bytes_) == 4
     file.write(bytes_)
 
@@ -202,7 +205,7 @@ def handle_mach_o_file(file: BinaryIO,
         raise MachOError(
             'Mach-O file at offset %d is type 0x%x, expected MH_EXECUTE' %
             (offset, filetype))
-    original_flags = flags
+    original_flags: Final = flags
     if options.no_heap_execution:
         flags |= MH_NO_HEAP_EXECUTION
     else:
@@ -222,9 +225,9 @@ def handle_fat_file(file: BinaryIO,
     """Seeks the file-like |file| object to |offset| and loops over its
   |fat_header| entries, calling HandleMachOFile for each."""
     checked_seek(file, fat_offset)
-    magic = read_uint32(file, '>')
+    magic: Final = read_uint32(file, '>')
     assert magic == FAT_MAGIC
-    nfat_arch = read_uint32(file, '>')
+    nfat_arch: Final = read_uint32(file, '>')
     for _ in range(0, nfat_arch):
         _cputype, _cpusubtype, offset, size, _align = read_fat_arch(file)
         assert size >= 28
@@ -236,7 +239,8 @@ def handle_fat_file(file: BinaryIO,
 
 
 def main(args: Sequence[str]) -> int:
-    parser = argparse.ArgumentParser('%prog [options] <executable_path>')
+    parser: Final = argparse.ArgumentParser(
+        '%prog [options] <executable_path>')
     parser.add_argument('--executable-heap',
                         action='store_false',
                         dest='no_heap_execution',
@@ -253,9 +257,9 @@ def main(args: Sequence[str]) -> int:
     if len(loose_args) != 1:
         parser.print_usage()
         return 1
-    executable_path = loose_args[0]
+    executable_path: Final = loose_args[0]
     with open(executable_path, 'rb+') as executable_file:
-        magic = read_uint32(executable_file, '<')
+        magic: Final = read_uint32(executable_file, '<')
         if magic == FAT_CIGAM:
             # Check FAT_CIGAM and not FAT_MAGIC because the read was
             # little-endian.

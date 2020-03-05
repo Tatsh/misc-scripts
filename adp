@@ -4,7 +4,9 @@ from datetime import datetime
 import argparse
 import sys
 
+from typing_extensions import Final
 import requests
+
 try:
     import argcomplete
 except ImportError:
@@ -13,15 +15,16 @@ except ImportError:
 
 # Find the API key by looking at requests on this page
 # http://www.symmetry.com/try-it-for-free/calculators
-API_KEY = 'RnFqNFA0NVlRTExJUkpabmc4RHErUT09'
-POST_URI = ('https://calculators.symmetry.com/api/calculators/hourly?'
-            'report=none')
-REFERER = ('https://www.adp.com/tools-and-resources/calculators-and-tools/'
-           'payroll-calculators/hourly-paycheck-calculator.aspx')
+API_KEY: Final = 'RnFqNFA0NVlRTExJUkpabmc4RHErUT09'
+POST_URI: Final = ('https://calculators.symmetry.com/api/calculators/hourly?'
+                   'report=none')
+REFERER: Final = (
+    'https://www.adp.com/tools-and-resources/calculators-and-tools/'
+    'payroll-calculators/hourly-paycheck-calculator.aspx')
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
+    parser: Final = argparse.ArgumentParser(
         description=('This is a very basic '
                      'interface to the page here: '
                      'http://www.symmetry.com/try-it-for-free/calculators'))
@@ -41,94 +44,94 @@ def main() -> int:
                         default=160)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    check_date = int(datetime.now().timestamp() * 1000)
-    gross_pay = args.hours * args.pay_rate
-    r = requests.post(POST_URI,
-                      headers={
-                          'pcc-api-key': API_KEY,
-                          'referer': REFERER,
-                          'origin': 'https://www.adp.com',
-                      },
-                      json={
-                          'checkDate':
-                          check_date,
-                          'state':
-                          args.state.upper(),
-                          'rates': [{
-                              'payRate': str(args.pay_rate),
-                              'hours': str(args.hours),
-                          }],
-                          'grossPay':
-                          str(gross_pay),
-                          'grossPayType':
-                          'PAY_PER_PERIOD',
-                          'grossPayYTD':
-                          '0',
-                          'payFrequency':
-                          'MONTHLY',
-                          'exemptFederal':
-                          'false',
-                          'exemptFica':
-                          'false',
-                          'exemptMedicare':
-                          'false',
-                          'federalFilingStatusType':
-                          'SINGLE',
-                          'federalAllowances':
-                          '0',
-                          'additionalFederalWithholding':
-                          '0',
-                          'roundFederalWithholding':
-                          'false',
-                          'print': {
-                              'id': '',
-                              'employeeName': '',
-                              'employeeAddressLine1': '',
-                              'employeeAddressLine2': '',
-                              'employeeAddressLine3': '',
-                              'checkNumber': '',
-                              'checkNumberOnCheck': 'false',
-                              'checkDate': check_date,
-                              'remarks': '',
-                              'companyNameOnCheck': 'false',
-                              'companyName': '',
-                              'companyAddressLine1': '',
-                              'companyAddressLine2': '',
-                              'companyAddressLine3': ''
-                          },
-                          'otherIncome': [],
-                          'payCodes': [],
-                          'stockOptions': [],
-                          'stateInfo': {
-                              'parms': [{
-                                  'name': 'TOTALALLOWANCES',
-                                  'value': '0'
-                              }, {
-                                  'name': 'additionalStateWithholding',
-                                  'value': '0'
-                              }, {
-                                  'name': 'SPOUSEBLINDNESS',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'stateExemption',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'PERSONALBLINDNESS',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'HEADOFHOUSEHOLD',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'FULLTIMESTUDENT',
-                                  'value': 'false'
-                              }]
-                          },
-                          'voluntaryDeductions': [],
-                          'presetDeductions': []
-                      })
+    args: Final = parser.parse_args()
+    check_date: Final = int(datetime.now().timestamp() * 1000)
+    gross_pay: Final = args.hours * args.pay_rate
+    r: Final = requests.post(POST_URI,
+                             headers={
+                                 'pcc-api-key': API_KEY,
+                                 'referer': REFERER,
+                                 'origin': 'https://www.adp.com',
+                             },
+                             json={
+                                 'checkDate':
+                                 check_date,
+                                 'state':
+                                 args.state.upper(),
+                                 'rates': [{
+                                     'payRate': str(args.pay_rate),
+                                     'hours': str(args.hours),
+                                 }],
+                                 'grossPay':
+                                 str(gross_pay),
+                                 'grossPayType':
+                                 'PAY_PER_PERIOD',
+                                 'grossPayYTD':
+                                 '0',
+                                 'payFrequency':
+                                 'MONTHLY',
+                                 'exemptFederal':
+                                 'false',
+                                 'exemptFica':
+                                 'false',
+                                 'exemptMedicare':
+                                 'false',
+                                 'federalFilingStatusType':
+                                 'SINGLE',
+                                 'federalAllowances':
+                                 '0',
+                                 'additionalFederalWithholding':
+                                 '0',
+                                 'roundFederalWithholding':
+                                 'false',
+                                 'print': {
+                                     'id': '',
+                                     'employeeName': '',
+                                     'employeeAddressLine1': '',
+                                     'employeeAddressLine2': '',
+                                     'employeeAddressLine3': '',
+                                     'checkNumber': '',
+                                     'checkNumberOnCheck': 'false',
+                                     'checkDate': check_date,
+                                     'remarks': '',
+                                     'companyNameOnCheck': 'false',
+                                     'companyName': '',
+                                     'companyAddressLine1': '',
+                                     'companyAddressLine2': '',
+                                     'companyAddressLine3': ''
+                                 },
+                                 'otherIncome': [],
+                                 'payCodes': [],
+                                 'stockOptions': [],
+                                 'stateInfo': {
+                                     'parms': [{
+                                         'name': 'TOTALALLOWANCES',
+                                         'value': '0'
+                                     }, {
+                                         'name': 'additionalStateWithholding',
+                                         'value': '0'
+                                     }, {
+                                         'name': 'SPOUSEBLINDNESS',
+                                         'value': 'false'
+                                     }, {
+                                         'name': 'stateExemption',
+                                         'value': 'false'
+                                     }, {
+                                         'name': 'PERSONALBLINDNESS',
+                                         'value': 'false'
+                                     }, {
+                                         'name': 'HEADOFHOUSEHOLD',
+                                         'value': 'false'
+                                     }, {
+                                         'name': 'FULLTIMESTUDENT',
+                                         'value': 'false'
+                                     }]
+                                 },
+                                 'voluntaryDeductions': [],
+                                 'presetDeductions': []
+                             })
     r.raise_for_status()
-    data = r.json()['content']
+    data: Final = r.json()['content']
     print('Gross     \033[1;32m{:8.2f}\033[0m'.format(gross_pay))
     print('Federal   \033[1;32m{:8.2f}\033[0m'.format(data['federal']))
     print('FICA      \033[1;32m{:8.2f}\033[0m'.format(data['fica']))

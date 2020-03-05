@@ -7,17 +7,19 @@ import logging
 import plistlib
 import sys
 
-ENVIRONMENT_VARS_KEY = 'LSEnvironment'
-QT_QPA_PLATFORMTHEME = 'QT_QPA_PLATFORMTHEME'
+from typing_extensions import Final
+
+ENVIRONMENT_VARS_KEY: Final = 'LSEnvironment'
+QT_QPA_PLATFORMTHEME: Final = 'QT_QPA_PLATFORMTHEME'
 
 
 @lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -25,7 +27,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def main() -> int:
-    log = setup_logging_stdout()
+    log: Final = setup_logging_stdout()
     for fin in sys.argv[1:]:
         p = Path(fin).joinpath('Contents', 'Info.plist')
         if not p.exists():

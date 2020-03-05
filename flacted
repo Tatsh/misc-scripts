@@ -8,6 +8,9 @@ import argparse
 import logging
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
@@ -19,9 +22,9 @@ except ImportError:
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -37,16 +40,16 @@ def metaflac(*args: str) -> str:
 
 def main() -> int:
     setup_logging_stdout()
-    log = setup_logging_stdout()
-    invoked_as = basename(sys.argv[0])
+    log: Final = setup_logging_stdout()
+    invoked_as: Final = basename(sys.argv[0])
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
-        tag_requested = invoked_as.split('-')[1]
+        tag_requested: Final = invoked_as.split('-')[1]
         possible: Tuple[str,
                         ...] = (tag_requested.title(), tag_requested.upper(),
                                 tag_requested.lower())
         if tag_requested.lower() == 'year':
             possible += ('Date', 'DATE', 'date')
-        unfiltered_files = sys.argv[1:]
+        unfiltered_files: Final = sys.argv[1:]
         files = []
         for file in unfiltered_files:
             try:
@@ -54,7 +57,7 @@ def main() -> int:
                     files.append(file)
             except FileNotFoundError:
                 pass
-        show_filename = len(files) > 1
+        show_filename: Final = len(files) > 1
         for filename in files:
             for tag in possible:
                 val = metaflac(f'--show-tag={tag}', filename).strip()
@@ -77,7 +80,7 @@ def main() -> int:
                         log.info('%s', val)
                     break
         return 0
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('-t', '--title')
     parser.add_argument('-a', '--artist')
     parser.add_argument('-A', '--album')
@@ -89,10 +92,10 @@ def main() -> int:
     parser.add_argument('files', metavar='FILES', nargs='+')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
-    cleanup_args = copy(metaflac_args)
-    destroy = args.delete_all_before
+    args: Final = parser.parse_args()
+    metaflac_args: Final = ['--preserve-modtime', '--no-utf8-convert']
+    cleanup_args: Final = copy(metaflac_args)
+    destroy: Final = args.delete_all_before
     cleanup_args.append('--remove-all-tags')
     cleanup_args.extend(args.files)
     for key in ('title', 'artist', 'album', 'year', 'track', 'genre'):

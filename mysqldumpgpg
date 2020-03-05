@@ -13,27 +13,30 @@ import signal
 import subprocess as sp
 import sys
 
+from typing_extensions import Final
+
 from pretty_bad_protocol import gnupg
 import MySQLdb as mysql
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
 
-MYSQL_USER = env['USER']
-MYSQL_HOST = 'localhost'
-LOCK_WAIT_TIMEOUT = 10
-DB_BLACKLIST = ('information_schema', 'mysql', 'performance_schema')
+MYSQL_USER: Final = env['USER']
+MYSQL_HOST: Final = 'localhost'
+LOCK_WAIT_TIMEOUT: Final = 10
+DB_BLACKLIST: Final = ('information_schema', 'mysql', 'performance_schema')
 
 
 @lru_cache()
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -57,7 +60,7 @@ def rm_if_exists(filename: str) -> bool:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('--target',
                         '-t',
                         help='Target directory to store in',
@@ -71,8 +74,8 @@ def main() -> int:
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    log = setup_logging_stdout(verbose=args.verbose or args.debug)
+    args: Final = parser.parse_args()
+    log: Final = setup_logging_stdout(verbose=args.verbose or args.debug)
     if args.debug:
         log_ = logging.getLogger('gnupg')
         log_.setLevel(logging.DEBUG)
@@ -82,27 +85,30 @@ def main() -> int:
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         channel.setFormatter(formatter)
         log_.addHandler(channel)
-    target_dir = realpath(args.target)
-    time = datetime.today().strftime('%Y%m%d%H%M%S')
-    dry_run = args.dry_run
-    gpg_home = realpath(args.gpg_home)
-    recipients = list(args.gpg_recipients)
-    user = args.user
+    target_dir: Final = realpath(args.target)
+    time: Final = datetime.today().strftime('%Y%m%d%H%M%S')
+    dry_run: Final = args.dry_run
+    gpg_home: Final = realpath(args.gpg_home)
+    recipients: Final = list(args.gpg_recipients)
+    user: Final = args.user
 
-    gpg = gnupg.GPG(homedir=gpg_home,
-                    verbose=args.verbose if not args.debug else 'expert',
-                    use_agent=True)
-    keys = gpg.list_keys(secret=True)
-    fingerprints = set()
+    gpg: Final = gnupg.GPG(
+        homedir=gpg_home,
+        verbose=args.verbose if not args.debug else 'expert',
+        use_agent=True)
+    keys: Final = gpg.list_keys(secret=True)
+    fingerprints: Final = set()
     for k in keys:
         for uid in k['uids']:
             if recipients[0] in uid:
                 fingerprints.add(k['fingerprint'])
 
-    m = mysql.connect(user=user, db='information_schema', host=args.host)
-    c = m.cursor()
+    m: Final = mysql.connect(user=user,
+                             db='information_schema',
+                             host=args.host)
+    c: Final = m.cursor()
     c.execute('SHOW DATABASES')
-    db_names = sorted(x[0] for x in c.fetchall())
+    db_names: Final = sorted(x[0] for x in c.fetchall())
 
     for db_name in db_names:
         if not db_name or db_name in DB_BLACKLIST:

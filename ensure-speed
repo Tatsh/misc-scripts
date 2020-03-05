@@ -10,11 +10,13 @@ import logging
 import signal
 import subprocess as sp
 import sys
+
+from typing_extensions import Final
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
 
 try:
     import yaml
@@ -22,7 +24,7 @@ try:
 except ImportError:
     HAS_YAML = False
 
-LOG_FORMATTER = logging.Formatter('%(asctime)s - %(message)s')
+LOG_FORMATTER: Final = logging.Formatter('%(asctime)s - %(message)s')
 log_handle: Optional[TextIO] = None
 syslog_handle: Optional[SysLogHandler] = None
 
@@ -70,9 +72,9 @@ class Args:
 
 def main() -> int:
     signal.signal(signal.SIGINT, ctrl_c)
-    logger = logging.getLogger('speedtest')
+    logger: Final = logging.getLogger('speedtest')
     logger.setLevel(logging.INFO)
-    parser = argparse.ArgumentParser()
+    parser: Final = argparse.ArgumentParser()
     parser.add_argument('-d', '--download-threshold', default=50, type=float)
     parser.add_argument('-u', '--upload-threshold', default=5, type=float)
     parser.add_argument('-p', '--ping-threshold', default=30, type=float)
@@ -81,13 +83,13 @@ def main() -> int:
     parser.add_argument('-v', '--verbose', action='store_true')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = cast(Args, parser.parse_args())
+    args: Final = cast(Args, parser.parse_args())
     ping = dl = ul = share = None
     log_yaml_handle: Optional[TextIO] = None
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
-        log_fh = open(args.log_file, 'a+')
+        log_fh: Final = open(args.log_file, 'a+')
         assert log_fh is not None
         if HAS_YAML:
             log_yaml_handle = open(args.log_file + '.yml', 'a+')
@@ -96,7 +98,7 @@ def main() -> int:
         channel.setLevel(logging.DEBUG)
         logger.addHandler(channel)
     if args.syslog:
-        syslog_h = SysLogHandler(address='/dev/log')
+        syslog_h: Final = SysLogHandler(address='/dev/log')
         assert syslog_h is not None
         syslog_h.setFormatter(LOG_FORMATTER)
         syslog_h.setLevel(logging.INFO)

@@ -9,7 +9,7 @@ import os
 import sqlite3
 import sys
 
-from typing_extensions import TypedDict
+from typing_extensions import Final, TypedDict
 
 
 class CookieDict(TypedDict):
@@ -26,9 +26,9 @@ class CookieDict(TypedDict):
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
+    log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
+    channel: Final = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -37,17 +37,19 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 def main() -> int:
     try:
-        base_domain = sys.argv[1]
+        base_domain: Final = sys.argv[1]
     except IndexError:
         print('Usage: %s BASEDOMAIN' % sys.argv[0])
         sys.exit(1)
-    log = setup_logging_stdout()
-    chrome_sqlite_file = expanduser('~/.config/chromium/Default/Cookies')
-    mozilla_profiles_file = expanduser('~/.mozilla/firefox/profiles.ini')
+    log: Final = setup_logging_stdout()
+    chrome_sqlite_file: Final = expanduser(
+        '~/.config/chromium/Default/Cookies')
+    mozilla_profiles_file: Final = expanduser(
+        '~/.mozilla/firefox/profiles.ini')
     active_profile = None
-    config = configparser.ConfigParser()
+    config: Final = configparser.ConfigParser()
     config.read(mozilla_profiles_file)
-    sections = config.sections()
+    sections: Final = config.sections()
     i = 0
     for section in sections:
         if section == 'general':
@@ -71,7 +73,7 @@ def main() -> int:
     sql = ('SELECT name, value, host, path, expiry, isSecure, isHttpOnly FROM '
            'moz_cookies WHERE baseDomain like ?')
     c.execute(sql, (f'%{base_domain}%', ))
-    cookies: List[CookieDict] = []
+    cookies: Final[List[CookieDict]] = []
     for row in c:
         cookies.append({
             'name': row[0],
@@ -88,16 +90,18 @@ def main() -> int:
                            detect_types=sqlite3.PARSE_COLNAMES)
     c = conn.cursor()
     i = 0
-    creation_utc = int(
+    creation_utc: Final = int(
         (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
-    columns = ('creation_utc', 'host_key', 'name', 'value', 'path',
-               'expires_utc', 'secure', 'httponly', 'has_expires',
-               'persistent', 'last_access_utc')
-    cols = ','.join(columns)
-    question_marks = ('?,' * len(columns))[:-1]
-    delete_query = ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
-                    'AND path = ?')
-    insert_query = f'INSERT INTO cookies ({cols}) VALUES({question_marks})'
+    columns: Final = ('creation_utc', 'host_key', 'name', 'value', 'path',
+                      'expires_utc', 'secure', 'httponly', 'has_expires',
+                      'persistent', 'last_access_utc')
+    cols: Final = ','.join(columns)
+    question_marks: Final = ('?,' * len(columns))[:-1]
+    delete_query: Final = (
+        'DELETE FROM cookies WHERE host_key = ? AND name = ? '
+        'AND path = ?')
+    insert_query: Final = (f'INSERT INTO cookies ({cols}) '
+                           f'VALUES({question_marks})')
     try:
         for dic in cookies:
             dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
