@@ -14,7 +14,6 @@ try:
 except ImportError:
     argcomplete = None
 
-
 KEY_WHEREFROMS = 'com.apple.metadata:kMDItemWhereFroms'
 
 
@@ -66,7 +65,6 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args = parser.parse_args()
-    log = setup_logging_stdout()
     has_multiple = len(args.files) > 1
     index = 1 if args.webpage else 0
     ret = 0
@@ -80,9 +78,7 @@ def main() -> int:
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
-        except Exception as e:  # pylint: disable=broad-except
-            clz = str(type(e))[8:-2]
-            log.exception('%s: %s', clz, e, exc_info=e)
+        except Exception:  # pylint: disable=broad-except
             ret = 1
         except KeyboardInterrupt:
             return 1
