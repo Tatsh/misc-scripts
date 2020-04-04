@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
-from os.path import basename, dirname, isdir, realpath
+from os.path import basename, dirname, isdir, realpath, splitext
 from typing import Iterator, Optional
 from zipfile import ZipFile
 import argparse
@@ -68,20 +68,32 @@ def main() -> int:
         # Only need the .rar
         rar = [x for x in extracted if x.endswith('.rar')]
         unrar_x(rar[0])
-        pdf = [x for x in listdir('.') if x.endswith('.pdf')]
-        if len(pdf) > 1:
-            log.warning(
-                'More than one PDF extracted. Not sure what to do. Skipping '
-                'directory %s', _dir)
-            continue
-        with open(pdf[0], 'rb') as f:
-            if f.read(4) != b'%PDF':
+        pdf = [x for x in listdir('.') if x.lower().endswith('.pdf')]
+        epub = [x for x in listdir('.') if x.lower().endswith('.epub')]
+        ext = 'pdf'
+        if pdf:
+            if len(pdf) > 1:
                 log.warning(
-                    'PDF file extracted but is not a PDF. Skipping '
-                    'directory %s', _dir)
+                    'More than one PDF extracted. Not sure what to do. '
+                    'Skipping directory %s', _dir)
                 continue
-        pdf_name = basename(dirname(realpath(pdf[0])))
-        target_name = f'../{pdf_name}.pdf'
+            with open(pdf[0], 'rb') as f:
+                if f.read(4) != b'%PDF':
+                    log.warning(
+                        'PDF file extracted but is not a PDF. Skipping '
+                        'directory %s', _dir)
+                    continue
+            pdf_name = basename(dirname(realpath(pdf[0])))
+        elif epub:
+            if len(epub) > 1:
+                log.warning(
+                    'More than one ePub extracted. Not sure what to do. '
+                    'Skipping directory %s', _dir)
+                continue
+            pdf_name = basename(dirname(realpath(epub[0])))
+            ext = 'epub'
+            pdf = epub
+        target_name = f'../{pdf_name}.{ext}'
         rename(pdf[0], target_name)
         for x in extracted:
             rm(x)
