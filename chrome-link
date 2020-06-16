@@ -8,7 +8,7 @@ from os.path import basename, expanduser, join as path_join, splitext
 from pathlib import Path
 from tempfile import mkdtemp, mkstemp
 from typing import Any, Dict, List, Optional, cast
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urljoin, urlparse, unquote_plus
 import argparse
 import logging
 import os
@@ -417,9 +417,35 @@ link.WorkingDirectory=desktop;\n''')
     return 0
 
 
+def _make_short_name(url: str, name: str) -> str:
+    parsed: Final = urlparse(url)
+    split_netloc = list(
+        reversed(re.sub(r'^www\.', '', parsed.netloc).split('.')))
+    if len(split_netloc) == 2:
+        if parsed.path and parsed.path != '/':
+            output = ''
+            index = 0
+            path_parts = re.sub(
+                r'/+', '/',
+                unquote_plus(parsed.path).lstrip('/')).split('/')
+            while len(output) < 128:
+                try:
+                    output += re.sub(r'[^0-9A-Za-z\-/]', '', path_parts[index])
+                except IndexError:
+                    break
+                output += '.'
+                index += 1
+            split_netloc += [output[:128].rstrip('.').lower()]
+        else:
+            split_netloc += [
+                re.sub(r'\s+', '-', name.strip()).lower()[:64].rstrip('.')
+            ]
+    return '.'.join(split_netloc)
+
+
 def main() -> int:
     args: Final = _parse_args()
-    short_name: Final = args.name.replace(' ', '')
+    short_name: Final = _make_short_name(args.url, args.name)
     session: Final = requests.Session()
     if args.insecure:
         urllib3.disable_warnings(category=InsecureRequestWarning)
