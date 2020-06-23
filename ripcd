@@ -2,7 +2,7 @@
 main() {
     local category artist album genre year album_dir wav_file flac_file i \
         track_artist track_n title track_artist
-    local -r disc_id_out=$(cd-discid)
+    local -r disc_id_out=$(cd-discid "${1:-/dev/cdrom}")
     local -r disc_id=$(cut -d ' ' -f1 <<< "$disc_id_out")
     local -r track_count=$(cut -d ' ' -f2 <<< "$disc_id_out")
     local -r track_info=$(cut -d ' ' -f2-$((track_count + 2)) <<< "$disc_id_out")
