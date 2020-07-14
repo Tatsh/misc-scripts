@@ -69,8 +69,12 @@ def find_bin(name: str,
                                  stderr=sp.PIPE,
                                  encoding='utf-8')
                     r.wait()
-                    for line in (r.stderr.read().splitlines() +
-                                 r.stdout.read().splitlines()):
+                    err = r.stderr
+                    out = r.stdout
+                    assert err is not None
+                    assert out is not None
+                    for line in (err.read().splitlines() +
+                                 out.read().splitlines()):
                         line_ = line.strip()
                         if look_for in line_:
                             return candidate
