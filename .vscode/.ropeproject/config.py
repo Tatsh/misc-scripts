@@ -1,8 +1,9 @@
+from typing import Any, Dict
 # The default ``config.py``
 # flake8: noqa
 
 
-def set_prefs(prefs):
+def set_prefs(prefs: Dict[str, Any]) -> None:
     """This function is called before opening the project"""
 
     # Specify which files and folders to ignore in the project.
@@ -109,6 +110,6 @@ def set_prefs(prefs):
         'rope.base.oi.type_hinting.factory.default_type_hinting_factory')
 
 
-def project_opened(project):
+def project_opened(_project: Any) -> None:
     """This function is called after opening the project"""
     # Do whatever you like here!
