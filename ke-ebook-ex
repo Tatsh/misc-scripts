@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
-from os.path import basename, dirname, isdir, realpath, splitext
+from os.path import basename, dirname, isdir, realpath
 from typing import Iterator, Optional
 from zipfile import ZipFile
 import argparse
