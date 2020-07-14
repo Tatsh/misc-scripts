@@ -93,7 +93,7 @@ def get_strings(children: Iterable[Union[URL, Folder]],
     for x in children:
         if x['type'] == 'folder':
             name = x['name']
-            yield from get_strings(cast(Folder, x)['children'],
+            yield from get_strings(x['children'],
                                    folder_names=folder_names,
                                    prefix=prefix +
                                    f' » {name}' if prefix else name,
@@ -106,13 +106,13 @@ def get_strings(children: Iterable[Union[URL, Folder]],
                 name = f'{prefix} » {name}'
             last_visited = None
             if 'meta_info' in x:
-                meta_info = cast(URL, x)['meta_info']
+                meta_info = x['meta_info']
                 assert meta_info is not None
                 last_visited = chrome_timestamp_to_date(
                     meta_info['last_visited_desktop']).strftime('%Y-%m-%d')
             yield (chrome_timestamp_to_date(
                 x['date_added']).strftime('%Y-%m-%d'), last_visited, name,
-                   cast(URL, x)['url'])
+                   x['url'])
 
 
 def main() -> int:
