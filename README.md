@@ -32,7 +32,7 @@ Usage: `mozcookie2chrome DOMAIN`
 
 Like `scp` but deletes the files after copying (secure move). Accepts all the arguments that `scp` accepts.
 
-```
+```plain
 usage: smv [-12346BCpqrv] [-c cipher] [-F ssh_config] [-i identity_file]
            [-l limit] [-o ssh_option] [-P port] [-S program]
            [[user@]host1:]file1 ... [[user@]host2:]file2
