@@ -125,6 +125,7 @@ def unrar_cdrecord_pipe(rar_filename: str,
               ' '.join(cdrecord_args))
     first: Final = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
     second: Final = sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True)
+    assert first.stdout is not None
     first.stdout.close()
     second.wait()
     first.wait()
