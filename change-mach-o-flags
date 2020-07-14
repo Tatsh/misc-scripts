@@ -87,7 +87,6 @@ try:
 except ImportError:
     argcomplete = None
 
-
 # <mach-o/fat.h>
 FAT_CIGAM: Final = 0xbebafeca
 FAT_MAGIC: Final = 0xcafebabe
@@ -198,7 +197,7 @@ def handle_mach_o_file(file: BinaryIO,
         raise MachOError('Mach-O file at offset %d has illusion of magic' %
                          offset)
     checked_seek(file, offset)
-    (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds,
+    (magic, _cputype, _cpusubtype, filetype, _ncmds, _sizeofcmds,
      flags) = read_mach_header(file, endian)
     assert magic in (MH_MAGIC, MH_MAGIC_64)
     if filetype != MH_EXECUTE:
