@@ -81,7 +81,8 @@ def main() -> int:
         channel = logging.StreamHandler(sys.stdout)
         channel.setLevel(logging.DEBUG)
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            if debug else '%(message)s')
         channel.setFormatter(formatter)
         log_.addHandler(channel)
     target_dir: Final = realpath(args.target)
