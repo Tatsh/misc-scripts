@@ -16,7 +16,6 @@ try:
 except ImportError:
     argcomplete = None
 
-
 RootKey = Literal['bookmark_bar', 'other']  # pylint: disable=invalid-name
 StringTuple = Tuple[str, Optional[str], str, str]
 MICROSECONDS_PER_SECOND: Final = 1e6

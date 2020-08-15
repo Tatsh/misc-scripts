@@ -14,7 +14,6 @@ except ImportError:
     argcomplete = None
 
 
-
 def main() -> int:
     parser: Final = argparse.ArgumentParser(
         description='Calculates bits per pixel')

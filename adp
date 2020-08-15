@@ -12,7 +12,6 @@ try:
 except ImportError:
     argcomplete = None
 
-
 # Find the API key by looking at requests on this page
 # http://www.symmetry.com/try-it-for-free/calculators
 API_KEY: Final = 'RnFqNFA0NVlRTExJUkpabmc4RHErUT09'

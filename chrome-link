@@ -425,9 +425,9 @@ def _make_short_name(url: str, name: str) -> str:
         if parsed.path and parsed.path != '/':
             output = ''
             index = 0
-            path_parts = re.sub(
-                r'/+', '/',
-                unquote_plus(parsed.path).lstrip('/')).split('/')
+            path_parts = re.sub(r'/+', '/',
+                                unquote_plus(
+                                    parsed.path).lstrip('/')).split('/')
             while len(output) < 128:
                 try:
                     output += re.sub(r'[^0-9A-Za-z\-/]', '', path_parts[index])
