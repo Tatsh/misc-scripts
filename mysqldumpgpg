@@ -23,7 +23,6 @@ try:
 except ImportError:
     argcomplete = None
 
-
 MYSQL_USER: Final = env['USER']
 MYSQL_HOST: Final = 'localhost'
 LOCK_WAIT_TIMEOUT: Final = 10
@@ -37,7 +36,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     log: Final = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel: Final = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
+    channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
     return log

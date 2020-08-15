@@ -24,7 +24,7 @@ try:
 except ImportError:
     HAS_YAML = False
 
-LOG_FORMATTER: Final = logging.Formatter('%(asctime)s - %(message)s')
+LOG_FORMATTER: Final = logging.Formatter('%(message)s')
 log_handle: Optional[TextIO] = None
 syslog_handle: Optional[SysLogHandler] = None
 
