@@ -59,8 +59,9 @@ def main() -> int:
     args: Final = parser.parse_args()
     phone_number: str = args.phone_number[0]
     log: Final = logging.getLogger('urllib3')
-    formatter: Final = logging.Formatter('%(asctime)s - %(name)s - '
-                                         '%(levelname)s - %(message)s')
+    formatter: Final = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s' if args.
+        debug else '%(message)s')
     channel: Final = logging.StreamHandler(sys.stderr)
     log.setLevel(logging.DEBUG if args.debug else logging.ERROR)
     channel.setLevel(logging.DEBUG if args.debug else logging.ERROR)
