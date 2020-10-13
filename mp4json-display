@@ -4,4 +4,6 @@ if [[ $fn == *.m4* ]] || [[ $fn == *.mp4 ]]; then
     MP4Box -dump-item 1:path=/dev/stdout "$fn"
 elif [[ $fn == *.mp3 ]]; then
     id3ted -l "$fn" | grep -F TXXX | cut -d ':' -f3- | tr -d ' ' | base64 -d
+elif [[ $fn == *.mkv ]]; then
+    mkvextract "$fn" attachments 1:/dev/stdout | tail -n +2
 fi

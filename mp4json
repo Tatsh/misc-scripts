@@ -41,6 +41,10 @@ ID3TED_REMOVE_FRAME_TEMPLATE: Final = (
 )
 ID3TED_WRITE_CMD_TEMPLATE: Final = ('id3ted', '--preserve-times', '-3',
                                     '--TXXX', '', '')
+MKVPROPEDIT_WRITE_CMD_TEMPLATE: Final = ('mkvpropedit',
+                                         '', # MKV filename
+                                         '--attachment-name', 'info.json',
+                                         '--add-attachment')
 UPLOAD_DATE_FORMAT = '%Y%m%d'
 
 
@@ -57,7 +61,7 @@ def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
 
 
 def set_date(path: str, json_str: bytes) -> None:
-    data: Final = json.loads(json_str.decode('utf-8'))
+    data: Final = json.loads(json_str.decode())
     try:
         upload_date: Final = data['upload_date']
     except KeyError:
@@ -101,11 +105,21 @@ def id3ted_add_json(filename: str, json_filename: str) -> bool:
     cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
     with open(json_filename, 'rb') as f:
         new_json = f.read()
-    encoded: Final = standard_b64encode(new_json).decode('utf-8')
+    encoded: Final = standard_b64encode(new_json).decode()
     cmd[-2] = f'{encoded}:{TAG_DESCRIPTION}'
     cmd[-1] = filename
     quiet_subprocess_check_call(cmd)
     set_date(filename, new_json)
+    return True
+
+
+def mkvpropedit_add_json(filename: str, json_filename: str) -> bool:
+    cmd = list(MKVPROPEDIT_WRITE_CMD_TEMPLATE)
+    cmd[1] = filename
+    cmd.append(json_filename)
+    quiet_subprocess_check_call(cmd)
+    with open(json_filename, 'rb') as f:
+        set_date(filename, f.read())
     return True
 
 
@@ -121,6 +135,7 @@ def isfile(path: Union[AnyStr, int]) -> bool:
 def main() -> int:
     mp4_ext_regex: Final = re.compile(r'\.(?:mp4|m4[pabrv])$')
     mp3_ext_regex: Final = re.compile(r'\.mp3')
+    mkv_ext_regex: Final = re.compile(r'\.mkv')
     for arg in sys.argv[1:]:
         json_filename = f'{splitext(arg)[0]}.info.json'
         if not isfile(json_filename):
@@ -130,6 +145,8 @@ def main() -> int:
             can_delete = mp4box_add_json(arg, json_filename)
         elif re.search(mp3_ext_regex, arg):
             can_delete = id3ted_add_json(arg, json_filename)
+        elif re.search(mkv_ext_regex, arg):
+            can_delete = mkvpropedit_add_json(arg, json_filename)
         if can_delete:
             rm(json_filename)
     return 0
