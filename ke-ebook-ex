@@ -71,6 +71,7 @@ def main() -> int:
         pdf = [x for x in listdir('.') if x.lower().endswith('.pdf')]
         epub = [x for x in listdir('.') if x.lower().endswith('.epub')]
         ext = 'pdf'
+        pdf_name = None
         if pdf:
             if len(pdf) > 1:
                 log.warning(
@@ -93,6 +94,7 @@ def main() -> int:
             pdf_name = basename(dirname(realpath(epub[0])))
             ext = 'epub'
             pdf = epub
+        assert pdf_name is not None
         target_name = f'../{pdf_name}.{ext}'
         rename(pdf[0], target_name)
         for x in extracted:
