@@ -78,6 +78,7 @@ def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
     assert work is not None, "Did not find ISO"
     # Handle spaces in ISO file name
     filename = work[4]
+    i = 0
     if '.iso' not in filename.lower():
         filename = ''
         i = 0
