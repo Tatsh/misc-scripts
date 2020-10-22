@@ -2,9 +2,9 @@
 # PYTHON_ARGCOMPLETE_OK
 from html import escape
 from itertools import chain
-from os import chdir, scandir
+from os import DirEntry, chdir, scandir
 from os.path import basename, realpath
-from typing import Any, Iterator
+from typing import Any, Iterator, cast
 import argparse
 import sys
 
@@ -17,12 +17,13 @@ except ImportError:
 
 CSS_URI: Final = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
 
-def scandir_ignore(*args: Any, **kwargs: Any):
+
+def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry]:
     try:
         return scandir(*args, **kwargs)
-    except Exception as e:
+    except OSError as e:
         print(f'Error: {e}', file=sys.stderr)
-        return []
+        yield from []
 
 
 def recurse_cwd(path: str,
@@ -30,7 +31,7 @@ def recurse_cwd(path: str,
                 depth: int = 1,
                 _cur_depth: int = 0) -> Iterator[str]:
     for entry in sorted(
-            sorted(scandir_ignore(path), key=lambda x: x.name),
+            sorted(scandir_ignore(path), key=lambda x: cast(str, x.name)),
             key=lambda x: not x.is_dir(follow_symlinks=follow_symlinks)):
         if (entry.is_dir(follow_symlinks=follow_symlinks)
                 and _cur_depth < depth):
