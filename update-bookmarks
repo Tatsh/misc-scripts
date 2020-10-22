@@ -165,7 +165,7 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args: Final = parser.parse_args()
-    f: Final[TextIO] = args.file[0]
+    f: TextIO = args.file[0]
     log: Final = setup_logging_stdout(verbose=not args.quiet)
     session: Final = requests.Session()
     session.headers.update({
