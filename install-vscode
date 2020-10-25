@@ -1,0 +1,50 @@
+#!/usr/bin/env python
+from os import environ, remove as rm
+from os.path import basename, expanduser
+from shutil import copytree, ignore_patterns, rmtree
+from tempfile import mkdtemp
+import subprocess as sp
+import sys
+
+import requests
+
+HOME = environ['HOME']
+URL_PREFIX = 'https://packages.microsoft.com/repos/vscode'
+
+
+def main() -> int:
+    if sys.platform != 'linux':
+        print('This script is only for Linux')
+        return 1
+    print('Determining deb filename', file=sys.stderr)
+    pool_path = [
+        l for l in requests.get(
+            f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages').text.
+        split('\n') if l.startswith('Filename: ')
+    ][0].split(' ')[1]
+    deb_file = basename(pool_path)
+    try:
+        with open(deb_file, 'rb'):
+            pass
+    except FileNotFoundError:
+        print('Downloading deb file ...', file=sys.stderr)
+        with open(deb_file, 'wb+') as f:
+            for chunk in requests.get(
+                    f'{URL_PREFIX}/{pool_path}',
+                    stream=True).iter_content(chunk_size=1024):
+                f.write(chunk)
+    tempdir = mkdtemp(prefix='install-vscode-')
+    sp.run(('dpkg-deb', '-x', deb_file, tempdir), check=True)
+    print(f'cp -R {tempdir}/usr/share ~/.local/share')
+    copytree(f'{tempdir}/usr/share',
+             expanduser('~/.local/share'),
+             ignore=ignore_patterns('zsh'),
+             dirs_exist_ok=True,
+             symlinks=True)
+    rm(deb_file)
+    rmtree(tempdir)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
