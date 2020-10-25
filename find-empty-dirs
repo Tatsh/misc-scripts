@@ -24,11 +24,11 @@ def ignore_dir(b: bytes) -> Tuple[str, bool]:
     if not path:
         return path, True
     try:
-        ld = set(listdir(path))
+        ld = listdir(path)
     except PermissionError:
         return path, True
-    return path, bool(
-        re.search(IGNORE_RE, path) or len(ld - IGNORED_FILES) != 0)
+    return path, bool(re.search(IGNORE_RE,
+                                path)) or len(set(ld) - IGNORED_FILES) != 0
 
 
 async def iter_lines(loop: AbstractEventLoop,
@@ -46,6 +46,7 @@ async def a_main(loop: AbstractEventLoop) -> None:
                                                   await loop.run_in_executor(
                                                       None, env_no_case,
                                                       'home'),
+                                                  '-xdev',
                                                   '-type',
                                                   'd',
                                                   stdout=sp.PIPE,
