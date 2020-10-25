@@ -13,7 +13,7 @@ IGNORE_RE = re.compile(r'(?:/\.(?:[Tt]rash|git|npm/_git-remotes))/?')
 
 
 def env_no_case(key: str) -> str:
-    for x in environ.keys():
+    for x in environ:
         if key == x or key.lower() == x.lower():
             return environ[x]
     raise KeyError(key)
