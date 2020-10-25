@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from os import environ, remove as rm
+from os import remove as rm
 from os.path import basename, expanduser
 from shutil import copytree, ignore_patterns
 from tempfile import TemporaryDirectory
@@ -8,7 +8,6 @@ import sys
 
 import requests
 
-HOME = environ['HOME']
 URL_PREFIX = 'https://packages.microsoft.com/repos/vscode'
 
 
