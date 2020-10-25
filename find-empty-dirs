@@ -19,16 +19,16 @@ def env_no_case(key: str) -> str:
     raise KeyError(key)
 
 
-def ignore_dir(b: bytes) -> Tuple[str, bool]:
-    path = b.decode().strip()
+def ignore_dir(name: bytes) -> Tuple[str, bool]:
+    path = name.decode().strip()
     if not path:
         return path, True
     try:
-        ld = listdir(path)
+        contents = listdir(path)
     except PermissionError:
         return path, True
-    return path, bool(re.search(IGNORE_RE,
-                                path)) or len(set(ld) - IGNORED_FILES) != 0
+    return path, bool(re.search(
+        IGNORE_RE, path)) or len(set(contents) - IGNORED_FILES) != 0
 
 
 async def iter_lines(loop: AbstractEventLoop,
