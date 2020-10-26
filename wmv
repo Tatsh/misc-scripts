@@ -128,9 +128,9 @@ TR_MAP: Final = (
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -144,7 +144,7 @@ def make_target(filename: str) -> str:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Renames file names with full-width characters to normal '
         'width name. Please see `man mv` or `info coreutils \'mv invocation\'`'
         ' for option arguments')
@@ -163,14 +163,14 @@ def main() -> int:
     parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
-    log: Final = setup_logging_stdout(verbose=args.verbose)
-    special_values: Final = (
+    args = parser.parse_args()
+    log = setup_logging_stdout(verbose=args.verbose)
+    special_values = (
         ('--backup', args.backup),
         ('--suffix', args.suffix),
         ('--target-directory', args.target_directory),
     )
-    bool_args: Final = (
+    bool_args = (
         ('--backup', args.b),
         ('--force', args.force),
         ('--interactive', args.interactive),
@@ -178,7 +178,7 @@ def main() -> int:
         ('--update', args.update),
         ('--strip-trailing-slashes', args.strip_trailing_slashes),
     )
-    mv_args: Final = []
+    mv_args = []
     if args.b and args.backup:
         log.error('Cannot use -b and --backup simultaneously')
         return 1
@@ -188,16 +188,14 @@ def main() -> int:
     for arg, val in bool_args:
         if val is True:
             mv_args.append(arg)
-    command: Final = ['mv'] + mv_args + [
-        args.file[0], make_target(args.file[0])
-    ]
+    command = ['mv'] + mv_args + [args.file[0], make_target(args.file[0])]
     log.info('Command: %s', ' '.join(command))
     try:
-        p: Final = sp.run(command,
-                          stdout=sp.PIPE,
-                          stderr=sp.PIPE,
-                          encoding='utf-8',
-                          check=True)
+        p = sp.run(command,
+                   stdout=sp.PIPE,
+                   stderr=sp.PIPE,
+                   encoding='utf-8',
+                   check=True)
     except sp.CalledProcessError as e:
         log.error('STDOUT: %s', e.output)
         log.error('STDERR: %s', e.stderr)

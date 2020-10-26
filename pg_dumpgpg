@@ -35,9 +35,9 @@ PG_USER: Final = 'postgres'
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -70,7 +70,7 @@ def pg_dump(*args: str) -> str:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('--target',
                         '-t',
                         help='Target directory to store in',
@@ -91,17 +91,15 @@ def main() -> int:
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
-    log: Final = setup_logging_stdout(verbose=args.verbose)
-    target_dir: Final = realpath(args.target)
-    time: Final = datetime.today().strftime('%Y%m%d%H%M%S')
-    dry_run: Final = args.dry_run
-    gpg_home: Final = realpath(args.gpg_home)
-    recipients: Final = args.gpg_recipients
+    args = parser.parse_args()
+    log = setup_logging_stdout(verbose=args.verbose)
+    target_dir = realpath(args.target)
+    time = datetime.today().strftime('%Y%m%d%H%M%S')
+    dry_run = args.dry_run
+    gpg_home = realpath(args.gpg_home)
+    recipients = args.gpg_recipients
 
-    gpg: Final = gnupg.GPG(gnupghome=gpg_home,
-                           verbose=args.verbose,
-                           use_agent=True)
+    gpg = gnupg.GPG(gnupghome=gpg_home, verbose=args.verbose, use_agent=True)
     gpg.encoding = 'utf-8'
 
     for i, db_name in enumerate(

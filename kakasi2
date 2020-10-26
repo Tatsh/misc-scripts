@@ -47,9 +47,9 @@ KAKASI_HELP_LOOK_FOR: Final = ('KAKASI - Kanji Kana Simple Inverter  Version '
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -92,9 +92,9 @@ def find_iconv() -> Optional[str]:
 
 
 def main() -> int:
-    log: Final = setup_logging_stdout()
-    kakasi_bin: Final = find_kakasi()
-    iconv: Final = find_iconv()
+    log = setup_logging_stdout()
+    kakasi_bin = find_kakasi()
+    iconv = find_iconv()
 
     if not kakasi_bin:
         log.error('No valid `kakasi` binary found.')
@@ -104,7 +104,7 @@ def main() -> int:
                   'conversion).')
         return 1
 
-    parser: Final = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('words', nargs='*')
     parser.add_argument('-k',
                         '--keep-long',
@@ -115,16 +115,16 @@ def main() -> int:
                         default=False)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     words = args.words
-    iconv_to_args: Final = [
+    iconv_to_args = [
         iconv,
         '-t',
         'SJIS',
     ]
-    iconv_from_args: Final = copy(iconv_to_args)
+    iconv_from_args = copy(iconv_to_args)
     iconv_from_args[1] = '-f'
-    kakasi_args: Final = (
+    kakasi_args = (
         kakasi_bin,
         '-s',
         '-Ja',

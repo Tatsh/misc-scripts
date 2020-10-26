@@ -5,8 +5,6 @@ from urllib.parse import unquote_plus, urlparse
 import argparse
 import sys
 
-from typing_extensions import Final
-
 try:
     import argcomplete
 except ImportError:
@@ -25,17 +23,17 @@ def parse(values: Iterable[str],
 
 
 def main() -> int:
-    is_netloc: Final = sys.argv[0].endswith('netloc')
-    parser: Final = argparse.ArgumentParser()
+    is_netloc = sys.argv[0].endswith('netloc')
+    parser = argparse.ArgumentParser()
     parser.add_argument('-e', '--encoding', default='utf-8')
     parser.add_argument('-r', '--errors', default='replace')
-    is_atty: Final = sys.stdin.isatty()
+    is_atty = sys.stdin.isatty()
     if is_atty:
         parser.add_argument('string', nargs='*')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
-    arg: Final = args.string if is_atty else sys.stdin.readlines()
+    args = parser.parse_args()
+    arg = args.string if is_atty else sys.stdin.readlines()
     for x in parse(arg,
                    is_netloc=is_netloc,
                    encoding=args.encoding,

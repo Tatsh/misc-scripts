@@ -126,7 +126,7 @@ def lower_stop(words: str,
                modes: Iterable[int] = (ENGLISH_MODE, ),
                disable_names: bool = False,
                ampersands: bool = False) -> str:
-    original_words: Final = words.strip().split()
+    original_words = words.strip().split()
     word_list = words.strip().title().split()
     name = get_name(word_list[0])
 
@@ -140,8 +140,8 @@ def lower_stop(words: str,
     if is_roman_numeral(title[0]):
         title = [title[0].upper()]
 
-    last_index: Final = len(original_words) - 1
-    ignore_roman: Final = ['mix']
+    last_index = len(original_words) - 1
+    ignore_roman = ['mix']
 
     for mode in modes:
         to_lower_case_array = MODE_MAP[mode]
@@ -218,7 +218,7 @@ def lower_stop(words: str,
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Title fixer for various languages. Defaults to English '
         'mode. If any option is specified without -e, English mode is '
         'disabled.')
@@ -260,7 +260,7 @@ def main() -> int:
                         default=False)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     if args.mode is None:
         args.mode = [ENGLISH_MODE]
     for title in args.titles:

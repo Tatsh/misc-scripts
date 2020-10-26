@@ -6,8 +6,6 @@ import os
 import re
 import sys
 
-from typing_extensions import Final
-
 try:
     import argcomplete
 except ImportError:
@@ -15,12 +13,12 @@ except ImportError:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('-y', '--dry-run', action='store_true')
     parser.add_argument('files', nargs='*')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     for arg in args.files:
         name, ext = splitext(arg)
         if ext in ('.bz2', '.gpg', '.gz'):

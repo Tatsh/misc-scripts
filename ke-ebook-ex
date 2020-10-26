@@ -11,8 +11,6 @@ import re
 import subprocess as sp
 import sys
 
-from typing_extensions import Final
-
 try:
     import argcomplete
 except ImportError:
@@ -23,9 +21,9 @@ except ImportError:
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -44,12 +42,12 @@ def unrar_x(rar: str) -> None:
 
 
 def main() -> int:
-    log: Final = setup_logging_stdout()
-    parser: Final = argparse.ArgumentParser()
+    log = setup_logging_stdout()
+    parser = argparse.ArgumentParser()
     parser.add_argument('directories', nargs='+')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     _dir: str
     for _dir in args.directories:
         if not isdir(_dir):

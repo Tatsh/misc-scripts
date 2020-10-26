@@ -4,8 +4,6 @@ from typing import Iterable, Optional
 import argparse
 import sys
 
-from typing_extensions import Final
-
 try:
     import argcomplete
 except ImportError:
@@ -37,7 +35,7 @@ def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Calculate total CDDA time for use in a CUE sheet')
     parser.add_argument(
         'times',
@@ -46,8 +44,8 @@ def main() -> int:
         help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
-    times: Final = add_times(args.times)
+    args = parser.parse_args()
+    times = add_times(args.times)
     if times:
         print(times)
     else:

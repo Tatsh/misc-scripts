@@ -20,9 +20,9 @@ OFFSET_RE: Final = re.compile(r'offset=`head -n (\d+?) "\$0"')
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -30,7 +30,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def main() -> int:
-    log: Final = setup_logging_stdout()
+    log = setup_logging_stdout()
     if len(sys.argv) == 2:
         input_path = sys.argv[1]
         output_path = './'
@@ -41,40 +41,40 @@ def main() -> int:
         print('Usage: {} <input file> <output dir>'.format(sys.argv[0]),
               file=sys.stderr)
         return 1
-    game_bin: Final = open(input_path, 'rb')
+    game_bin = open(input_path, 'rb')
     os.makedirs(output_path, exist_ok=True)
     # Read the first 10kb so we can determine the script line number
-    beginning: Final = game_bin.read(10240).decode('utf-8', errors='ignore')
-    offset_match: Final = OFFSET_RE.search(beginning)
+    beginning = game_bin.read(10240).decode('utf-8', errors='ignore')
+    offset_match = OFFSET_RE.search(beginning)
     if not offset_match:
         log.error('Failed to find offset', file=sys.stderr)
         return 1
-    script_lines: Final = int(offset_match.group(1))
+    script_lines = int(offset_match.group(1))
     # Read the number of lines to determine the script size
     game_bin.seek(0, io.SEEK_SET)
     for _ in range(0, script_lines):
         game_bin.readline()
-    script_size: Final = game_bin.tell()
+    script_size = game_bin.tell()
     log.debug('Makeself script size: %d', script_size)
     # Read the script
     game_bin.seek(0, io.SEEK_SET)
-    script_bin: Final = game_bin.read(script_size)
+    script_bin = game_bin.read(script_size)
     with open(path.join(output_path, 'unpacker.sh'), 'wb') as script_f:
         script_f.write(script_bin)
-    script: Final = script_bin.decode('utf-8')
+    script = script_bin.decode('utf-8')
     # Filesize is for the MojoSetup archive, not the actual game data
-    filesize_match: Final = FILESIZE_RE.search(script)
+    filesize_match = FILESIZE_RE.search(script)
     if not filesize_match:
         log.error('Failed to find file size value')
         return 1
-    filesize: Final = int(filesize_match.group(1))
+    filesize = int(filesize_match.group(1))
     log.debug('MojoSetup archive size: %d', filesize)
     # Extract the setup archive
     game_bin.seek(script_size, io.SEEK_SET)
     with open(path.join(output_path, 'mojosetup.tar.gz'), 'wb') as setup_f:
         setup_f.write(game_bin.read(filesize))
     # Extract the game data archive
-    dataoffset: Final = script_size + filesize
+    dataoffset = script_size + filesize
     game_bin.seek(dataoffset, io.SEEK_SET)
     with open(path.join(output_path, 'data.zip'), 'wb') as datafile:
         shutil.copyfileobj(game_bin, datafile)

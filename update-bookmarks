@@ -32,10 +32,10 @@ class FailedConnection:
                  response: requests.Response,
                  reason: int,
                  exc: Optional[Exception] = None):
-        self.response: Final = response
-        self.url: Final = response.url
-        self.reason: Final = reason
-        self.exc: Final = exc
+        self.response = response
+        self.url = response.url
+        self.reason = reason
+        self.exc = exc
 
     def strreason(self) -> str:
         if self.reason == self.REASON_INVALID_URL:
@@ -53,9 +53,9 @@ class FailedConnection:
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -87,7 +87,7 @@ def send(
 
 
 def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
-    log: Final = setup_logging_stdout()
+    log = setup_logging_stdout()
     try:
         return session.head(uri, timeout=5)
     except Exception as e:  # pylint: disable=broad-except
@@ -100,10 +100,10 @@ def recursive_scan(
     session: requests.Session,
     verbose: bool = False
 ) -> Tuple[Sequence[Tuple[str, str]], Sequence[Tuple[str, Any]]]:
-    log: Final = setup_logging_stdout(verbose=verbose)
-    ret: Final = []
-    errors: Final = []
-    urls: Final = []
+    log = setup_logging_stdout(verbose=verbose)
+    ret = []
+    errors = []
+    urls = []
     a: Tag
     for a in soup.body.select('a'):
         title = ' '.join(a.contents)
@@ -139,7 +139,7 @@ def recursive_scan(
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         'file',
         metavar='IN_FILE',
@@ -164,10 +164,10 @@ def main() -> int:
                         default=2)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     f: TextIO = args.file[0]
-    log: Final = setup_logging_stdout(verbose=not args.quiet)
-    session: Final = requests.Session()
+    log = setup_logging_stdout(verbose=not args.quiet)
+    session = requests.Session()
     session.headers.update({
         'user-agent':
         ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '

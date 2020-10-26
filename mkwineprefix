@@ -50,9 +50,9 @@ class Args:
 def setup_logging_stderr(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stderr)
+    channel = logging.StreamHandler(sys.stderr)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -60,7 +60,7 @@ def setup_logging_stderr(name: Optional[str] = None,
 
 
 def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
-    log: Final = setup_logging_stderr(verbose=kwargs.pop('verbose', False))
+    log = setup_logging_stderr(verbose=kwargs.pop('verbose', False))
     if kwargs.get('env'):
         log.debug('Environment: %s', kwargs['env'])
     log.debug('Running: %s', ' '.join(map(quote, args)))
@@ -69,12 +69,12 @@ def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
 
 
 def wine(args: Args) -> int:
-    log: Final = setup_logging_stderr(verbose=args.verbose)
+    log = setup_logging_stderr(verbose=args.verbose)
     prefix_name: Final[str] = args.prefix_name
-    prefix_root: Final = expanduser('~/.local/share/wineprefixes')
+    prefix_root = expanduser('~/.local/share/wineprefixes')
     makedirs(prefix_root, mode=0o755, exist_ok=True)
     target = path_join(prefix_root, prefix_name)
-    o_target: Final = target
+    o_target = target
     if isdir(target):
         log.error('Not touching existing prefix at %s', target)
         return 1
@@ -109,8 +109,8 @@ def wine(args: Args) -> int:
     if not winetricks:
         log.error('Winetricks is not installed.')
         return 1
-    prefix_arg: Final = f'prefix={prefix_name}'
-    winetricks_args: Final = [
+    prefix_arg = f'prefix={prefix_name}'
+    winetricks_args = [
         winetricks, prefix_arg, VERSION_MAPPING[args.windows_version[0]]
     ]
     if args.sandbox:
@@ -135,13 +135,13 @@ env {wineprefix_env} wine ...
 If you ran this with eval, your shell is ready.''',
           file=sys.stderr)
     print(f'export {wineprefix_env}')
-    ps1_env: Final = f'PS1={prefix_name}🍷$PS1'
+    ps1_env = f'PS1={prefix_name}🍷$PS1'
     print(f'export {ps1_env}')
     return 0
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Create a Wine prefix with custom settings',
         epilog='This should be used with eval: eval $(mkwineprefix ...)')
     parser.add_argument('--no-xdg',

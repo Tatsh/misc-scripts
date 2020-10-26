@@ -51,7 +51,7 @@ def recurse_cwd(path: str,
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         basename(sys.argv[0]),
         description='Generate a directory listing in HTML 5.')
     parser.add_argument('dir', nargs=1)
@@ -59,10 +59,10 @@ def main() -> int:
     parser.add_argument('-d', '--depth', default=1, type=int)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     chdir(args.dir[0])
-    title: Final = basename(realpath(args.dir[0]))
-    files: Final = ''.join(
+    title = basename(realpath(args.dir[0]))
+    files = ''.join(
         chain.from_iterable(
             recurse_cwd(args.dir[0], args.follow_symlinks, args.depth)))
     print(f'''<!DOCTYPE html>

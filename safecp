@@ -9,8 +9,6 @@ import argparse
 import logging
 import sys
 
-from typing_extensions import Final
-
 try:
     import argcomplete
 except ImportError:
@@ -21,9 +19,9 @@ except ImportError:
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -31,14 +29,14 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def safe_rename(fn: str, target: str, preserve: bool) -> bool:
-    log: Final = setup_logging_stdout()
+    log = setup_logging_stdout()
     if not isfile(target) and not isdir(target):
         log.info('copy %s -> %s', fn, target)
         with open(target, 'wb+') as f:
             with open(fn, 'rb') as o:
                 f.write(o.read())
             if preserve:
-                s: Final = stat(fn)
+                s = stat(fn)
                 utime(target, (
                     s.st_atime,
                     s.st_mtime,
@@ -62,12 +60,12 @@ def safe_rename(fn: str, target: str, preserve: bool) -> bool:
 
 
 def main() -> int:
-    log: Final = setup_logging_stdout()
-    is_mv: Final = sys.argv[0].endswith('safemv')
+    log = setup_logging_stdout()
+    is_mv = sys.argv[0].endswith('safemv')
     help_ = 'Copy files without clobbering existing files'
     if is_mv:
         help_ = f'Move {help_[5:]}'
-    parser: Final = argparse.ArgumentParser(help_)
+    parser = argparse.ArgumentParser(help_)
     parser.add_argument('-t',
                         '--target-dir',
                         metavar='TARGET_DIR',
@@ -76,7 +74,7 @@ def main() -> int:
     parser.add_argument('files', nargs='*')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     target: Optional[str] = args.target_dir
     if target:
         target = realpath(target)
@@ -88,7 +86,7 @@ def main() -> int:
         if len(args.files) < 2:
             log.error('Must have file to move and target argument')
             return 1
-        should_be_dir_last: Final = len(args.files) > 2
+        should_be_dir_last = len(args.files) > 2
         target = realpath(args.files.pop())
         assert target is not None
         if should_be_dir_last and not isdir(target):

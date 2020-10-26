@@ -15,8 +15,7 @@ except ImportError:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
-        description='Calculates bits per pixel')
+    parser = argparse.ArgumentParser(description='Calculates bits per pixel')
     parser.add_argument('unscaled_resolution',
                         metavar='UNSCALED_RES',
                         help='Unscaled resolution in X:Y format')
@@ -34,7 +33,7 @@ def main() -> int:
                         help='Raw aspect ratio in X:Y format')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
     raw_aspect_width, raw_aspect_height = [
         int(x) for x in args.raw_ar.split(':')
@@ -45,10 +44,10 @@ def main() -> int:
     if ':' in cast(str, encoded_at):
         encoded_at = [int(x) for x in cast(str, encoded_at).split(':')]
         encoded_at = encoded_at[0] / encoded_at[1]
-    scaled_width: Final = float(unscaled_width) * (cast(float, encoded_at) /
-                                                   raw_aspect)
+    scaled_width = float(unscaled_width) * (cast(float, encoded_at) /
+                                            raw_aspect)
     scaled_height: str = unscaled_height
-    picture_ar: Final = float(scaled_width) / float(scaled_height)
+    picture_ar = float(scaled_width) / float(scaled_height)
     print(f'Prescaled picture: {int(scaled_width):d}x{int(scaled_height):d}, '
           f'AR {float(picture_ar):.2f}')
     width = 720

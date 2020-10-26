@@ -24,9 +24,9 @@ KEY_WHEREFROMS: Final = 'com.apple.metadata:kMDItemWhereFroms'
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -55,7 +55,7 @@ def xattr(key: str, filename: str) -> str:
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Determine where downloaded files came from.')
     parser.add_argument('files',
                         metavar='FILE',
@@ -67,9 +67,9 @@ def main() -> int:
                         help='Print the webpage URL')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
-    has_multiple: Final = len(args.files) > 1
-    index: Final = 1 if args.webpage else 0
+    args = parser.parse_args()
+    has_multiple = len(args.files) > 1
+    index = 1 if args.webpage else 0
     ret = 0
     arg: str
     for arg in args.files:

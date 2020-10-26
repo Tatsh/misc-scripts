@@ -42,9 +42,9 @@ USER_AGENT: Final = (
 def _setup_logging_stdout(name: Optional[str] = None,
                           verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    ret: Final = logging.getLogger(name)
+    ret = logging.getLogger(name)
     ret.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(
         logging.Formatter(
             '%(name)s: %(message)s' if verbose else '%(message)s'))
@@ -88,7 +88,7 @@ def _cygpath_win(path: str) -> str:
 
 
 def _parse_args() -> MainArgs:
-    parser: Final = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument('-v',
                         '--verbose',
                         action='store_true',
@@ -131,16 +131,16 @@ def _parse_args() -> MainArgs:
 
 def _get_icon_from_site(args: MainArgs,
                         session: requests.Session) -> Optional[str]:
-    log: Final = _setup_logging_stdout(name='_get_icon_from_site',
-                                       verbose=args.verbose)
+    log = _setup_logging_stdout(name='_get_icon_from_site',
+                                verbose=args.verbose)
     if args.icon:
         return args.icon
-    r: Final = session.get(args.url)
-    s: Final = BeautifulSoup(r.content, 'lxml')
+    r = session.get(args.url)
+    s = BeautifulSoup(r.content, 'lxml')
     options = ('link[rel="apple-touch-icon"]', 'link[rel="shortcut icon"]',
                'link[rel="icon"]', 'meta[name="msapplication-TileImage"]')
     tags: Final[List[Tag]] = s.select(','.join(options))
-    sizes: Final = [(0, urljoin(args.url, '/favicon.ico'))]
+    sizes = [(0, urljoin(args.url, '/favicon.ico'))]
     log.debug('Guessed favicon URI: %s', sizes[0][1])
     for tag in tags:
         uri: Optional[str] = tag.attrs.get('href', tag.attrs.get('content'))
@@ -157,7 +157,7 @@ def _get_icon_from_site(args: MainArgs,
                 icon_uri = urljoin(args.url, uri)
                 log.debug('Icon without size at URI %s', icon_uri)
                 sizes.append((1, urljoin(args.url, icon_uri)))
-    icon: Final = sorted(sizes, reverse=True, key=lambda x: x[0])[0][1]
+    icon = sorted(sizes, reverse=True, key=lambda x: x[0])[0][1]
     log.debug('Attempting to use icon URI %s', icon)
     if icon and session.get(icon).status_code != 200:
         return None
@@ -165,12 +165,11 @@ def _get_icon_from_site(args: MainArgs,
 
 
 def _ico_index(tmp_name: str, verbose: Optional[bool] = False) -> str:
-    log: Final = _setup_logging_stdout(name='_ico_index', verbose=verbose)
-    id_out: Final = subprocess.check_output(
-        ('identify', '-format', '%w\n', tmp_name),
-        encoding='utf-8').strip().splitlines()
+    log = _setup_logging_stdout(name='_ico_index', verbose=verbose)
+    id_out = subprocess.check_output(('identify', '-format', '%w\n', tmp_name),
+                                     encoding='utf-8').strip().splitlines()
     log.debug('ICO sizes available: %s', ' '.join(id_out))
-    index: Final = str(list(enumerate(sorted(id_out, reverse=True)))[0][0])
+    index = str(list(enumerate(sorted(id_out, reverse=True)))[0][0])
     return f'[{index}]'
 
 
@@ -179,12 +178,11 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
         short_name: str,
         session: requests.Session,
         verbose: Optional[bool] = False) -> Optional[str]:
-    log: Final = _setup_logging_stdout(name='_fetch_convert_icon',
-                                       verbose=verbose)
+    log = _setup_logging_stdout(name='_fetch_convert_icon', verbose=verbose)
     if not re.match(r'^https?\://', icon or ''):
         return icon
     assert icon is not None
-    r: Final = session.get(icon, stream=True)
+    r = session.get(icon, stream=True)
     icon_prefix, icon_ext = splitext(urlparse(icon).path)
     icon_ext = icon_ext.lower()
     if IS_LINUX:
@@ -249,7 +247,7 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             close(fd)
     else:  # Windows
         roaming = expanduser('~/AppData/Roaming')
-        prefix: Final = f'ChromeLink{short_name}'
+        prefix = f'ChromeLink{short_name}'
         if icon_ext != '.ico':
             log.debug('Converting icon from %s to ICO', icon_ext[1:].upper())
             fd, tmp_name = mkstemp(suffix=icon_ext)
@@ -289,15 +287,15 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
 
 def _create_desktop_file(args: MainArgs) -> None:
     # Create .desktop file
-    log: Final = _setup_logging_stdout(name='_create_desktop_file',
-                                       verbose=args.verbose)
-    apps_dir: Final = expanduser('~/.local/share/applications')
+    log = _setup_logging_stdout(name='_create_desktop_file',
+                                verbose=args.verbose)
+    apps_dir = expanduser('~/.local/share/applications')
     makedirs(apps_dir, exist_ok=True)
-    out_name: Final = path_join(
+    out_name = path_join(
         apps_dir,
         f'chrome-{args.name}-{args.profile_name}.desktop'.replace(' ', ''))
     assert args.chrome_command is not None
-    try_exec: Final = args.chrome_command.replace(' ', r'\ ')
+    try_exec = args.chrome_command.replace(' ', r'\ ')
     with open(out_name, 'w+') as f:
         f.write(f'''#!/usr/bin/env xdg-open
 [Desktop Entry]
@@ -320,7 +318,7 @@ Icon={args.icon}
 
 def _create_iconset(args: MainArgs) -> str:
     assert args.icon is not None
-    iconset_dir: Final = mkdtemp(suffix='.iconset')
+    iconset_dir = mkdtemp(suffix='.iconset')
     for width in (2**x for x in range(1, 11)):
         subprocess.check_call(
             ('sips', '-z', str(width), str(width), args.icon, '--out',
@@ -335,16 +333,15 @@ def _create_iconset(args: MainArgs) -> str:
 
 def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     assert args.icon is not None
-    iconset_dir: Final = _create_iconset(args)
-    app_dir: Final = expanduser(
+    iconset_dir = _create_iconset(args)
+    app_dir = expanduser(
         f'~/Applications/Chrome Apps.localized/{args.name}.app')
-    contents_dir: Final = path_join(app_dir, 'Contents')
-    macos_dir: Final = path_join(contents_dir, 'MacOS')
-    res_dir: Final = path_join(contents_dir, 'Resources')
-    profile_dir_short: Final = args.profile_name.replace(' ', '')
-    bundle_id: Final = ('com.google.Chrome.app.'
-                        f'{profile_dir_short}-{short_name}')
-    info_plist_data: Final = dict(
+    contents_dir = path_join(app_dir, 'Contents')
+    macos_dir = path_join(contents_dir, 'MacOS')
+    res_dir = path_join(contents_dir, 'Resources')
+    profile_dir_short = args.profile_name.replace(' ', '')
+    bundle_id = ('com.google.Chrome.app.' f'{profile_dir_short}-{short_name}')
+    info_plist_data = dict(
         CFBundleExecutable='app_mode_loader',
         CFBundleIconFile='app.icns',
         CFBundleIdentifier=bundle_id,
@@ -358,7 +355,7 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     subprocess.check_call(('iconutil', '-c', 'icns', iconset_dir, '-o',
                            path_join(res_dir, 'app.icns')),
                           stdout=subprocess.PIPE)
-    script: Final = path_join(macos_dir, 'app_mode_loader')
+    script = path_join(macos_dir, 'app_mode_loader')
     with open(script, 'w+') as f:
         f.write('#!/usr/bin/env bash\n')
         f.write(f"open -n '{args.chrome_command}' --args "
@@ -370,8 +367,7 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
 
 
 def _create_shortcut(args: MainArgs) -> int:
-    log: Final = _setup_logging_stdout(name='_create_shortcut',
-                                       verbose=args.verbose)
+    log = _setup_logging_stdout(name='_create_shortcut', verbose=args.verbose)
     # Generate a JScript file and run it
     fd, script_js = mkstemp(suffix='.js')
     close(fd)
@@ -385,8 +381,8 @@ link.WorkingDirectory=desktop;\n''')
                         or args.chrome_command.startswith('./')):
             args.chrome_command = _fix_msys_arg(
                 _cygpath_win(args.chrome_command))
-        default_icon: Final = f'{args.chrome_command},0'
-        props: Final = dict(
+        default_icon = f'{args.chrome_command},0'
+        props = dict(
             TargetPath=args.chrome_command,
             Arguments=_fix_msys_arg(' '.join(
                 map(lambda x: f'"{x}"',
@@ -405,7 +401,7 @@ link.WorkingDirectory=desktop;\n''')
                 val = f"'{val}'"
             f.write(f"link.{prop} = {val};\n")
         f.write('link.Save();\n')
-    cscript_cmd: Final = ('cscript', '//Nologo', script_js)
+    cscript_cmd = ('cscript', '//Nologo', script_js)
     log.debug('Executing %s', ' '.join(cscript_cmd))
     try:
         subprocess.check_call(cscript_cmd)
@@ -418,7 +414,7 @@ link.WorkingDirectory=desktop;\n''')
 
 
 def _make_short_name(url: str, name: str) -> str:
-    parsed: Final = urlparse(url)
+    parsed = urlparse(url)
     split_netloc = list(
         reversed(re.sub(r'^www\.', '', parsed.netloc).split('.')))
     if len(split_netloc) == 2:
@@ -444,9 +440,9 @@ def _make_short_name(url: str, name: str) -> str:
 
 
 def main() -> int:
-    args: Final = _parse_args()
-    short_name: Final = _make_short_name(args.url, args.name)
-    session: Final = requests.Session()
+    args = _parse_args()
+    short_name = _make_short_name(args.url, args.name)
+    session = requests.Session()
     if args.insecure:
         urllib3.disable_warnings(category=InsecureRequestWarning)
         session.verify = False

@@ -16,9 +16,9 @@ HIGH_RES_KEY: Final = 'NSHighResolutionCapable'
 def setup_logging_stdout(name: Optional[str] = None,
                          verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
-    log: Final = logging.getLogger(name)
+    log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel: Final = logging.StreamHandler(sys.stdout)
+    channel = logging.StreamHandler(sys.stdout)
     channel.setFormatter(logging.Formatter('%(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
@@ -26,7 +26,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def main() -> int:
-    log: Final = setup_logging_stdout()
+    log = setup_logging_stdout()
     for fin in sys.argv[1:]:
         p = Path(fin).joinpath('Contents', 'Info.plist')
         if not p.exists():

@@ -115,7 +115,7 @@ def get_strings(children: Iterable[Union[URL, Folder]],
 
 
 def main() -> int:
-    parser: Final = argparse.ArgumentParser(
+    parser = argparse.ArgumentParser(
         description='Convert Chrome Bookmarks file to CSV')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('--ignore-empty-names',
@@ -134,9 +134,9 @@ def main() -> int:
                         type=argparse.FileType('w'))
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args: Final = parser.parse_args()
+    args = parser.parse_args()
     try:
-        data: Final = cast(Bookmarks, json.load(args.input))
+        data = cast(Bookmarks, json.load(args.input))
         for root in ('bookmark_bar', 'other'):
             assert 'roots' in data
             assert cast(RootKey, root) in data['roots']
