@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from os.path import basename
-from typing import Any, Dict
+from typing import Any, Dict, Sequence, Text, cast
 import argparse
 import logging
 import sys
@@ -16,12 +16,12 @@ try:
 except ImportError:
     argcomplete = None
 
-GET_URL: Final = 'https://tools.usps.com/go/TrackConfirmAction'
-POST_URL: Final = ('https://tools.usps.com/go/'
-                   'TrackConfirmRequestUpdateAJAXAction.action')
-NAME1_EMPTY_VALUE: Final = 'not required'
-MAX_RETRIES: Final = 10
-HEADERS: Final = CaseInsensitiveDict({
+GET_URL: Final[str] = 'https://tools.usps.com/go/TrackConfirmAction'
+POST_URL: Final[str] = ('https://tools.usps.com/go/'
+                        'TrackConfirmRequestUpdateAJAXAction.action')
+NAME1_EMPTY_VALUE: Final[str] = 'not required'
+MAX_RETRIES: Final[int] = 10
+HEADERS: Final[CaseInsensitiveDict[Text]] = CaseInsensitiveDict({
     'Accept-Language':
     'en-US,en;q=0.8,en-GB;q=0.6',
     'Connection':
@@ -43,6 +43,12 @@ HEADERS: Final = CaseInsensitiveDict({
 })
 
 
+class Namespace(argparse.Namespace):
+    debug: bool
+    phone_number: Sequence[str]
+    tracking_number: Sequence[str]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(basename(sys.argv[0]))
     parser.add_argument('tracking_number',
@@ -56,8 +62,8 @@ def main() -> int:
     parser.add_argument('-d', '--debug', action='store_true')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    phone_number: str = args.phone_number[0]
+    args = cast(Namespace, parser.parse_args())
+    phone_number = args.phone_number[0]
     log = logging.getLogger('urllib3')
     formatter = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s' if args.
@@ -89,7 +95,7 @@ def main() -> int:
         if 'could not locate the tracking information' in content:
             log.error('Failed with tracking number %s', arg)
             continue
-        data = dict(
+        data = cast(Dict[str, str], dict(
             confirmSms='on',
             email1=NAME1_EMPTY_VALUE,
             label=arg,
@@ -102,7 +108,7 @@ def main() -> int:
             textOA='on',
             textPickup='on',
             textToday='on',
-        )
+        ))
         log.debug('POST data: %s', data)
         add_headers = {
             'Referer': f'{GET_URL}?qtc_tLabels1={arg}',
