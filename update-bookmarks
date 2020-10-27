@@ -22,11 +22,11 @@ except ImportError:
 
 
 class FailedConnection:
-    REASON_CONNECTION_ERROR: Final = 3
-    REASON_FILE_URL: Final = 4
-    REASON_INVALID_SCHEMA: Final = 2
-    REASON_INVALID_URL: Final = 1
-    REASON_UNKNOWN: Final = 5
+    REASON_CONNECTION_ERROR: Final[int] = 3
+    REASON_FILE_URL: Final[int] = 4
+    REASON_INVALID_SCHEMA: Final[int] = 2
+    REASON_INVALID_URL: Final[int] = 1
+    REASON_UNKNOWN: Final[int] = 5
 
     def __init__(self,
                  response: requests.Response,
@@ -138,6 +138,13 @@ def recursive_scan(
     return ret, errors
 
 
+class Namespace(argparse.Namespace):
+    file: Sequence[TextIO]
+    limit: int
+    output: Optional[str]
+    quiet: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -164,8 +171,8 @@ def main() -> int:
                         default=2)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    f: TextIO = args.file[0]
+    args = cast(Namespace, parser.parse_args())
+    f = args.file[0]
     log = setup_logging_stdout(verbose=not args.quiet)
     session = requests.Session()
     session.headers.update({
@@ -201,6 +208,7 @@ def main() -> int:
         os.write(output_fd, contents.encode('utf-8'))
         os.close(output_fd)
     else:
+        assert args.output
         with open(args.output, 'w') as f:
             f.write(contents)
     log.info('Updated %d URLs', len(replacements))
