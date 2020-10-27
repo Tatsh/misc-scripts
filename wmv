@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename
-from typing import Optional
+from typing import List, Optional, Sequence, Tuple, cast
 import argparse
 import logging
 import subprocess as sp
@@ -15,7 +15,7 @@ try:
 except ImportError:
     argcomplete = None
 
-TR_MAP: Final = (
+TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     ('　', ' '),
     ('…', '...'),
     ('！', '!'),
@@ -143,6 +143,21 @@ def make_target(filename: str) -> str:
     return filename
 
 
+class Namespace(argparse.Namespace):
+    b: bool
+    backup: bool
+    file: Sequence[str]
+    force: bool
+    interactive: bool
+    no_clobber: bool
+    no_target_directory: bool
+    strip_trailing_slashes: bool
+    suffix: str
+    target_directory: str
+    update: bool
+    verbose: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Renames file names with full-width characters to normal '
@@ -163,7 +178,7 @@ def main() -> int:
     parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     log = setup_logging_stdout(verbose=args.verbose)
     special_values = (
         ('--backup', args.backup),
@@ -178,7 +193,7 @@ def main() -> int:
         ('--update', args.update),
         ('--strip-trailing-slashes', args.strip_trailing_slashes),
     )
-    mv_args = []
+    mv_args: List[str] = []
     if args.b and args.backup:
         log.error('Cannot use -b and --backup simultaneously')
         return 1
@@ -201,7 +216,7 @@ def main() -> int:
         log.error('STDERR: %s', e.stderr)
         return e.returncode
     if '-v' in mv_args or '--verbose' in mv_args:
-        log.info(p.stdout)
+        log.info('%s', p.stdout)
     return 0
 
 
