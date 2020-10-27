@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+from typing import Tuple
 import sys
 
 from typing_extensions import Final
 
-TR_MAP: Final = (
+TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     ('　', ' '),
     ('…', '...'),
     ('！', '!'),
