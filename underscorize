@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from typing import Sequence, cast
 import argparse
 import re
 import sys
@@ -20,9 +21,10 @@ def main() -> int:
                         help='Strings to process')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    strings = args.strings
-    print(re.sub(r'\s+', '_', ' '.join(strings)))
+    print(
+        re.sub(r'\s+', '_',
+               ' '.join(cast(Sequence[str],
+                             parser.parse_args().strings))))
     return 0
 
 
