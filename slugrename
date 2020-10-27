@@ -19,6 +19,7 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args = parser.parse_args()
+    arg: str
     for arg in args.files:
         name, ext = splitext(arg)
         if ext in ('.bz2', '.gpg', '.gz'):
