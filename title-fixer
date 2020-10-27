@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from typing import Iterable, Mapping, Match, Optional, Tuple, cast
+from typing import Iterable, Mapping, Match, Optional, Sequence, cast
 import argparse
 import re
 import sys
@@ -12,14 +12,14 @@ try:
 except ImportError:
     argcomplete = None
 
-ENGLISH_MODE: Final = 1
-JAPANESE_MODE: Final = 1 << 1
-CHINESE_MODE: Final = 1 << 2
-ARABIC_MODE: Final = 1 << 3
-ENGLISH_ORDINAL_RE: Final = r'(\d+)(st|nd|rd|th)'
+ENGLISH_MODE: Final[int] = 1
+JAPANESE_MODE: Final[int] = 1 << 1
+CHINESE_MODE: Final[int] = 1 << 2
+ARABIC_MODE: Final[int] = 1 << 3
+ENGLISH_ORDINAL_RE: Final[str] = r'(\d+)(st|nd|rd|th)'
 # non-strict, not including words like below, forms of to be, forms of
 #   you/he/etc, or words like 'call'
-STOP_WORDS: Final = (
+STOP_WORDS: Final[Sequence[str]] = (
     'a',
     'an',
     'and',
@@ -58,42 +58,45 @@ STOP_WORDS: Final = (
     'within',
     'without')
 # English abbreviations for period removal
-ENGLISH_ABBREV: Final = ('feat', 'mr', 'mrs', 'ms', 'vs')
+ENGLISH_ABBREV: Final[Sequence[str]] = ('feat', 'mr', 'mrs', 'ms', 'vs')
 # Only really common ones
-JAPANESE_PARTICLES: Final = ('de', 'e', 'ga', 'ha', 'ka', 'kana', 'ne', 'ni',
-                             'no', 'to', 'wa', 'wo')
-CHINESE_PARTICLES: Final = ('de', 'ge', 'he', 'le', 'ma')
+JAPANESE_PARTICLES: Final[Sequence[str]] = ('de', 'e', 'ga', 'ha', 'ka',
+                                            'kana', 'ne', 'ni', 'no', 'to',
+                                            'wa', 'wo')
+CHINESE_PARTICLES: Final[Sequence[str]] = ('de', 'ge', 'he', 'le', 'ma')
 # NOTE This list is not yet complete
-ARABIC_STOPS: Final = ('al', 'ala', 'alayhi', 'alayka', 'alayya', 'an', 'anhu',
-                       'anka', 'anni', 'bi', 'biha', 'bihi', 'bika', 'fi',
-                       'fihi', 'fika', 'fiya', 'ila', 'ilayhi', 'ilayka',
-                       'ilayya', 'lahu', 'laka', 'li', 'maa', 'maahu', 'maaka',
-                       'mai', 'min', 'minhu', 'minka', 'minni', 'wa')
-NAMES: Final = {
-    'S3RL': 'S3RL',
-    'mcdonald': 'McDonald',
+ARABIC_STOPS: Final[Sequence[str]] = ('al', 'ala', 'alayhi', 'alayka',
+                                      'alayya', 'an', 'anhu', 'anka', 'anni',
+                                      'bi', 'biha', 'bihi', 'bika', 'fi',
+                                      'fihi', 'fika', 'fiya', 'ila', 'ilayhi',
+                                      'ilayka', 'ilayya', 'lahu', 'laka', 'li',
+                                      'maa', 'maahu', 'maaka', 'mai', 'min',
+                                      'minhu', 'minka', 'minni', 'wa')
+NAMES: Final[Mapping[str, str]] = {
     "mcdonald's": "McDonald's",
-    'mcdonalds': 'McDonald\'s',
+    'Arkit': 'ARKit',
+    'Imessage': 'iMessage',
+    'Ios': 'iOS',  # Not Cisco IOS
     'Itunes': 'iTunes',
+    'LLVM': 'LLVM',
+    'Macos': 'macOS',
+    'Mapkit': 'MapKit',
+    'Pdfkit': 'PDFKit',
+    'S3RL': 'S3RL',
+    'Sirikit': 'SiriKit',
     'Tvos': 'tvOS',
     'Watchos': 'watchOS',
-    'Macos': 'macOS',
-    'Ios': 'iOS',  # Not Cisco IOS
-    'Pdfkit': 'PDFKit',
-    'Imessage': 'iMessage',
-    'Sirikit': 'SiriKit',
-    'Mapkit': 'MapKit',
-    'Wwdc': 'WWDC',
-    'LLVM': 'LLVM',
-    'Arkit': 'ARKit',
+    'Whats': "What's",
     'Wkwebview': 'WKWebView',
-    'Whats': "What's"
+    'Wwdc': 'WWDC',
+    'mcdonald': 'McDonald',
+    'mcdonalds': 'McDonald\'s',
 }
-MODE_MAP: Final[Mapping[int, Tuple[str, ...]]] = {
-    ENGLISH_MODE: STOP_WORDS,
-    CHINESE_MODE: CHINESE_PARTICLES,
-    JAPANESE_MODE: JAPANESE_PARTICLES,
+MODE_MAP: Final[Mapping[int, Sequence[str]]] = {
     ARABIC_MODE: ARABIC_STOPS,
+    CHINESE_MODE: CHINESE_PARTICLES,
+    ENGLISH_MODE: STOP_WORDS,
+    JAPANESE_MODE: JAPANESE_PARTICLES,
 }
 
 
@@ -217,6 +220,13 @@ def lower_stop(words: str,
     return title_
 
 
+class Namespace(argparse.Namespace):
+    ampersands: bool
+    mode: Optional[Iterable[int]]
+    no_names: bool
+    titles: Iterable[str]
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Title fixer for various languages. Defaults to English '
@@ -260,13 +270,11 @@ def main() -> int:
                         default=False)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    if args.mode is None:
-        args.mode = [ENGLISH_MODE]
+    args = cast(Namespace, parser.parse_args())
     for title in args.titles:
         print(
             lower_stop(title,
-                       args.mode,
+                       args.mode or (ENGLISH_MODE, ),
                        args.no_names,
                        ampersands=args.ampersands))
     return 0
