@@ -15,7 +15,7 @@ except ImportError:
 
 
 def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
-    sp.check_call(('ffmpeg', ) + tuple(args), **kwargs)
+    sp.run(('ffmpeg', ) + tuple(args), check=True, **kwargs)
 
 
 def main() -> int:
