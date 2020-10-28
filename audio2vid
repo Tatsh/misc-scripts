@@ -3,7 +3,7 @@
 from os import close, unlink
 from os.path import basename, splitext
 from tempfile import mkstemp
-from typing import Tuple
+from typing import cast, Tuple
 import argparse
 import subprocess as sp
 import sys
@@ -12,6 +12,13 @@ try:
     import argcomplete
 except ImportError:
     argcomplete = None
+
+
+class Namespace(argparse.Namespace):
+    input: str
+    nvenc: bool
+    title: str
+    videotoolbox: bool
 
 
 def main() -> int:
@@ -29,7 +36,7 @@ def main() -> int:
         help='Use VideoToolbox hardware encoding (only on macOS)')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     fd, tmp = mkstemp(suffix='.png')
     close(fd)
     unlink(tmp)

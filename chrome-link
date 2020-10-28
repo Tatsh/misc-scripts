@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from dataclasses import dataclass
 from functools import lru_cache
 from glob import glob
 from os import chmod, close, environ, makedirs, write
@@ -29,11 +28,11 @@ try:
 except ImportError:
     argcomplete = None
 
-IS_MSYS: Final = len(environ.get('MSYSTEM_CHOST', '')) != 0
-IS_WINDOWS: Final = IS_MSYS or os.name == "nt"
-IS_MAC: Final = bool(platform.mac_ver()[0])
-IS_LINUX: Final = not IS_MAC and not IS_WINDOWS
-USER_AGENT: Final = (
+IS_MSYS: Final[bool] = len(environ.get('MSYSTEM_CHOST', '')) != 0
+IS_WINDOWS: Final[bool] = IS_MSYS or os.name == "nt"
+IS_MAC: Final[bool] = bool(platform.mac_ver()[0])
+IS_LINUX: Final[bool] = not IS_MAC and not IS_WINDOWS
+USER_AGENT: Final[str] = (
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 Safari/537.36')
 
@@ -57,8 +56,7 @@ def _fix_msys_arg(s: str) -> str:
     return s.replace('\n', ' ').replace('\\', '\\\\') if IS_MSYS else s
 
 
-@dataclass
-class MainArgs:  # pylint: disable=too-many-instance-attributes
+class MainArgs(argparse.Namespace):
     categories: str
     chrome_command: Optional[str]
     comment: Optional[str]
@@ -124,9 +122,6 @@ def _parse_args() -> MainArgs:
     if argcomplete:
         argcomplete.autocomplete(parser)
     return cast(MainArgs, parser.parse_args())
-
-
-# pylint: disable=redefined-outer-name
 
 
 def _get_icon_from_site(args: MainArgs,

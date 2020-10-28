@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from dataclasses import dataclass
 from datetime import datetime
 from logging.handlers import SysLogHandler
 from os.path import realpath
@@ -24,7 +23,7 @@ try:
 except ImportError:
     HAS_YAML = False
 
-LOG_FORMATTER: Final = logging.Formatter('%(message)s')
+LOG_FORMATTER: Final[logging.Formatter] = logging.Formatter('%(message)s')
 log_handle: Optional[TextIO] = None
 syslog_handle: Optional[SysLogHandler] = None
 
@@ -60,8 +59,7 @@ def get_line_value(s: str) -> str:
     return s.split(':')[1].strip().split(' ')[0].strip()
 
 
-@dataclass
-class Args:
+class Args(argparse.Namespace):
     download_threshold: float
     upload_threshold: float
     ping_threshold: float

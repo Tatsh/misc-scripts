@@ -14,6 +14,14 @@ except ImportError:
     argcomplete = None
 
 
+class Namespace(argparse.Namespace):
+    aspect_ratio: str
+    fps: str
+    raw_ar: str
+    unscaled_resolution: str
+    video_bitrate: str
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description='Calculates bits per pixel')
     parser.add_argument('unscaled_resolution',
@@ -33,20 +41,20 @@ def main() -> int:
                         help='Raw aspect ratio in X:Y format')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
     raw_aspect_width, raw_aspect_height = [
         int(x) for x in args.raw_ar.split(':')
     ]
     bps, fps = (args.video_bitrate, args.fps)
     raw_aspect: Final[float] = raw_aspect_width / raw_aspect_height
-    encoded_at: Union[str, List[int], float] = args.aspect_ratio
-    if ':' in cast(str, encoded_at):
-        encoded_at = [int(x) for x in cast(str, encoded_at).split(':')]
+    encoded_at: Union[List[int], float, str] = args.aspect_ratio
+    if isinstance(encoded_at, str) and ':' in encoded_at:
+        encoded_at = [int(x) for x in encoded_at.split(':')]
         encoded_at = encoded_at[0] / encoded_at[1]
     scaled_width = float(unscaled_width) * (cast(float, encoded_at) /
                                             raw_aspect)
-    scaled_height: str = unscaled_height
+    scaled_height = unscaled_height
     picture_ar = float(scaled_width) / float(scaled_height)
     print(f'Prescaled picture: {int(scaled_width):d}x{int(scaled_height):d}, '
           f'AR {float(picture_ar):.2f}')

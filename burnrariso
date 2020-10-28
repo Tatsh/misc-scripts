@@ -34,7 +34,7 @@ def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
     cwd = os.getcwd()
     sfv_dir = os.path.dirname(os.path.abspath(sfv_filename))
     args = ('cksfv', '-f', sfv_filename)
-    log.debug('%s', ' '.join(args))
+    log.debug('Executing: %s', ' '.join(args))
     os.chdir(sfv_dir)
     try:
         sp.run(args, check=True)
@@ -47,10 +47,10 @@ def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
 
 def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
     log = setup_logging_stdout('test_extraction', verbose=verbose)
-    args = ['unrar', 't']
+    args: Tuple[str, ...] = ('unrar', 't')
     if not verbose:
-        args.append('-inul')
-    args.append(rar_filename)
+        args += ('-inul', )
+    args += (rar_filename, )
     log.debug('Executing: %s', ' '.join(args))
     try:
         sp.run(args, check=True)
@@ -60,8 +60,8 @@ def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
 
 
 def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
-    # Find if there is an ISO within the RAR f
-    work: Optional[Sequence[str]] = None
+    """Find if there is an ISO within the RAR."""
+    iso_line: Optional[Sequence[str]] = None
     try:
         r = sp.run(('unrar', 'l', rar_filename),
                    stdout=sp.PIPE,
@@ -71,16 +71,16 @@ def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
         return None, None
     for line in r.stdout.split('\n'):
         if 'iso' in line.lower():
-            work = line.split()
+            iso_line = line.split()
             break
-    assert work is not None, "Did not find ISO"
+    assert iso_line is not None, "Did not find ISO"
     # Handle spaces in ISO file name
-    filename = work[4]
+    filename = iso_line[4]
     i = 0
     if '.iso' not in filename.lower():
         filename = ''
         i = 0
-        for iso in work[4:]:
+        for iso in iso_line[4:]:
             if '.iso' in iso.lower():
                 filename += iso
                 i += 1
@@ -89,10 +89,10 @@ def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
             i += 1
     if 'iso' not in filename.lower():
         return None, None
-    work_str = work[4]
-    if 'iso' in work_str.lower():
+    iso_str = iso_line[4]
+    if 'iso' in iso_str.lower():
         i = 1
-    return filename, int(work[i])
+    return filename, int(iso_line[i])
 
 
 def unrar_cdrecord_pipe(rar_filename: str,
@@ -163,6 +163,15 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
     return True
 
 
+class Namespace(argparse.Namespace):
+    crc_test: bool
+    device: Optional[str]
+    rar_filename: str
+    rar_test: bool
+    speed: int
+    verbose: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Burns an ISO found in a RAR file without extracting')
@@ -190,13 +199,13 @@ def main() -> int:
     parser.add_argument('rar_filename', help='Base RAR file name')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     rar_filename = os.path.realpath(args.rar_filename)
     log = setup_logging_stdout(verbose=args.verbose)
     if not check_requirements(args.crc_test):
         return 1
     iso, tsize = find_iso_in_rar(rar_filename)
-    if not tsize:
+    if not iso or not tsize:
         log.error('Unable to find ISO in RAR "%s"', args.rar_filename)
         return 1
     log.debug('Found ISO %s with tsize %d', iso, tsize)
@@ -213,6 +222,7 @@ def main() -> int:
             if os.path.exists(name):
                 sfv_filename = name
                 log.debug('Found SFV file: "%s"', basename(name))
+                break
         if not sfv_filename:
             globbed = glob.glob('*.sfv')
             if globbed:

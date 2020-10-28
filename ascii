@@ -1,22 +1,12 @@
 #!/usr/bin/env python
-from typing import Iterable
 import sys
 
 
-def strip_non_ascii(k: Iterable[str]) -> str:
-    return ''.join(x for x in k if ord(x) < 128)
-
-
 def main() -> int:
-    if len(sys.argv) > 1:
-        lines = sys.argv[1:]
-    else:
-        lines = sys.stdin.readlines()
-    original = ''.join(x.strip() for x in lines)
-    stripped = ''.join(strip_non_ascii(x.strip()) for x in lines)
-    if len(original) != len(stripped):
-        return 1
-    return 0
+    lines = sys.argv[1:] if len(sys.argv) > 1 else sys.stdin.readlines()
+    return (1 if len(''.join(x.strip() for x in lines)) != len(''.join(
+        (''.join(y for y in x.strip() if ord(y) < 128))
+        for x in lines)) else 0)
 
 
 if __name__ == '__main__':

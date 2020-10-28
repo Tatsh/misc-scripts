@@ -2,7 +2,7 @@
 from copy import deepcopy
 from datetime import datetime
 from os.path import expanduser
-from typing import Dict, Optional, Union, cast
+from typing import Literal, Optional, Tuple, TypedDict, cast
 from urllib.parse import unquote as urldecode
 import re
 import sqlite3
@@ -10,18 +10,30 @@ import sys
 
 from typing_extensions import Final
 
-CREATION_UTC: Final = int(
+CREATION_UTC: Final[int] = int(
     (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
-COLUMNS: Final = ('creation_utc', 'host_key', 'name', 'value', 'path',
-                  'expires_utc', 'secure', 'httponly', 'has_expires',
-                  'persistent', 'last_access_utc')
-LEN_COLUMNS: Final = len(COLUMNS)
-DB_PATHS: Final = (
+COLUMNS: Final[Tuple[str,
+                     ...]] = ('creation_utc', 'host_key', 'name', 'value',
+                              'path', 'expires_utc', 'secure', 'httponly',
+                              'has_expires', 'persistent', 'last_access_utc')
+LEN_COLUMNS: Final[int] = len(COLUMNS)
+DB_PATHS: Final[Tuple[str, ...]] = (
     expanduser('~/.config/chromium/Default/Cookies'),
     expanduser('~/Library/Application Support/Google/Chrome/Cookies'))
-REGEX: Final = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
-                r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
-                r'\t(?P<name>.*)\t(?P<value>.*)\n?')
+REGEX: Final[str] = (
+    r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
+    r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
+    r'\t(?P<name>.*)\t(?P<value>.*)\n?')
+
+
+class MatchDict(TypedDict):
+    expires_utc: str
+    host_key: str
+    httponly: Literal['TRUE', 'FALSE']
+    name: str
+    path: str
+    secure: Literal['TRUE', 'FALSE']
+    value: str
 
 
 def main() -> int:
@@ -54,17 +66,16 @@ def main() -> int:
                 if not match:
                     print(f'Skipping line: {line.strip()}', file=sys.stderr)
                     continue
-                dic = cast(Dict[str, Union[int, str]],
-                           deepcopy(match.groupdict()))
-                dic['expires_utc'] = int(float(dic['expires_utc'])) * (10**7)
-                dic['value'] = urldecode(cast(str, dic['value']))
-                dic['path'] = urldecode(cast(str, dic['path']))
+                dic = cast(MatchDict, deepcopy(match.groupdict()))
+                expires_utc = int(float(dic['expires_utc'])) * (10**7)
+                dic['value'] = urldecode(dic['value'])
+                dic['path'] = urldecode(dic['path'])
                 has_expires = persistent = 1
-                if dic['expires_utc'] == 0:
+                if expires_utc == 0:
                     has_expires = 0
                     persistent = 0
-                dic['httponly'] = 1 if dic['httponly'] == 'TRUE' else 0
-                dic['secure'] = 1 if dic['secure'] == 'TRUE' else 0
+                httponly = 1 if dic['httponly'] == 'TRUE' else 0
+                secure = 1 if dic['secure'] == 'TRUE' else 0
                 c.execute(
                     ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
                      'AND path = ?'), (
@@ -75,9 +86,8 @@ def main() -> int:
                 cols = ','.join(COLUMNS)
                 col_args = ('?,' * LEN_COLUMNS)[:-1]
                 t = (CREATION_UTC + i, dic['host_key'], dic['name'],
-                     dic['value'], dic['path'], dic['expires_utc'],
-                     dic['secure'], dic['httponly'], has_expires, persistent,
-                     CREATION_UTC)
+                     dic['value'], dic['path'], expires_utc, secure, httponly,
+                     has_expires, persistent, CREATION_UTC)
                 c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})',
                           t)
                 i += 1

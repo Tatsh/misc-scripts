@@ -9,7 +9,7 @@ from copy import copy
 from functools import lru_cache
 from os import environ as env
 from os.path import basename, join as path_join
-from typing import Optional
+from typing import Optional, Sequence, Tuple, cast
 import argparse
 import logging
 import os
@@ -24,7 +24,7 @@ except ImportError:
     argcomplete = None
 
 # NOTE For anything not here, use unidecode
-JIS_ASCII_MAP: Final = (
+JIS_ASCII_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     (u' 、', ','),
     (u'、', ','),
     (u' 。', '.'),
@@ -39,8 +39,8 @@ JIS_ASCII_MAP: Final = (
     (u' ：', ':'),
     (u'×', 'x'),
 )
-KAKASI_HELP_LOOK_FOR: Final = ('KAKASI - Kanji Kana Simple Inverter  Version '
-                               '2.3.4')
+KAKASI_HELP_LOOK_FOR: Final[str] = ('KAKASI - Kanji Kana Simple '
+                                    'Inverter  Version 2.3.4')
 
 
 @lru_cache()
@@ -91,6 +91,12 @@ def find_iconv() -> Optional[str]:
     return find_bin('iconv', 'SJIS', '--list')
 
 
+class Namespace(argparse.Namespace):
+    allow_non_ascii: bool
+    keep_long: bool
+    words: Sequence[str]
+
+
 def main() -> int:
     log = setup_logging_stdout()
     kakasi_bin = find_kakasi()
@@ -115,7 +121,7 @@ def main() -> int:
                         default=False)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     words = args.words
     iconv_to_args = [
         iconv,
@@ -137,9 +143,8 @@ def main() -> int:
     stdin_words = [x.strip() for x in sys.stdin.readlines()]
     stdin_words = [x for x in stdin_words if len(x) > 0]
     words += stdin_words
-    words = ((x, x.encode('utf-8')) for x in words)
 
-    for word_s, word in words:
+    for word_s, word in ((x, x.encode('utf-8')) for x in words):
         iconv_to_sjis = sp.Popen(iconv_to_args,
                                  stdin=sp.PIPE,
                                  stdout=sp.PIPE,

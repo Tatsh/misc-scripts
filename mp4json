@@ -4,7 +4,7 @@ from datetime import datetime
 from os import unlink as rm, utime
 from os.path import splitext
 from shutil import copyfile
-from typing import Any, AnyStr, Sequence, TextIO, Union
+from typing import Any, AnyStr, Sequence, TextIO, Tuple, Union
 import json
 import re
 import subprocess as sp
@@ -12,36 +12,37 @@ import sys
 
 from typing_extensions import Final
 
-CUSTOM_ATOM_NAME: Final = 'json'
-MIMETYPE: Final = 'application/json'
-TAG_DESCRIPTION: Final = 'youtube-dl metadata'
-MP4BOX_REM_ITEM_CMD: Final = (
+CUSTOM_ATOM_NAME: Final[str] = 'json'
+MIMETYPE: Final[str] = 'application/json'
+TAG_DESCRIPTION: Final[str] = 'youtube-dl metadata'
+MP4BOX_REM_ITEM_CMD: Final[Tuple[str, ...]] = (
     'MP4Box',
     '-rem-item',
     '1',
     '',  # MP4 filename
 )
 # https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/
-MP4BOX_SET_META_CMD: Final = (
+MP4BOX_SET_META_CMD: Final[Tuple[str, ...]] = (
     'MP4Box',
     '-set-meta',
     'mp21',
     '',  # MP4 filename
 )
-MP4BOX_WRITE_CMD_TEMPLATE: Final = (
+MP4BOX_WRITE_CMD_TEMPLATE: Final[Tuple[str, ...]] = (
     'MP4Box', '-add-item',
     ':name=youtube-dl metadata:mime=application/json:encoding=utf8', '')
 ID3_TEXT_FRAME = 'TXXX'
-ID3TED_REMOVE_FRAME_TEMPLATE: Final = (
+ID3TED_REMOVE_FRAME_TEMPLATE: Final[Tuple[str, ...]] = (
     'id3ted',
     '--preserve-times',
     '--remove',
     ID3_TEXT_FRAME,
     '',  # MP3 filename
 )
-ID3TED_WRITE_CMD_TEMPLATE: Final = ('id3ted', '--preserve-times', '-3',
-                                    '--TXXX', '', '')
-MKVPROPEDIT_WRITE_CMD_TEMPLATE: Final = (
+ID3TED_WRITE_CMD_TEMPLATE: Final[Tuple[str,
+                                       ...]] = ('id3ted', '--preserve-times',
+                                                '-3', '--TXXX', '', '')
+MKVPROPEDIT_WRITE_CMD_TEMPLATE: Final[Tuple[str, ...]] = (
     'mkvpropedit',
     '',  # MKV filename
     '--attachment-name',

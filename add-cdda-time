@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from typing import Iterable, Optional
+from typing import Iterable, Optional, cast
 import argparse
 import sys
 
@@ -21,9 +21,8 @@ def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
         if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99
                 or seconds > 59 or frames > 75):
             return None
-        total_ms += minutes * 60 * 1000
-        total_ms += seconds * 1000
-        total_ms += int((frames * 1000) / 75)
+        total_ms += (minutes * 60 * 1000) + (seconds * 1000) + int(
+            (frames * 1000) / 75)
     minutes = int(total_ms / 60000)
     remainder_ms = int(total_ms % 60000)
     seconds = int(remainder_ms / 1000)
@@ -45,11 +44,10 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args = parser.parse_args()
-    times = add_times(args.times)
-    if times:
-        print(times)
-    else:
+    times = add_times(cast(Optional[Iterable[str]], args.times))
+    if not times:
         return 1
+    print(times)
     return 0
 
 

@@ -25,10 +25,10 @@ try:
 except ImportError:
     argcomplete = None
 
-LOCK_WAIT_TIMEOUT: Final = 10
-PG_HOST: Final = 'localhost'
-PG_JOBS: Final = 2
-PG_USER: Final = 'postgres'
+LOCK_WAIT_TIMEOUT: Final[int] = 10
+PG_HOST: Final[str] = 'localhost'
+PG_JOBS: Final[int] = 2
+PG_USER: Final[str] = 'postgres'
 
 
 @lru_cache()

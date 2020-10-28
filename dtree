@@ -4,7 +4,7 @@ from html import escape
 from itertools import chain
 from os import DirEntry, chdir, scandir
 from os.path import basename, realpath
-from typing import Any, Iterator, cast
+from typing import Any, Iterator, Sequence, cast
 import argparse
 import sys
 
@@ -15,7 +15,7 @@ try:
 except ImportError:
     argcomplete = None
 
-CSS_URI: Final = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
+CSS_URI: Final[str] = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
 
 
 def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry]:
@@ -50,6 +50,12 @@ def recurse_cwd(path: str,
                    f'<code>{escape(entry.name)}{slash}</code></li>')
 
 
+class Namespace(argparse.Namespace):
+    depth: int
+    dir: Sequence[str]
+    follow_symlinks: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         basename(sys.argv[0]),
@@ -59,7 +65,7 @@ def main() -> int:
     parser.add_argument('-d', '--depth', default=1, type=int)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     chdir(args.dir[0])
     title = basename(realpath(args.dir[0]))
     files = ''.join(

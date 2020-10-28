@@ -5,7 +5,7 @@ from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
 from os.path import basename, dirname, isdir, join as path_join, realpath
-from typing import AsyncIterable, Iterable, Optional, Set, TextIO
+from typing import AsyncIterable, Iterable, Optional, Set, TextIO, cast
 import argparse
 import asyncio
 import logging
@@ -153,6 +153,14 @@ async def _handle_listing(listing: AsyncIterable[str],
                     log.debug('Created dummy %s', dummy_log_fn)
 
 
+class Namespace(argparse.Namespace):
+    debug: bool
+    exclude: Iterable[str]
+    start: str
+    target: str
+    verbose: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true')
@@ -166,7 +174,7 @@ def main() -> int:
     parser.add_argument('target', metavar='TARGET')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     asyncio.run(_handle_listing(
         _get_listing(args.start),
         realpath(args.target),

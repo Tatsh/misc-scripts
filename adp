@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from datetime import datetime
+from typing import TypedDict, cast
 import argparse
 import sys
 
@@ -14,12 +15,30 @@ except ImportError:
 
 # Find the API key by looking at requests on this page
 # http://www.symmetry.com/try-it-for-free/calculators
-API_KEY: Final = 'RnFqNFA0NVlRTExJUkpabmc4RHErUT09'
-POST_URI: Final = ('https://calculators.symmetry.com/api/calculators/hourly?'
-                   'report=none')
-REFERER: Final = (
+API_KEY: Final[str] = 'RnFqNFA0NVlRTExJUkpabmc4RHErUT09'
+POST_URI: Final[str] = ('https://calculators.symmetry.com/api/calculators/'
+                        'hourly?report=none')
+REFERER: Final[str] = (
     'https://www.adp.com/tools-and-resources/calculators-and-tools/'
     'payroll-calculators/hourly-paycheck-calculator.aspx')
+
+
+class ContentDict(TypedDict):
+    federal: float
+    fica: float
+    state: float
+    medicare: float
+    netPay: float
+
+
+class ResponseDict(TypedDict):
+    content: ContentDict
+
+
+class Namespace(argparse.Namespace):
+    hours: int
+    pay_rate: float
+    state: str
 
 
 def main() -> int:
@@ -43,7 +62,7 @@ def main() -> int:
                         default=160)
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     check_date = int(datetime.now().timestamp() * 1000)
     gross_pay = args.hours * args.pay_rate
     r = requests.post(POST_URI,
@@ -130,7 +149,7 @@ def main() -> int:
                           'presetDeductions': []
                       })
     r.raise_for_status()
-    data = r.json()['content']
+    data = cast(ResponseDict, r.json())['content']
     print('Gross     \033[1;32m{:8.2f}\033[0m'.format(gross_pay))
     print('Federal   \033[1;32m{:8.2f}\033[0m'.format(data['federal']))
     print('FICA      \033[1;32m{:8.2f}\033[0m'.format(data['fica']))

@@ -74,7 +74,6 @@ linkers used are recent enough to support -pie. However, it's used to
 disable the PIE bit as needed on already-linked executables.
 """
 
-from argparse import Namespace
 from typing import BinaryIO, List, Literal, Sequence, Tuple, cast
 import argparse
 import os
@@ -89,16 +88,16 @@ except ImportError:
     argcomplete = None
 
 # <mach-o/fat.h>
-FAT_CIGAM: Final = 0xbebafeca
-FAT_MAGIC: Final = 0xcafebabe
+FAT_CIGAM: Final[int] = 0xbebafeca
+FAT_MAGIC: Final[int] = 0xcafebabe
 # <mach-o/loader.h>
-MH_CIGAM: Final = 0xcefaedfe
-MH_CIGAM_64: Final = 0xcffaedfe
-MH_EXECUTE: Final = 0x2
-MH_MAGIC: Final = 0xfeedface
-MH_MAGIC_64: Final = 0xfeedfacf
-MH_NO_HEAP_EXECUTION: Final = 0x01000000
-MH_PIE: Final = 0x00200000
+MH_CIGAM: Final[int] = 0xcefaedfe
+MH_CIGAM_64: Final[int] = 0xcffaedfe
+MH_EXECUTE: Final[int] = 0x2
+MH_MAGIC: Final[int] = 0xfeedface
+MH_MAGIC_64: Final[int] = 0xfeedfacf
+MH_NO_HEAP_EXECUTION: Final[int] = 0x01000000
+MH_PIE: Final[int] = 0x00200000
 
 EndianIndicator = Literal['<', '>', '=']
 
@@ -174,8 +173,13 @@ def write_uint32(file: BinaryIO, uint32: int, endian: str) -> None:
     file.write(bytes_)
 
 
+class Namespace(argparse.Namespace):
+    no_heap_execution: bool
+    pie: bool
+
+
 def handle_mach_o_file(file: BinaryIO,
-                       options: argparse.Namespace,
+                       options: Namespace,
                        offset: int = 0) -> None:
     """
     Seeks the file-like |file| object to |offset|, reads its |mach_header|,
@@ -221,7 +225,7 @@ def handle_mach_o_file(file: BinaryIO,
 
 
 def handle_fat_file(file: BinaryIO,
-                    options: argparse.Namespace,
+                    options: Namespace,
                     fat_offset: int = 0) -> None:
     """Seeks the file-like |file| object to |offset| and loops over its
   |fat_header| entries, calling HandleMachOFile for each."""

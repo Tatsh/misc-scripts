@@ -2,8 +2,8 @@
 # PYTHON_ARGCOMPLETE_OK
 from datetime import date
 from itertools import chain
-from typing import (Any, Iterable, Iterator, Optional, Sequence, Tuple, Union,
-                    cast)
+from typing import (Any, Iterable, Iterator, Optional, Sequence, TextIO, Tuple,
+                    Union, cast)
 import argparse
 import csv
 import json
@@ -18,9 +18,9 @@ except ImportError:
 
 RootKey = Literal['bookmark_bar', 'other']  # pylint: disable=invalid-name
 StringTuple = Tuple[str, Optional[str], str, str]
-MICROSECONDS_PER_SECOND: Final = 1e6
+MICROSECONDS_PER_SECOND: Final[float] = 1e6
 # https://github.com/chromium/chromium/blob/670ff74372d149d0ee4d733e2254a4a3d6b0ec6d/base/time/time.h#L499
-TIME_TO_MICROSECOND_OFFSET: Final = 11644473600000000
+TIME_TO_MICROSECOND_OFFSET: Final[int] = 11644473600000000
 
 
 class SyncedDict(TypedDict):
@@ -114,6 +114,14 @@ def get_strings(children: Iterable[Union[URL, Folder]],
                    x['url'])
 
 
+class Namespace(argparse.Namespace):
+    ignore_empty_names: bool
+    input: TextIO
+    no_folder_names: bool
+    output: TextIO
+    verbose: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Convert Chrome Bookmarks file to CSV')
@@ -134,14 +142,13 @@ def main() -> int:
                         type=argparse.FileType('w'))
     if argcomplete:
         argcomplete.autocomplete(parser)
-    args = parser.parse_args()
+    args = cast(Namespace, parser.parse_args())
     try:
         data = cast(Bookmarks, json.load(args.input))
-        for root in ('bookmark_bar', 'other'):
-            assert 'roots' in data
-            assert cast(RootKey, root) in data['roots']
-            assert 'children' in data['roots'][cast(RootKey, root)]
-    except (json.decoder.JSONDecodeError, KeyError, AssertionError):
+        for root in cast(Tuple[Literal['bookmark_bar'], Literal['other']],
+                         ('bookmark_bar', 'other')):
+            _ = data['roots'][cast(RootKey, root)]['children']
+    except (json.decoder.JSONDecodeError, KeyError):
         args.output.close()
         print('Does not seem like a Bookmarks file', file=sys.stderr)
         return 1

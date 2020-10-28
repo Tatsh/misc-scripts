@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from dataclasses import dataclass
 from functools import lru_cache
 from os import devnull, environ, makedirs
 from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
 from shutil import rmtree
-from typing import Any, Dict, Optional, Sequence, cast
+from typing import Any, Dict, Mapping, Optional, Sequence, cast
 import argparse
 import logging
 import subprocess as sp
@@ -19,7 +18,7 @@ try:
 except ImportError:
     argcomplete = None
 
-VERSION_MAPPING: Final = {
+VERSION_MAPPING: Final[Mapping[str, str]] = {
     '10': 'win10',
     'vista': 'vista',
     '2k3': 'win2k3',
@@ -34,8 +33,7 @@ VERSION_MAPPING: Final = {
 }
 
 
-@dataclass
-class Args:
+class Args(argparse.Namespace):
     prefix_name: str
     thirty2bit: bool
     no_xdg: bool
