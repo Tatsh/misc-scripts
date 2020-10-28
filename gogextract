@@ -12,8 +12,8 @@ import sys
 
 from typing_extensions import Final
 
-FILESIZE_RE: Final = re.compile(r'filesizes="(\d+?)"')
-OFFSET_RE: Final = re.compile(r'offset=`head -n (\d+?) "\$0"')
+FILESIZE_RE: Final[re.Pattern[str]] = re.compile(r'filesizes="(\d+?)"')
+OFFSET_RE: Final[re.Pattern[str]] = re.compile(r'offset=`head -n (\d+?) "\$0"')
 
 
 @lru_cache()
@@ -38,7 +38,7 @@ def main() -> int:
         input_path = sys.argv[1]
         output_path = sys.argv[2]
     else:
-        print('Usage: {} <input file> <output dir>'.format(sys.argv[0]),
+        print(f'Usage: {sys.argv[0]} <input file> <output dir>',
               file=sys.stderr)
         return 1
     game_bin = open(input_path, 'rb')
