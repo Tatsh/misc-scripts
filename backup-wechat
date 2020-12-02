@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+set -e
+
+dateprefix() {
+    date +%Y%m%d -r "$1"
+}
+
+convert-audio() {
+    local in out_pcm out use
+    in="$1"
+    if ! [ -f "$in" ]; then
+        echo "Unable to read '$in'" >&2
+        return
+    fi
+    out_pcm="./$(basename "$in").pcm"
+    out="./$(dateprefix "$in")-$(basename "${in%.*}").flac"
+
+    if [ -f "$out" ]; then
+        echo "File '$out' already exists" >&2
+        return
+    fi
+
+    cp "$in" .
+    use="./$(basename "$in")"
+
+    silk-v3-decoder "$use" "$out_pcm"
+    rm "$use"
+    ffmpeg -y -f s16le -ar 24000 -ac 1 -i "$out_pcm" "$out"
+    rm "$out_pcm"
+    metaflac --preserve-modtime \
+        --set-tag=SOURCE=WeChat \
+        --set-tag=ORIGINAL_FILENAME="$(realpath "$in")" \
+        --set-tag=ORIGINAL_FILE_OWNER="$(whoami)" \
+        --set-tag=ORIGINAL_FILE_DATE_MODIFIED="$(stat --format %y "$in")" \
+        --set-tag=ORIGINAL_FILE_SIZE="$(stat --format %s "$in")" \
+        --import-picture-from="wechat-icon.png" \
+        "$out"
+}
+
+convert-audio-main() {
+    find "${HOME}/Library/Containers/com.tencent.xinWeChat" -type d -name 'Message' | \
+        while IFS=$'\n' read -r l; do find "$l" -iname '*.silk' | \
+            while IFS=$'\n' read -r n; do convert-audio "$n"; done
+        done
+}
+
+mkdir -p ~/.local/share/wechat-backup
+cd ~/.local/share/wechat-backup/
+mkdir -p audio image video
+find ~/Library/Containers/com.tencent.xinWeChat/ \
+    -iname '*.mp4' -exec cp -nv {} ./video \;
+find ~/Library/Containers/com.tencent.xinWeChat/ \
+    -execdir sh -c "file -i '{}' | grep -F -q ': image/'" \; "$@" -print | \
+        grep -Fv Thumbnails/ | while IFS=$'\n' read -r f; do
+            cp "$f" image/; done
+cd audio
+if ! [ -f wechat-icon.png ]; then
+    sips -s format png \
+        /Applications/WeChat.app/Contents/Resources/AppIcon.icns \
+        --out wechat-icon.png
+fi
+convert-audio-main
