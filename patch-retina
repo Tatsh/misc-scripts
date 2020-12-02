@@ -9,7 +9,7 @@ import sys
 
 from typing_extensions import Final
 
-HIGH_RES_KEY: Final = 'NSHighResolutionCapable'
+HIGH_RES_KEY: Final[str] = 'NSHighResolutionCapable'
 
 
 @lru_cache()
