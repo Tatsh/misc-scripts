@@ -92,7 +92,7 @@ def get_strings(children: Iterable[Union[URL, Folder]],
     for x in children:
         if x['type'] == 'folder':
             name = x['name']
-            yield from get_strings(x['children'],
+            yield from get_strings(cast(Folder, x)['children'],
                                    folder_names=folder_names,
                                    prefix=prefix +
                                    f' » {name}' if prefix else name,
@@ -111,7 +111,7 @@ def get_strings(children: Iterable[Union[URL, Folder]],
                     meta_info['last_visited_desktop']).strftime('%Y-%m-%d')
             yield (chrome_timestamp_to_date(
                 x['date_added']).strftime('%Y-%m-%d'), last_visited, name,
-                   x['url'])
+                   cast(URL, x)['url'])
 
 
 class Namespace(argparse.Namespace):
@@ -145,8 +145,7 @@ def main() -> int:
     args = cast(Namespace, parser.parse_args())
     try:
         data = cast(Bookmarks, json.load(args.input))
-        for root in cast(Tuple[Literal['bookmark_bar'], Literal['other']],
-                         ('bookmark_bar', 'other')):
+        for root in ('bookmark_bar', 'other'):
             _ = data['roots'][cast(RootKey, root)]['children']
     except (json.decoder.JSONDecodeError, KeyError):
         args.output.close()
