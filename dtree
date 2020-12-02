@@ -18,7 +18,7 @@ except ImportError:
 CSS_URI: Final[str] = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
 
 
-def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry]:
+def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry[str]]:
     try:
         return scandir(*args, **kwargs)
     except OSError as e:
@@ -31,7 +31,7 @@ def recurse_cwd(path: str,
                 depth: int = 1,
                 _cur_depth: int = 0) -> Iterator[str]:
     for entry in sorted(
-            sorted(scandir_ignore(path), key=lambda x: cast(str, x.name)),
+            sorted(scandir_ignore(path), key=lambda x: x.name),
             key=lambda x: not x.is_dir(follow_symlinks=follow_symlinks)):
         if (entry.is_dir(follow_symlinks=follow_symlinks)
                 and _cur_depth < depth):
