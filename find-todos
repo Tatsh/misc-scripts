@@ -74,7 +74,7 @@ async def _handle_listing(listing: AsyncIterable[str],
             await _handle_listing(_get_listing(entry), outdir, top, exclusions)
         else:
             try:
-                file_info: str = magic.from_file(entry, mime=True)
+                file_info = magic.from_file(entry, mime=True)
             except OSError as e:
                 log.error('%s: %s', entry, e.strerror)
                 continue
