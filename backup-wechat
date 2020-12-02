@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-dateprefix() {
+date-prefix() {
     date +%Y%m%d -r "$1"
 }
 
@@ -13,7 +13,7 @@ convert-audio() {
         return
     fi
     out_pcm="./$(basename "$in").pcm"
-    out="./$(dateprefix "$in")-$(basename "${in%.*}").flac"
+    out="./$(date-prefix "$in")-$(basename "${in%.*}").flac"
 
     if [ -f "$out" ]; then
         echo "File '$out' already exists" >&2
@@ -33,14 +33,15 @@ convert-audio() {
         --set-tag=ORIGINAL_FILE_OWNER="$(whoami)" \
         --set-tag=ORIGINAL_FILE_DATE_MODIFIED="$(stat --format %y "$in")" \
         --set-tag=ORIGINAL_FILE_SIZE="$(stat --format %s "$in")" \
-        --import-picture-from="wechat-icon.png" \
+        --import-picture-from=wechat-icon.png \
         "$out"
 }
 
 convert-audio-main() {
-    find "${HOME}/Library/Containers/com.tencent.xinWeChat" -type d -name 'Message' | \
-        while IFS=$'\n' read -r l; do find "$l" -iname '*.silk' | \
-            while IFS=$'\n' read -r n; do convert-audio "$n"; done
+    find "${HOME}/Library/Containers/com.tencent.xinWeChat" -type d -name 'Message' |
+        while IFS=$'\n' read -r l; do
+            find "$l" -iname '*.silk' |
+                while IFS=$'\n' read -r n; do convert-audio "$n"; done
         done
 }
 
@@ -50,9 +51,10 @@ mkdir -p audio image video
 find ~/Library/Containers/com.tencent.xinWeChat/ \
     -iname '*.mp4' -exec cp -nv {} ./video \;
 find ~/Library/Containers/com.tencent.xinWeChat/ \
-    -execdir sh -c "file -i '{}' | grep -F -q ': image/'" \; "$@" -print | \
-        grep -Fv Thumbnails/ | while IFS=$'\n' read -r f; do
-            cp "$f" image/; done
+    -execdir sh -c "file -i '$1' | grep -F -q ': image/'" _ {} \; "$@" -print |
+    grep -Fv Thumbnails/ | while IFS=$'\n' read -r f; do
+    cp "$f" image/
+done
 cd audio
 if ! [ -f wechat-icon.png ]; then
     sips -s format png \
