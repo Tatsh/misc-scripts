@@ -1,7 +1,8 @@
-from typing import Iterable
+from typing import Iterable, List, Mapping, Union
 
 
 class Tag:
+    attrs: Mapping[str, str]
     contents: Iterable[str]
 
     def select(self, selector: str) -> Iterable[Tag]:
@@ -14,5 +15,8 @@ class Tag:
 class BeautifulSoup:
     body: Tag
 
-    def __init__(self, root: str, parser: str) -> None:
+    def __init__(self, root: Union[str, bytes], parser: str) -> None:
+        ...
+
+    def select(self, selector: str) -> List[Tag]:
         ...
