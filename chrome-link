@@ -6,7 +6,7 @@ from os import chmod, close, environ, makedirs, write
 from os.path import basename, expanduser, join as path_join, splitext
 from pathlib import Path
 from tempfile import mkdtemp, mkstemp
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, Tuple, cast
 from urllib.parse import urljoin, urlparse, unquote_plus
 import argparse
 import logging
@@ -76,8 +76,10 @@ class ChromeCommandKwArgs(TypedDict):
 
 
 def _chrome_command_kwargs() -> ChromeCommandKwArgs:
-    return dict(required=True, default=None) if not IS_LINUX else dict(
-        default='chromium-browser', required=False)
+    return cast(
+        ChromeCommandKwArgs,
+        dict(required=True, default=None)
+        if not IS_LINUX else dict(default='chromium-browser', required=False))
 
 
 def _cygpath_win(path: str) -> str:
@@ -135,7 +137,8 @@ def _get_icon_from_site(args: MainArgs,
     options = ('link[rel="apple-touch-icon"]', 'link[rel="shortcut icon"]',
                'link[rel="icon"]', 'meta[name="msapplication-TileImage"]')
     tags: Final[List[Tag]] = s.select(','.join(options))
-    sizes = [(0, urljoin(args.url, '/favicon.ico'))]
+    sizes = cast(List[Tuple[int, str]],
+                 [(0, urljoin(args.url, '/favicon.ico'))])
     log.debug('Guessed favicon URI: %s', sizes[0][1])
     for tag in tags:
         uri: Optional[str] = tag.attrs.get('href', tag.attrs.get('content'))
