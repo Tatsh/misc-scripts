@@ -107,7 +107,7 @@ def recursive_scan(
     a: Tag
     for a in soup.body.select('a'):
         title = ' '.join(a.contents)
-        urls.append((title, cast(str, a['href'])))
+        urls.append((title, a['href']))
     index = 0
     req: Optional[Union[requests.Response, FailedConnection]]
     url_data: Tuple[str, str]
