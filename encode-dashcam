@@ -7,8 +7,8 @@ from os import close, listdir, stat, unlink, write
 from os.path import basename, expanduser, isdir, join as path_join, realpath
 from shlex import quote
 from tempfile import mkstemp
-from typing import (Any, AnyStr, Callable, List, Optional, Sequence, Tuple,
-                    TypeVar, Union, cast)
+from typing import (Any, Callable, List, Optional, Sequence, Tuple, TypeVar,
+                    Union, cast)
 import argparse
 import json
 import logging
@@ -28,7 +28,6 @@ DRAWTEXT_TEMPLATE = string.Template('drawtext='
                                     'y=${y}')
 TIME_KEYS = list('st_{}time'.format(x) for x in ('m', 'a', 'c'))
 
-log: Optional[logging.Logger] = None
 to_lower = str.lower
 
 CondPredicate = Callable[..., bool]
@@ -37,8 +36,7 @@ T = TypeVar('T')
 
 
 def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> None:
-    global log
+                         verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -46,6 +44,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     channel.setFormatter(logging.Formatter('%(asctime)s - %(message)s'))
     channel.setLevel(logging.DEBUG if verbose else logging.INFO)
     log.addHandler(channel)
+    return log
 
 
 def t() -> Literal[True]:
@@ -94,11 +93,11 @@ def _file_prefix(x: str) -> str:
     return f'file:{x}'
 
 
-def start_at(i: int, x: Union[AnyStr, Sequence[Any]]) -> Any:
+def start_at(i: int, x: Union[str, bytes, Sequence[Any]]) -> Any:
     return x[i:]
 
 
-def isfile(x: Union[AnyStr, int]) -> bool:
+def isfile(x: Union[str, int]) -> bool:
     try:
         with open(x, 'rb'):
             return True
@@ -119,12 +118,12 @@ def ends_with_lower(ending: str, x: str) -> bool:
 
 
 def get_roboto_font() -> str:
-    roboto_font = expanduser('~/Library/Fonts/Roboto-Regular.ttf')
-    if not isfile(roboto_font):
-        roboto_font = '/usr/share/fonts/roboto/Roboto-Regular.ttf'
-    if not isfile(roboto_font):
-        raise RuntimeError('Cannot find Roboto-Regular.ttf')
-    return roboto_font
+    for path in (expanduser('~/Library/Fonts/Roboto-Regular.ttf'),
+                 '/Library/Fonts/Roboto-Regular.ttf',
+                 '/usr/share/fonts/roboto/Roboto-Regular.ttf'):
+        if isfile(path):
+            return path
+    raise RuntimeError('Cannot find Roboto-Regular.ttf')
 
 
 def make_drawtext_filter(**kwargs: Any) -> str:
@@ -143,6 +142,7 @@ def make_drawtext_filter(**kwargs: Any) -> str:
 
 def encode_concat(fn: str,
                   outfile: str,
+                  log: logging.Logger,
                   corrected_date: Optional[str] = None,
                   dry_run: bool = False,
                   hwaccel: bool = False,
@@ -278,8 +278,7 @@ def encode_concat(fn: str,
 
 
 def min_date(fn: str) -> float:
-    si = stat(fn)
-    return cast(float, min(getattr(si, x) for x in TIME_KEYS))
+    return cast(float, min(getattr(stat(fn), x) for x in TIME_KEYS))
 
 
 def name_d(arg: str) -> Callable[[str], Tuple[str, str]]:
@@ -290,7 +289,7 @@ def name_d(arg: str) -> Callable[[str], Tuple[str, str]]:
 
 
 def file_line(f: str) -> bytes:
-    return f"file '{f}'\n".encode('utf-8')
+    return f"file '{f}'\n".encode()
 
 
 def head(x: Sequence[T]) -> T:
@@ -305,8 +304,15 @@ _maybe_file_prefix: Callable[[str], str] = cond((
 ))
 
 
+def cleanup_cb(*args: Any) -> Callable[[], None]:
+    def cleanup() -> None:
+        for x in args:
+            unlink(x)
+
+    return cleanup
+
+
 def main() -> int:
-    assert log is not None
     parser = argparse.ArgumentParser()
     parser.add_argument('--dates', nargs='*')
     parser.add_argument('--outdir', default=realpath('.'), nargs=1)
@@ -315,7 +321,7 @@ def main() -> int:
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('indir', nargs='+')
     args = parser.parse_args()
-    setup_logging_stdout(verbose=args.verbose)
+    log = setup_logging_stdout(verbose=args.verbose)
     outdir: str = args.outdir
     arg: str
     cleanup_funcs: List[Callable[[], None]] = []
@@ -337,7 +343,7 @@ def main() -> int:
                                           text=True)
             write_tmpfd = partial(write, tmpfd)
             write_chfile = partial(write, chpfd)
-            write_chfile(f';FFMETADATA1\ntitle={name}\n'.encode('utf-8'))
+            write_chfile(f';FFMETADATA1\ntitle={name}\n'.encode())
             try:
                 things = map(partial(path_join, d),
                              filter(ends_with_avi, listdir(d)))
@@ -348,9 +354,9 @@ def main() -> int:
             start = end = 0
             for l in (file_line(y)
                       for y in (realpath(x) for x in sorted(things))):
-                fn: str = l.decode('utf-8')[6:].replace("'", '').strip()
+                fn: str = l.decode()[6:].replace("'", '').strip()
                 url = basename(fn).replace('.AVI', '')
-                metadata = f'file_packet_metadata url={url}\n'.encode('utf-8')
+                metadata = f'file_packet_metadata url={url}\n'.encode()
                 write_tmpfd(l)
                 write_tmpfd(metadata)
                 start = start if start == 0 else end + 1
@@ -362,21 +368,17 @@ def main() -> int:
                 end = floor(end)
                 log.debug('%s: start = %d, end = %d', url, start, end)
                 write_chfile('[CHAPTER]\nTIMEBASE=1/25\nSTART={:d}\n'
-                             'END={:d}\ntitle={}\n'.format(
-                                 start, end, url).encode('utf-8'))
+                             'END={:d}\ntitle={}\n'.format(start, end,
+                                                           url).encode())
                 start = floor(end + 1)
             close(tmpfd)
             close(chpfd)
-
-            def cleanup() -> None:
-                unlink(tempfile)
-                unlink(chapter_file)
-
-            cleanup_funcs.append(cleanup)
+            cleanup_funcs.append(cleanup_cb(*(tempfile, chapter_file)))
             log.debug('Temporary file: %s', realpath(tempfile))
             try:
                 encode_concat(tempfile,
                               path_join(outdir, f'{name}.mkv'),
+                              log,
                               corrected_date=fixed_date,
                               dry_run=args.dry_run,
                               hwaccel=args.hwaccel,
@@ -384,8 +386,8 @@ def main() -> int:
             except KeyboardInterrupt:
                 return 1
 
-    for cf in cleanup_funcs:
-        cf()
+    for func in cleanup_funcs:
+        func()
     return 0
 
 
