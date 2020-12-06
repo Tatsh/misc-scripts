@@ -9,11 +9,12 @@ import sys
 import requests
 
 URL_PREFIX = 'https://packages.microsoft.com/repos/vscode'
+DESKTOP_FILES = (expanduser('~/.local/share/applications/code.desktop'), expanduser('~/.local/share/applications/code-url-handler.desktop'))
 
 
 def main() -> int:
     if sys.platform != 'linux':
-        print('This script is only for Linux')
+        print('This script is only for Linux', file=sys.stderr)
         return 1
     print('Determining deb filename', file=sys.stderr)
     pool_path = [
@@ -42,6 +43,19 @@ def main() -> int:
                  dirs_exist_ok=True,
                  symlinks=True)
         rm(deb_file)
+        print('Fixing desktop files', file=sys.stderr)
+        for df in DESKTOP_FILES:
+            lines = []
+            with open(df) as f:
+                for line in f.readlines():
+                    if '/usr/share' in line:
+                        lines.append(line.replace('/usr/share', expanduser('~/.local/share')))
+                    else:
+                        lines.append(line)
+            with open(df, 'w') as f:
+                for line in lines:
+                    f.write(line)
+        sp.run(('update-desktop-database', expanduser('~/.local/share/applications/')), check=True)
     return 0
 
 
