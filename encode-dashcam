@@ -313,6 +313,7 @@ def cleanup_cb(*args: Any) -> Callable[[], None]:
 
 
 def main() -> int:
+    global log
     parser = argparse.ArgumentParser()
     parser.add_argument('--dates', nargs='*')
     parser.add_argument('--outdir', default=realpath('.'), nargs=1)
@@ -322,7 +323,8 @@ def main() -> int:
     parser.add_argument('indir', nargs='+')
     args = parser.parse_args()
     log = setup_logging_stdout(verbose=args.verbose)
-    outdir: str = args.outdir
+    assert log is not None
+    outdir: str = args.outdir[0]
     arg: str
     cleanup_funcs: List[Callable[[], None]] = []
     for arg in args.indir:
