@@ -12,8 +12,8 @@ import sys
 
 from typing_extensions import Final
 
-FILESIZE_RE: Final[re.Pattern[str]] = re.compile(r'filesizes="(\d+?)"')
-OFFSET_RE: Final[re.Pattern[str]] = re.compile(r'offset=`head -n (\d+?) "\$0"')
+FILESIZE_RE: Final[re.Pattern] = re.compile(r'filesizes="(\d+?)"')
+OFFSET_RE: Final[re.Pattern] = re.compile(r'offset=`head -n (\d+?) "\$0"')
 
 
 @lru_cache()
