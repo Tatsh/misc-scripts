@@ -147,7 +147,6 @@ def encode_concat(fn: str,
                   dry_run: bool = False,
                   hwaccel: bool = False,
                   metadata_file: Optional[str] = None) -> None:
-    assert log is not None
     fn = _maybe_file_prefix(fn)
     outfile = _maybe_file_prefix(outfile)
     filters = ['setpts=0.25*PTS']
@@ -313,21 +312,20 @@ def cleanup_cb(*args: Any) -> Callable[[], None]:
 
 
 def main() -> int:
-    global log
     parser = argparse.ArgumentParser()
     parser.add_argument('--dates', nargs='*')
     parser.add_argument('--outdir', default=realpath('.'), nargs=1)
     parser.add_argument('-d', '--dry-run', action='store_true')
     parser.add_argument('-H', '--hwaccel', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
-    parser.add_argument('indir', nargs='+')
+    parser.add_argument('in_dir', nargs='+')
     args = parser.parse_args()
     log = setup_logging_stdout(verbose=args.verbose)
     assert log is not None
     outdir: str = args.outdir[0]
     arg: str
     cleanup_funcs: List[Callable[[], None]] = []
-    for arg in args.indir:
+    for arg in args.in_dir:
         arg = realpath(arg)
         files_ = filterfalse(lambda x: isdir(head(x)),
                              map(name_d(arg), sorted(listdir(arg))))
@@ -337,18 +335,20 @@ def main() -> int:
                 fixed_date = args.dates[i]
             except (IndexError, TypeError):
                 fixed_date = None
-            tmpfd, tempfile = mkstemp(prefix=f'encode-list-{name}-',
-                                      suffix='.txt',
-                                      text=True)
-            chpfd, chapter_file = mkstemp(prefix=f'chapters-{name}-',
-                                          suffix='.txt',
-                                          text=True)
-            write_tmpfd = partial(write, tmpfd)
-            write_chfile = partial(write, chpfd)
-            write_chfile(f';FFMETADATA1\ntitle={name}\n'.encode())
+            tmp_fd, tempfile = mkstemp(prefix=f'encode-list-{name}-',
+                                       suffix='.txt',
+                                       text=True)
+            chapter_fd, chapter_file = mkstemp(prefix=f'chapters-{name}-',
+                                               suffix='.txt',
+                                               text=True)
+            write_tmp_fd = partial(write, tmp_fd)
+            write_chapter_file = partial(write, chapter_fd)
+            write_chapter_file(f';FFMETADATA1\ntitle={name}\n'.encode())
             try:
-                things = map(partial(path_join, d),
-                             filter(ends_with_avi, listdir(d)))
+                things = map(
+                    partial(path_join, d),
+                    filter(ends_with_avi,
+                           (x for x in listdir(d) if x[0] != '.')))
             except NotADirectoryError:
                 log.info('Not a directory: %s', d)
                 continue
@@ -359,22 +359,27 @@ def main() -> int:
                 fn: str = l.decode()[6:].replace("'", '').strip()
                 url = basename(fn).replace('.AVI', '')
                 metadata = f'file_packet_metadata url={url}\n'.encode()
-                write_tmpfd(l)
-                write_tmpfd(metadata)
+                write_tmp_fd(l)
+                write_tmp_fd(metadata)
                 start = start if start == 0 else end + 1
-                end = json.loads(
-                    sp.check_output(('exiftool', '-VideoFrameCount', '-json',
-                                     fn)))[0]['VideoFrameCount'] / 4
+                exif_json = json.loads(
+                    sp.check_output(
+                        ('exiftool', '-VideoFrameCount', '-json', fn)))
+                try:
+                    end = exif_json[0]['VideoFrameCount'] / 4
+                except (IndexError, KeyError) as e:
+                    raise KeyError(
+                        f'Key or index error: {e}, JSON: {exif_json}') from e
                 end += start
                 start = floor(start)
                 end = floor(end)
                 log.debug('%s: start = %d, end = %d', url, start, end)
-                write_chfile('[CHAPTER]\nTIMEBASE=1/25\nSTART={:d}\n'
-                             'END={:d}\ntitle={}\n'.format(start, end,
-                                                           url).encode())
+                write_chapter_file('[CHAPTER]\nTIMEBASE=1/25\nSTART={:d}\n'
+                                   'END={:d}\ntitle={}\n'.format(
+                                       start, end, url).encode())
                 start = floor(end + 1)
-            close(tmpfd)
-            close(chpfd)
+            close(tmp_fd)
+            close(chapter_fd)
             cleanup_funcs.append(cleanup_cb(*(tempfile, chapter_file)))
             log.debug('Temporary file: %s', realpath(tempfile))
             try:
