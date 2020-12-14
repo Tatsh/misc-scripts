@@ -10,6 +10,8 @@ import sys
 
 from typing_extensions import Final
 
+from ..utils import setup_logging_stderr
+
 CREATION_UTC: Final[int] = int(
     (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10**7))
 COLUMNS: Final[Tuple[str,
@@ -37,10 +39,11 @@ class MatchDict(TypedDict):
 
 
 def main() -> int:
+    log = setup_logging_stderr(verbose=True)
     try:
         cookies_txt = sys.argv[1]
     except IndexError:
-        print(f'Usage: {sys.argv[0]} COOKIES_TXT_FILE', file=sys.stderr)
+        log.info('Usage: %s COOKIES_TXT_FILE', sys.argv[0])
         return 1
     conn: Optional[sqlite3.Connection] = None
     last_exc: Optional[Exception] = None
@@ -64,7 +67,7 @@ def main() -> int:
             for line in lines:
                 match = re.match(REGEX, line)
                 if not match:
-                    print(f'Skipping line: {line.strip()}', file=sys.stderr)
+                    log.debug('Skipping line: %s', line.strip())
                     continue
                 dic = cast(MatchDict, deepcopy(match.groupdict()))
                 expires_utc = int(float(dic['expires_utc'])) * (10**7)
@@ -92,8 +95,7 @@ def main() -> int:
                           t)
                 i += 1
     except FileNotFoundError:
-        print(f'Cookies file {cookies_txt} specified does not exist',
-              file=sys.stderr)
+        log.error('Cookies file %s specified does not exist', cookies_txt)
     finally:
         conn.commit()
         conn.close()
