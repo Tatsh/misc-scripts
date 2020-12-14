@@ -31,7 +31,7 @@ def main() -> int:
     game_bin = open(input_path, 'rb')
     os.makedirs(output_path, exist_ok=True)
     # Read the first 10kb so we can determine the script line number
-    beginning = game_bin.read(10240).decode('utf-8', errors='ignore')
+    beginning = game_bin.read(10240).decode(errors='ignore')
     offset_match = OFFSET_RE.search(beginning)
     if not offset_match:
         log.error('Failed to find offset', file=sys.stderr)
@@ -48,7 +48,7 @@ def main() -> int:
     script_bin = game_bin.read(script_size)
     with open(path.join(output_path, 'unpacker.sh'), 'wb') as script_f:
         script_f.write(script_bin)
-    script = script_bin.decode('utf-8')
+    script = script_bin.decode()
     # Filesize is for the MojoSetup archive, not the actual game data
     filesize_match = FILESIZE_RE.search(script)
     if not filesize_match:
@@ -61,8 +61,7 @@ def main() -> int:
     with open(path.join(output_path, 'mojosetup.tar.gz'), 'wb') as setup_f:
         setup_f.write(game_bin.read(filesize))
     # Extract the game data archive
-    dataoffset = script_size + filesize
-    game_bin.seek(dataoffset, io.SEEK_SET)
+    game_bin.seek(script_size + filesize, io.SEEK_SET)
     with open(path.join(output_path, 'data.zip'), 'wb') as datafile:
         shutil.copyfileobj(game_bin, datafile)
     return 0
