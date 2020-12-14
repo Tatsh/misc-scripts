@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from glob import glob
-from os import chmod, close, environ, makedirs, write
+from os import chmod, close, environ, makedirs, unlink, write
 from os.path import basename, expanduser, join as path_join, splitext
 from pathlib import Path
 from tempfile import mkdtemp, mkstemp
@@ -57,7 +57,6 @@ def _fix_msys_arg(s: str) -> str:
 
 
 class MainArgs(argparse.Namespace):
-    categories: str
     chrome_command: Optional[str]
     comment: Optional[str]
     hotkey: Optional[str]
@@ -78,8 +77,9 @@ class ChromeCommandKwArgs(TypedDict):
 def _chrome_command_kwargs() -> ChromeCommandKwArgs:
     return cast(
         ChromeCommandKwArgs,
-        dict(required=True, default=None)
-        if not IS_LINUX else dict(default='chromium-browser', required=False))
+        dict(required=True, default=None) if not IS_LINUX else dict(
+            default='/usr/lib64/chromium-browser/chromium-launcher.sh',
+            required=False))
 
 
 def _cygpath_win(path: str) -> str:
@@ -106,11 +106,6 @@ def _parse_args() -> MainArgs:
                         '--insecure',
                         action='store_true',
                         help='Disable verification of HTTPS certificates')
-    if IS_LINUX:
-        parser.add_argument('-C',
-                            '--categories',
-                            default='Network;',
-                            help='XDG category list')
     if not IS_MAC:
         parser.add_argument('-d', '--comment', help='Comment')
     if IS_WINDOWS:
@@ -284,34 +279,44 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
 
 
 def _create_desktop_file(args: MainArgs) -> None:
-    # Create .desktop file
     log = _setup_logging_stdout(name='_create_desktop_file',
                                 verbose=args.verbose)
-    apps_dir = expanduser('~/.local/share/applications')
-    makedirs(apps_dir, exist_ok=True)
-    out_name = path_join(
-        apps_dir,
-        f'chrome-{args.name}-{args.profile_name}.desktop'.replace(' ', ''))
+    desktop_dirs = expanduser('~/.local/share/desktop-directories')
+    makedirs(desktop_dirs, exist_ok=True)
+    chrome_apps_dir_file = path_join(desktop_dirs, 'chrome-apps.directory')
+    try:
+        with open(chrome_apps_dir_file):
+            pass
+    except IOError:
+        with open(chrome_apps_dir_file) as f:
+            f.write('''[Desktop Entry]
+Version=1.0
+Type=Directory
+Name=Chromium Apps
+Icon=chromium-browser
+''')
+    # Create .desktop file
+    profile_name = args.profile_name.replace(' ', '_')
+    out_name = f'./chrome-{args.name}-{profile_name}.desktop'.replace(' ', '')
     assert args.chrome_command is not None
-    try_exec = args.chrome_command.replace(' ', r'\ ')
+    comment = f'\nComment={args.comment}' if args.comment else ''
     with open(out_name, 'w+') as f:
         f.write(f'''#!/usr/bin/env xdg-open
 [Desktop Entry]
 Version=1.0
 Terminal=false
-Type=Application
-TryExec={try_exec}
-Categories={args.categories or ''}
-Comment={args.comment or ''}
+Type=Application{comment}
 Name={args.name}
 Exec={args.chrome_command} "--user-data-directory={args.profile_name}"'''
                 f''' "--app={args.url}"
 Icon={args.icon}
 ''')
-    log.debug('Executing update-desktop-database')
-    subprocess.check_call(('update-desktop-database', apps_dir),
-                          stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE)
+    log.debug('Executing xdg-desktop-menu')
+    subprocess.check_call(
+        ('xdg-desktop-menu', 'install', chrome_apps_dir_file, out_name),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE)
+    unlink(out_name)
 
 
 def _create_iconset(args: MainArgs) -> str:
