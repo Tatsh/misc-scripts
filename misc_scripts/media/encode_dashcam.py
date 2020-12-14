@@ -146,22 +146,10 @@ def encode_concat(fn: str,
         filters.append(make_drawtext_filter(text=corrected_date))
     filters.append(
         make_drawtext_filter(text=r'%{metadata\:url}', y=920, fontsize=14))
-    codec_args: Tuple[str, ...] = (
-        '-vcodec',
-        'libx264',
-        '-pix_fmt',
-        'yuv420p',
-        '-preset',
-        'veryslow',
-        '-profile:v',
-        'high',
-        '-level',
-        '4.1',
-        '-crf',
-        '23',
-    )
+    codec_args: Tuple[str, ...] = ('-vcodec', 'libx264', '-pix_fmt', 'yuv420p',
+                                   '-preset', 'veryslow', '-profile:v', 'high',
+                                   '-level', '4.1', '-crf', '23')
     read_codec: Tuple[str, ...] = ()
-
     if hwaccel:
         out: str = sp.check_output(['ffmpeg', '-encoders'], encoding='utf-8')
         has_nvenc = has_vt = False
@@ -175,88 +163,31 @@ def encode_concat(fn: str,
         if has_vt:
             read_codec = ('-hwaccel', 'videotoolbox', '-hwaccel_output_format',
                           'nv12')
-            codec_args = (
-                '-vcodec',
-                'h264_videotoolbox',
-                '-profile:v',
-                'high',
-                '-level',
-                '4.1',
-                '-coder:v',
-                'cabac',
-                '-pix_fmt',
-                'yuv420p',
-                '-b:v',
-                '8M',
-                '-maxrate:v',
-                '11M',
-            )
+            codec_args = ('-vcodec', 'h264_videotoolbox', '-profile:v', 'high',
+                          '-level', '4.1', '-coder:v', 'cabac', '-pix_fmt',
+                          'yuv420p', '-b:v', '8M', '-maxrate:v', '11M')
             filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
         elif has_nvenc:
-            read_codec = (
-                '-hwaccel',
-                'cuvid',
-                '-hwaccel_output_format',
-                'nv12',
-                '-c:v',
-                'mjpeg_cuvid',
-            )
-            codec_args = (
-                '-vcodec',
-                'h264_nvenc',
-                '-preset',
-                'llhq',
-                '-profile:v',
-                'high',
-                '-level',
-                '4.1',
-                '-rc',
-                'cbr_ld_hq',
-                '-rc-lookahead',
-                '32',
-                '-temporal-aq',
-                '1',
-                '-coder:v',
-                'cabac',
-                '-pix_fmt',
-                'yuv420p',
-                '-b:v',
-                '8M',
-                '-maxrate:v',
-                '11M',
-            )
+            read_codec = ('-hwaccel', 'cuvid', '-hwaccel_output_format',
+                          'nv12', '-c:v', 'mjpeg_cuvid')
+            codec_args = ('-vcodec', 'h264_nvenc', '-preset', 'llhq',
+                          '-profile:v', 'high', '-level', '4.1', '-rc',
+                          'cbr_ld_hq', '-rc-lookahead', '32', '-temporal-aq',
+                          '1', '-coder:v', 'cabac', '-pix_fmt', 'yuv420p',
+                          '-b:v', '8M', '-maxrate:v', '11M')
             filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
         else:
             log.info('No hardware encoders. Falling back to software')
-
     metadata_args: Tuple[str, ...] = ()
     if metadata_file:
-        metadata_args = (
-            '-i',
-            f'file:{metadata_file}',
-            '-map_metadata',
-            '1',
-            '-codec',
-            'copy',
-        )
-
-    cmd = (
-        'ffmpeg',
-        '-loglevel',
-        'warning',
-        '-hide_banner',
-        '-stats',
-        '-y',
-        '-f',
-        'concat',
-        '-safe',
-        '0',
-    ) + read_codec + (
-        '-i',
-        fn,
-    ) + codec_args + ('-filter:v', ','.join(filters), '-colorspace', 'bt470bg',
-                      '-color_trc', 'gamma28', '-color_primaries', 'bt470bg',
-                      '-color_range', 'pc', '-an', outfile) + metadata_args
+        metadata_args = ('-i', f'file:{metadata_file}', '-map_metadata', '1',
+                         '-codec', 'copy')
+    cmd = ('ffmpeg', '-loglevel', 'warning', '-hide_banner', '-stats', '-y',
+           '-f', 'concat', '-safe',
+           '0') + read_codec + ('-i', fn) + codec_args + (
+               '-filter:v', ','.join(filters), '-colorspace', 'bt470bg',
+               '-color_trc', 'gamma28', '-color_primaries', 'bt470bg',
+               '-color_range', 'pc', '-an', outfile) + metadata_args
     log.info('Executing: %s', ' '.join(map(quote, cmd)))
     if not dry_run:
         setname('ffmpeg')
@@ -302,6 +233,15 @@ def cleanup_cb(*args: Any) -> Callable[[], None]:
     return cleanup
 
 
+class MainArgs(argparse.Namespace):
+    dates: Optional[Sequence[str]]
+    dry_run: bool
+    hwaccel: bool
+    in_dir: Sequence[str]
+    outdir: Sequence[str]
+    verbose: bool
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--dates', nargs='*')
@@ -310,20 +250,15 @@ def main() -> int:
     parser.add_argument('-H', '--hwaccel', action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('in_dir', nargs='+')
-    args = parser.parse_args()
+    args = cast(MainArgs, parser.parse_args())
     log = setup_logging_stdout(verbose=args.verbose)
-    assert log is not None
-    outdir: str = args.outdir[0]
-    arg: str
-    cleanup_funcs: List[Callable[[], None]] = []
-    for arg in args.in_dir:
-        arg = realpath(arg)
+    cleanup_funcs: List[Callable[..., None]] = []
+    for arg in (realpath(x) for x in args.in_dir):
         files_ = filterfalse(lambda x: isdir(head(x)),
                              map(name_d(arg), sorted(listdir(arg))))
-        i = 0
-        for name, d in files_:
+        for i, (name, d) in enumerate(files_):
             try:
-                fixed_date = args.dates[i]
+                fixed_date: Optional[str] = cast(Sequence[str], args.dates)[i]
             except (IndexError, TypeError):
                 fixed_date = None
             tmp_fd, tempfile = mkstemp(prefix=f'encode-list-{name}-',
@@ -347,7 +282,7 @@ def main() -> int:
             start = end = 0
             for l in (file_line(y)
                       for y in (realpath(x) for x in sorted(things))):
-                fn: str = l.decode()[6:].replace("'", '').strip()
+                fn = l.decode()[6:].replace("'", '').strip()
                 url = basename(fn).replace('.AVI', '')
                 metadata = f'file_packet_metadata url={url}\n'.encode()
                 write_tmp_fd(l)
@@ -375,7 +310,7 @@ def main() -> int:
             log.debug('Temporary file: %s', realpath(tempfile))
             try:
                 encode_concat(tempfile,
-                              path_join(outdir, f'{name}.mkv'),
+                              path_join(args.outdir[0], f'{name}.mkv'),
                               log,
                               corrected_date=fixed_date,
                               dry_run=args.dry_run,
@@ -383,7 +318,6 @@ def main() -> int:
                               metadata_file=chapter_file)
             except KeyboardInterrupt:
                 return 1
-
     for func in cleanup_funcs:
         func()
     return 0
