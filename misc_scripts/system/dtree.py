@@ -2,13 +2,15 @@
 # PYTHON_ARGCOMPLETE_OK
 from html import escape
 from itertools import chain
-from os import DirEntry, chdir, scandir
+from os import chdir
 from os.path import basename, realpath
-from typing import Any, Iterator, Sequence, cast
+from typing import Iterator, Sequence, cast
 import argparse
 import sys
 
 from typing_extensions import Final
+
+from ..utils import scandir_ignore
 
 try:
     import argcomplete
@@ -18,14 +20,6 @@ except ImportError:
 __all__ = ('main', )
 
 CSS_URI: Final[str] = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
-
-
-def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry[str]]:
-    try:
-        return scandir(*args, **kwargs)
-    except OSError as e:
-        print(f'Error: {e}', file=sys.stderr)
-        yield from []
 
 
 def recurse_cwd(path: str,

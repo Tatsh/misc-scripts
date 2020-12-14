@@ -1,24 +1,19 @@
 #!/usr/bin/env python
 from asyncio import subprocess as sp
 from asyncio.events import AbstractEventLoop
-from os import environ, listdir
+from os import listdir
 from typing import AsyncIterator, Tuple
 import asyncio
 import re
 import sys
+
+from ..utils import env_no_case
 
 __all__ = ('main', )
 
 IGNORED_FILES = set(('.DS_Store', '.DS_Store?', '.Spotlight-V100', '.Trashes',
                      '.directory', '.localized', 'Thumbs.db', 'ehthumbs.db'))
 IGNORE_RE = re.compile(r'(?:/\.(?:[Tt]rash|git|npm/_git-remotes))/?')
-
-
-def env_no_case(key: str) -> str:
-    for x in environ:
-        if key == x or key.lower() == x.lower():
-            return environ[x]
-    raise KeyError(key)
 
 
 def ignore_dir(name: bytes) -> Tuple[str, bool]:
@@ -33,8 +28,8 @@ def ignore_dir(name: bytes) -> Tuple[str, bool]:
         IGNORE_RE, path)) or len(set(contents) - IGNORED_FILES) != 0
 
 
-async def iter_lines(loop: AbstractEventLoop,
-                     proc: sp.Process) -> AsyncIterator[str]:
+async def iter_lines(
+        loop: AbstractEventLoop, proc: sp.Process) -> AsyncIterator[str]:  # pylint: disable=no-member
     assert proc.stdout
     while line := await proc.stdout.readline():
         path, ignore = await loop.run_in_executor(None, ignore_dir, line)
@@ -44,15 +39,15 @@ async def iter_lines(loop: AbstractEventLoop,
 
 async def a_main(loop: AbstractEventLoop) -> None:
     async for path in iter_lines(
-            loop, await sp.create_subprocess_exec('find',
-                                                  await loop.run_in_executor(
-                                                      None, env_no_case,
-                                                      'home'),
-                                                  '-xdev',
-                                                  '-type',
-                                                  'd',
-                                                  stdout=sp.PIPE,
-                                                  stderr=sp.PIPE)):
+            loop,
+            await sp.create_subprocess_exec(  # pylint: disable=no-member
+                'find',
+                await loop.run_in_executor(None, env_no_case, 'home'),
+                '-xdev',
+                '-type',
+                'd',
+                stdout=sp.PIPE,
+                stderr=sp.PIPE)):
         await loop.run_in_executor(None, print, path)
 
 

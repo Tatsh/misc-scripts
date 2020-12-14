@@ -1,6 +1,7 @@
 from functools import lru_cache
 from os.path import basename, dirname, join as path_join, splitext
-from typing import AnyStr, Callable, Optional, Sequence, TextIO, Union
+from typing import (Any, AnyStr, Callable, Iterator, Optional, Sequence,
+                    TextIO, Union)
 from urllib.parse import urlparse
 import json
 import logging
@@ -9,12 +10,14 @@ import re
 import sys
 
 __all__ = (
+    'env_no_case',
     'is_ascii',
     'is_roman_numeral',
     'isfile',
     'json2yaml',
     'netloc',
     'sanitize',
+    'scandir_ignore',
     'setup_logging',
     'setup_logging_stderr',
     'setup_logging_stdout',
@@ -24,6 +27,20 @@ __all__ = (
     'ucwords',
     'underscorize',
 )
+
+
+def env_no_case(key: str) -> str:
+    for x in os.environ:
+        if key == x or key.lower() == x.lower():
+            return os.environ[x]
+    raise KeyError(key)
+
+
+def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[os.DirEntry[str]]:  # pylint: disable=unsubscriptable-object
+    try:
+        return os.scandir(*args, **kwargs)
+    except OSError:
+        yield from []
 
 
 def is_ascii(lines: Sequence[str]) -> bool:
@@ -39,7 +56,7 @@ def json2yaml(json_str: str) -> str:
 
 
 def sanitize(s: str) -> str:
-    from youtube_dl.utils import sanitize_filename  # pylint: disable=import-outside-toplevel
+    from youtube_dl.utils import (sanitize_filename)  # pylint: disable=import-outside-toplevel
     return re.sub(r'[_\-]+', '-',
                   sanitize_filename(s, restricted=True).lower())
 
