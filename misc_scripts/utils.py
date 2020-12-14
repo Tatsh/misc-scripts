@@ -2,7 +2,7 @@ from functools import lru_cache
 from logging.handlers import SysLogHandler
 from os.path import basename, dirname, join as path_join, splitext
 from typing import (Any, AnyStr, Callable, Iterator, Optional, Sequence,
-                    TextIO, Union)
+                    TextIO, Union, cast)
 from urllib.parse import urlparse
 import json
 import logging
@@ -89,15 +89,18 @@ def is_ascii(lines: Sequence[str]) -> bool:
 
 def json2yaml(json_str: str) -> str:
     import yaml  # pylint: disable=import-outside-toplevel
-    return yaml.dump(json.loads(json_str.strip()),
-                     default_flow_style=False,
-                     indent=2)
+    return cast(
+        str,
+        yaml.dump(json.loads(json_str.strip()),
+                  default_flow_style=False,
+                  indent=2))
 
 
 def sanitize(s: str) -> str:
     from youtube_dl.utils import (sanitize_filename)  # pylint: disable=import-outside-toplevel
-    return re.sub(r'[_\-]+', '-',
-                  sanitize_filename(s, restricted=True).lower())
+    return re.sub(  # type: ignore[no-any-return]
+        r'[_\-]+', '-',
+        sanitize_filename(s, restricted=True).lower())
 
 
 def slugify(s: str) -> str:
