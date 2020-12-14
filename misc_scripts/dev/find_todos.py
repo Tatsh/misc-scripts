@@ -12,12 +12,12 @@ import sys
 
 import magic
 
+from ..utils import setup_logging_stdout
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
-from ..utils import setup_logging_stdout
 
 __all__ = ('main', )
 
@@ -74,13 +74,12 @@ async def _handle_listing(listing: AsyncIterable[str],
                 continue
             unix_ts = floor(stat(entry).st_mtime)
             with open(entry, 'r') as f:
-                dummy_log_fn = f'.{entry[len(top) + 1:]}.txt'
-                dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
+                dummy_log_fn = realpath(
+                    path_join(outdir, f'.{entry[len(top) + 1:]}.txt'))
                 try:
                     with open(dummy_log_fn, 'r'):
                         pass
-                    dummy_unix_ts = floor(stat(dummy_log_fn).st_mtime)
-                    if dummy_unix_ts == unix_ts:
+                    if floor(stat(dummy_log_fn).st_mtime) == unix_ts:
                         log.debug('Dummy file %s found with same date',
                                   dummy_log_fn)
                         continue
@@ -103,7 +102,8 @@ async def _handle_listing(listing: AsyncIterable[str],
                     m = re.search(r'\b(@?todo|fixme|hack)\b', line, flags=re.I)
                     if m:
                         log_fn = f'{entry[len(top) + 1:]:s}.txt'
-                        log_fn = realpath(path_join(outdir, log_fn))
+                        log_fn = realpath(
+                            path_join(outdir, f'{entry[len(top) + 1:]:s}.txt'))
                         try:
                             last_unix_ts = floor(stat(log_fn).st_mtime)
                             if last_unix_ts == unix_ts:
@@ -122,9 +122,8 @@ async def _handle_listing(listing: AsyncIterable[str],
                             caret='^' * len(m.group(0))))
                         ctx_count = 5
                 if found:
-                    filename = found.name
                     found.close()
-                    setfiletime(filename, (unix_ts, unix_ts))
+                    setfiletime(found.name, (unix_ts, unix_ts))
                     found = None
                     try:
                         with open(dummy_log_fn, 'r'):
@@ -133,8 +132,8 @@ async def _handle_listing(listing: AsyncIterable[str],
                     except IOError:
                         pass
                 else:
-                    dummy_log_fn = f'.{entry[len(top) + 1:]:s}.txt'
-                    dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
+                    dummy_log_fn = realpath(
+                        path_join(outdir, f'.{entry[len(top) + 1:]:s}.txt'))
                     makedirs(dirname(dummy_log_fn), exist_ok=True)
                     with open(dummy_log_fn, 'w+') as f:
                         f.write('Dummy\n')
