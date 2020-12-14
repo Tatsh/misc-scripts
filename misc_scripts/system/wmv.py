@@ -1,146 +1,17 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
-from os.path import basename
-from typing import List, Optional, Sequence, Tuple, cast
+from typing import List, Sequence, cast
 import argparse
-import logging
 import subprocess as sp
 import sys
 
-from typing_extensions import Final
+from ..text.w2c import make_target
+from ..utils import setup_logging_stdout
 
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
-TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
-    ('　', ' '),
-    ('…', '...'),
-    ('！', '!'),
-    ('？', '?'),
-    ('～', '~'),
-    ('（', '('),
-    ('）', ')'),
-    ('＂', '"'),
-    ('＃', '#'),
-    ('＄', '$'),
-    ('％', '%'),
-    ('＆', '&'),
-    ('＇', "'"),
-    ('＊', '*'),
-    ('，', ','),
-    ('－', '-'),
-    ('．', '.'),
-    ('／', '/'),
-    ('０', '0'),
-    ('１', '1'),
-    ('２', '2'),
-    ('３', '3'),
-    ('４', '4'),
-    ('５', '5'),
-    ('６', '6'),
-    ('７', '7'),
-    ('８', '8'),
-    ('９', '9'),
-    ('：', ':'),
-    ('；', ';'),
-    ('＜', '<'),
-    ('＝', '='),
-    ('＞', '>'),
-    ('？', '?'),
-    ('＠', '@'),
-    ('Ａ', 'A'),
-    ('Ｂ', 'B'),
-    ('Ｃ', 'C'),
-    ('Ｄ', 'D'),
-    ('Ｅ', 'E'),
-    ('Ｆ', 'F'),
-    ('Ｇ', 'G'),
-    ('Ｈ', 'H'),
-    ('Ｉ', 'I'),
-    ('Ｊ', 'J'),
-    ('Ｋ', 'K'),
-    ('Ｌ', 'L'),
-    ('Ｍ', 'M'),
-    ('Ｎ', 'N'),
-    ('Ｏ', 'O'),
-    ('Ｐ', 'P'),
-    ('Ｑ', 'Q'),
-    ('Ｒ', 'R'),
-    ('Ｓ', 'S'),
-    ('Ｔ', 'T'),
-    ('Ｕ', 'U'),
-    ('Ｖ', 'V'),
-    ('Ｗ', 'W'),
-    ('Ｘ', 'X'),
-    ('Ｙ', 'Y'),
-    ('Ｚ', 'Z'),
-    ('［', '['),
-    ('＼', '\\'),
-    ('］', ']'),
-    ('＾', '^'),
-    ('＿', '_'),
-    ('｀', '`'),
-    ('ａ', 'a'),
-    ('ｂ', 'b'),
-    ('ｃ', 'c'),
-    ('ｄ', 'd'),
-    ('ｅ', 'e'),
-    ('ｆ', 'f'),
-    ('ｇ', 'g'),
-    ('ｈ', 'h'),
-    ('ｉ', 'i'),
-    ('ｊ', 'j'),
-    ('ｋ', 'k'),
-    ('ｌ', 'l'),
-    ('ｍ', 'm'),
-    ('ｎ', 'n'),
-    ('ｏ', 'o'),
-    ('ｐ', 'p'),
-    ('ｑ', 'q'),
-    ('ｒ', 'r'),
-    ('ｓ', 's'),
-    ('ｔ', 't'),
-    ('ｕ', 'u'),
-    ('ｖ', 'v'),
-    ('ｗ', 'w'),
-    ('ｘ', 'x'),
-    ('ｙ', 'y'),
-    ('ｚ', 'z'),
-    ('｛', '{'),
-    ('｜', '|'),
-    ('｝', '}'),
-    ('｟', '⸨'),
-    ('｠', '⸩'),
-    ('￠', '¢'),
-    ('￡', '£'),
-    ('￢', '¬'),
-    ('￣', '‾'),
-    ('￤', '|'),
-    ('￥', '¥'),
-    ('￦', '₩'),
-)
-
-
-@lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
-    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
-
-
-def make_target(filename: str) -> str:
-    for find, replace in TR_MAP:
-        filename = filename.replace(find, replace)
-    return filename
 
 
 class Namespace(argparse.Namespace):

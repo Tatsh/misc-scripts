@@ -4,6 +4,8 @@ import sys
 
 from typing_extensions import Final
 
+__all__ = ('TR_MAP', 'main', 'make_target')
+
 TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     ('　', ' '),
     ('…', '...'),
