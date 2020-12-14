@@ -6,7 +6,7 @@ import sys
 def main() -> int:
     command = 'open'
     try:
-        sp.run(('command', '-v', command),
+        sp.run(('bash', '-c', f'command -v {command}'),
                stdout=sp.PIPE,
                stderr=sp.PIPE,
                check=True)
