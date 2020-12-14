@@ -17,7 +17,7 @@ __all__ = ('main', )
 
 def get_ultraiso_path(prefix: str) -> Optional[str]:
     name_of_exe = 'UltraISO.exe'
-    paths = (path_join(prefix, 'drive_c', 'Program Files%s' % (x), 'UltraISO',
+    paths = (path_join(prefix, 'drive_c', f'Program Files{x}', 'UltraISO',
                        name_of_exe) for x in ('', ' (x86)'))
     actual_exe_path = None
     for exe in paths:
