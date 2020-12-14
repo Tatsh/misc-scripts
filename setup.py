@@ -46,6 +46,7 @@ setup(
         'BeautifulSoup4',
         'PyYAML',
         'argcomplete',  # only required for auto-complete behaviour
+        'binaryornot',
         'lxml',
         'python-magic',
         'requests',
