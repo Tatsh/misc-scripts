@@ -18,7 +18,8 @@ def find_scripts() -> Iterator[str]:
         if not full.is_dir():
             continue
         for module in listdir(full):
-            if module == '__init__.py' or not module.endswith('.py'):
+            if (module in ('__init__.py', 'utils.py')
+                    or not module.endswith('.py')):
                 continue
             module = module.replace('.py', '')
             command = module.replace('_', '-')
