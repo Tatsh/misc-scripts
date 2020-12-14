@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from typing import Iterator, Sequence, cast
+from typing import Sequence, cast
 import argparse
 import plistlib
-import re
-import subprocess as sp
 import sys
 
 from typing_extensions import Final
+
+from ..utils import hexstr2bytes, xattr
 
 try:
     import argcomplete
@@ -17,27 +17,6 @@ except ImportError:
 __all__ = ('main', )
 
 KEY_WHEREFROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
-
-
-def hexstr2bytes(s: str) -> bytes:
-    def chunks(l: str, n: int) -> Iterator[str]:
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
-
-    def hexstr2bytes_generator(s: str) -> Iterator[int]:
-        for hex_num in chunks(s, 2):
-            yield int(hex_num, 16)
-
-    return bytes(hexstr2bytes_generator(s))
-
-
-def xattr(key: str, filename: str) -> str:
-    return re.sub(
-        r'\s+', '',
-        sp.run(('xattr', '-p', key, filename),
-               encoding='utf-8',
-               stdout=sp.PIPE,
-               check=True).stdout)
 
 
 class Namespace(argparse.Namespace):

@@ -28,34 +28,19 @@ Note: you can supply custom mpv path and options with the MPV environment
       options _if_ the script starts mpv. If mpv is not started by the script
       (i.e. mpv is already running), this will be ignored.
 """
-from functools import lru_cache
-from logging.handlers import SysLogHandler
-from os.path import basename, expanduser, realpath
-from typing import Optional
+from os.path import expanduser, realpath
 import errno
-import logging
 import os
 import socket
 import string
 import subprocess
 import sys
 
+from ..utils import setup_syslog
+
 __all__ = ('main', )
 
 SOCK = expanduser('~/.cache/umpv-socket')
-
-
-@lru_cache()
-def setup_syslog(name: Optional[str] = None,
-                 verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = SysLogHandler(address='/dev/log')
-    channel.setFormatter(logging.Formatter('umpv: %(message)s'))
-    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
 
 
 def is_url(filename: str) -> bool:

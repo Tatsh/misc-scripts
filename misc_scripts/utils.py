@@ -1,4 +1,5 @@
 from functools import lru_cache
+from logging.handlers import SysLogHandler
 from os.path import basename, dirname, join as path_join, splitext
 from typing import (Any, AnyStr, Callable, Iterator, Optional, Sequence,
                     TextIO, Union)
@@ -7,10 +8,12 @@ import json
 import logging
 import os
 import re
+import subprocess as sp
 import sys
 
 __all__ = (
     'env_no_case',
+    'hexstr2bytes',
     'is_ascii',
     'is_roman_numeral',
     'isfile',
@@ -21,12 +24,48 @@ __all__ = (
     'setup_logging',
     'setup_logging_stderr',
     'setup_logging_stdout',
+    'setup_syslog',
     'slug_filename',
     'slug_rename',
     'slugify',
     'ucwords',
     'underscorize',
+    'xattr',
 )
+
+
+@lru_cache()
+def setup_syslog(name: Optional[str] = None,
+                 verbose: bool = False) -> logging.Logger:
+    name = name if name else basename(sys.argv[0])
+    log = logging.getLogger(name)
+    log.setLevel(logging.DEBUG if verbose else logging.INFO)
+    channel = SysLogHandler(address='/dev/log')
+    channel.setFormatter(logging.Formatter('umpv: %(message)s'))
+    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
+    log.addHandler(channel)
+    return log
+
+
+def hexstr2bytes(s: str) -> bytes:
+    def chunks(l: str, n: int) -> Iterator[str]:
+        for i in range(0, len(l), n):
+            yield l[i:i + n]
+
+    def hexstr2bytes_generator(s: str) -> Iterator[int]:
+        for hex_num in chunks(s, 2):
+            yield int(hex_num, 16)
+
+    return bytes(hexstr2bytes_generator(s))
+
+
+def xattr(key: str, filename: str) -> str:
+    return re.sub(
+        r'\s+', '',
+        sp.run(('xattr', '-p', key, filename),
+               text=True,
+               stdout=sp.PIPE,
+               check=True).stdout)
 
 
 def env_no_case(key: str) -> str:
