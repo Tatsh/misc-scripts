@@ -5,18 +5,11 @@ import pathlib
 
 from setuptools import setup
 
-EXCEPTIONS = {
-    'misc_scripts.chrome:bookmarks2csv': 'chrome-bookmarks2csv',
-    'misc_scripts.chrome:link': 'chrome-link',
-}
-
 
 def find_scripts() -> Iterator[str]:
     p = pathlib.Path(__file__).parent.absolute().joinpath('misc_scripts')
-    for item in listdir(p):
-        full = p.joinpath(item)
-        if not full.is_dir():
-            continue
+    for item, full in ((x, p.joinpath(x)) for x in listdir(p)
+                       if p.joinpath(x).is_dir()):
         for module in listdir(full):
             if (module in ('__init__.py', 'utils.py')
                     or not module.endswith('.py')):
@@ -24,10 +17,9 @@ def find_scripts() -> Iterator[str]:
             module = module.replace('.py', '')
             command = module.replace('_', '-')
             path = f'misc_scripts.{item}:{module}'
-            if path in EXCEPTIONS:
-                yield f'{EXCEPTIONS[path]} = {path}'
-            else:
-                yield f'{command} = {path}'
+            if item == 'chrome':
+                command = f'chrome-{command}'
+            yield f'{command} = {path}'
 
 
 setup(
