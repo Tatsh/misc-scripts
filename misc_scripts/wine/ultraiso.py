@@ -4,13 +4,13 @@
 # UltraISO must be installed into a Wine prefix.
 from os.path import expanduser, join as path_join, realpath
 from shlex import quote
-from typing import Any, AnyStr, Optional, Sequence, Union, cast
+from typing import Any, Optional, Sequence, Union, cast
 import argparse
 import os
 import subprocess as sp
 import sys
 
-from ..utils import setup_logging_stdout
+from ..utils import isfile, setup_logging_stdout
 
 __all__ = ('main', )
 
@@ -44,15 +44,6 @@ class ExistantFile(argparse.Action):
         with open(cast(str, values), 'rb'):
             setattr(namespace, self.dest,
                     adjust_unix_path_to_wine(cast(str, values)))
-
-
-def isfile(f: Union[AnyStr, int]) -> bool:
-    try:
-        with open(f, 'rb'):
-            return True
-    except IOError:
-        pass
-    return False
 
 
 def main() -> int:

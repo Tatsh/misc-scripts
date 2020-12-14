@@ -1,10 +1,11 @@
 from functools import lru_cache
 from os.path import basename
-from typing import Callable, Optional, TextIO
+from typing import AnyStr, Callable, Optional, TextIO, Union
 import logging
 import sys
 
 __all__ = (
+    'isfile',
     'setup_logging',
     'setup_logging_stderr',
     'setup_logging_stdout',
@@ -29,3 +30,12 @@ def setup_logging(out: TextIO) -> Callable[..., logging.Logger]:
 
 setup_logging_stderr = setup_logging(sys.stderr)
 setup_logging_stdout = setup_logging(sys.stdout)
+
+
+def isfile(f: Union[AnyStr, int]) -> bool:
+    try:
+        with open(f, 'rb'):
+            return True
+    except IOError:
+        pass
+    return False
