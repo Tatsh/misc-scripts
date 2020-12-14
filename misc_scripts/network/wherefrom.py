@@ -1,18 +1,13 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
-from os.path import basename
-from typing import Iterator, Optional, Sequence, cast
+from typing import Iterator, Sequence, cast
 import argparse
-import logging
 import plistlib
 import re
 import subprocess as sp
 import sys
 
 from typing_extensions import Final
-
-from ..utils import setup_logging_stdout
 
 try:
     import argcomplete

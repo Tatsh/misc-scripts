@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
-from typing import Iterator, Optional, Sequence, cast
+from typing import Iterator, Sequence, cast
 from zipfile import ZipFile
 import argparse
-import logging
 import re
 import subprocess as sp
 import sys
+
+from ..utils import setup_logging_stdout
 
 try:
     import argcomplete

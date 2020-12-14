@@ -1,9 +1,6 @@
 #!/usr/bin/env python
-from functools import lru_cache
-from os.path import basename
 from pathlib import Path
-from typing import Dict, Optional
-import logging
+from typing import Dict
 import plistlib
 import sys
 
@@ -14,7 +11,6 @@ from ..utils import setup_logging_stdout
 __all__ = ('main', )
 
 HIGH_RES_KEY: Final[str] = 'NSHighResolutionCapable'
-
 
 
 def main() -> int:

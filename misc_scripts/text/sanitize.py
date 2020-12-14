@@ -7,7 +7,7 @@ try:
     from youtube_dl.utils import sanitize_filename
 except ImportError as e:
 
-    def sanitize_filename(*args: Any, **kwargs: Any):
+    def sanitize_filename(*args: Any, **kwargs: Any) -> str:
         raise ImportError('youtube_dl.utils not found') from e
 
 

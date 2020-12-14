@@ -6,12 +6,10 @@
 # the Shift-JIS encoding scheme. Note that not every kanji is in the Shift-JIS
 # encoding.
 from copy import copy
-from functools import lru_cache
 from os import environ as env
-from os.path import basename, join as path_join
+from os.path import join as path_join
 from typing import Optional, Sequence, Tuple, cast
 import argparse
-import logging
 import os
 import subprocess as sp
 import sys

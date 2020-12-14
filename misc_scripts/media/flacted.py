@@ -4,9 +4,10 @@ from copy import copy
 from os.path import basename
 from typing import Any, Iterable, Optional, Tuple, cast
 import argparse
-import logging
 import subprocess as sp
 import sys
+
+from ..utils import setup_logging_stdout
 
 try:
     import argcomplete

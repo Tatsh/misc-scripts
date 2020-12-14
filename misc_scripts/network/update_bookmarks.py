@@ -1,11 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
 from typing import Any, Optional, Sequence, TextIO, Tuple, Union, cast
 import argparse
-import logging
 import os
 import re
 import sys

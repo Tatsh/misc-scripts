@@ -1,10 +1,6 @@
 #!/usr/bin/env python
-from functools import lru_cache
 from os import path
-from os.path import basename
-from typing import Optional
 import io
-import logging
 import os
 import re
 import shutil
@@ -12,11 +8,12 @@ import sys
 
 from typing_extensions import Final
 
+from ..utils import setup_logging_stdout
+
 __all__ = ('main', )
 
 FILESIZE_RE: Final[re.Pattern] = re.compile(r'filesizes="(\d+?)"')
 OFFSET_RE: Final[re.Pattern] = re.compile(r'offset=`head -n (\d+?) "\$0"')
-
 
 
 def main() -> int:

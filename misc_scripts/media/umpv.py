@@ -5,11 +5,11 @@ playback with this script, it will try to reuse an already running instance of
 mpv (but only if that was started with umpv). Other mpv instances (not started
 by umpv) are ignored, and the script doesn't know about them.
 
-This only takes filenames as arguments. Custom options can't be used; the script
-interprets them as filenames. If mpv is already running, the files passed to
-umpv are appended to mpv's internal playlist. If a file does not exist or is
-otherwise not playable, mpv will skip the playlist entry when attempting to
-play it (from the GUI perspective, it's silently ignored).
+This only takes filenames as arguments. Custom options can't be used; the
+script interprets them as filenames. If mpv is already running, the files
+passed to umpv are appended to mpv's internal playlist. If a file does not
+exist or is otherwise not playable, mpv will skip the playlist entry when
+attempting to play it (from the GUI perspective, it's silently ignored).
 
 If mpv isn't running yet, this script will start mpv and let it control the
 current terminal. It will not write output to stdout/stderr, because this
@@ -24,9 +24,9 @@ Note that you can control the mpv instance by writing to the command fifo:
 
 Note: you can supply custom mpv path and options with the MPV environment
       variable. The environment variable will be split on whitespace, and the
-      first item is used as path to mpv binary and the rest is passed as options
-      _if_ the script starts mpv. If mpv is not started by the script (i.e. mpv
-      is already running), this will be ignored.
+      first item is used as path to mpv binary and the rest is passed as
+      options _if_ the script starts mpv. If mpv is not started by the script
+      (i.e. mpv is already running), this will be ignored.
 """
 from functools import lru_cache
 from logging.handlers import SysLogHandler
@@ -104,10 +104,8 @@ def main() -> int:
         log.info('Starting new mpv instance')
         # Let mpv recreate socket if it does not already exist.
         opts = (os.getenv('MPV') or 'mpv').split()
-        opts.extend(([] if verbose else ['--no-terminal']) + [
-            '--force-window', f'--input-ipc-server={SOCK}',
-            '--'
-        ])
+        opts.extend(([] if verbose else ['--no-terminal']) +
+                    ['--force-window', f'--input-ipc-server={SOCK}', '--'])
         opts.extend(files)
         subprocess.run(opts, check=True)
     return 0
