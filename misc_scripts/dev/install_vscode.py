@@ -20,7 +20,9 @@ def main() -> int:
     if sys.platform != 'linux':
         print('This script is only for Linux', file=sys.stderr)
         return 1
-    print('Determining deb filename', file=sys.stderr)
+    print(  # type: ignore[unreachable]
+        'Determining deb filename',
+        file=sys.stderr)
     pool_path = [
         l for l in requests.get(
             f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages').text.
@@ -48,9 +50,9 @@ def main() -> int:
                  symlinks=True)
         rm(deb_file)
         print('Fixing desktop files', file=sys.stderr)
-        for df in DESKTOP_FILES:
+        for desktop_file in DESKTOP_FILES:
             lines = []
-            with open(df) as f:
+            with open(desktop_file) as f:
                 for line in f.readlines():
                     if '/usr/share' in line:
                         lines.append(
@@ -58,7 +60,7 @@ def main() -> int:
                                          expanduser('~/.local/share')))
                     else:
                         lines.append(line)
-            with open(df, 'w') as f:
+            with open(desktop_file, 'w') as f:
                 for line in lines:
                     f.write(line)
         sp.run(('update-desktop-database',
