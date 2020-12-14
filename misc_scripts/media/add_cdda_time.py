@@ -9,7 +9,7 @@ try:
 except ImportError:
     argcomplete = None
 
-__all__ = ('main', )
+__all__ = ('add_times', 'main')
 
 
 def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
