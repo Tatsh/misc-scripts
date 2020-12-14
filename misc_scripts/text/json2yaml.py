@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 from typing import Any, Mapping
-import json
 import sys
 
 from typing_extensions import Final
-import yaml
+
+from ..utils import json2yaml
 
 __all__ = ('main', )
 
@@ -17,13 +17,12 @@ def main() -> int:
         for arg in sys.argv[1:]:
             try:
                 with open(arg, 'r') as f:
-                    print(yaml.dump(json.loads(f.read().strip()), **YD_ARGS))
+                    print(json2yaml(f.read()))
             except FileNotFoundError:
                 return 1
         return 0
     # stdin mode
-    for arg in sys.stdin.readlines():
-        print(yaml.dump(json.loads(arg.strip()), **YD_ARGS))
+    print('\n'.join(json2yaml(x) for x in sys.stdin.readlines()))
     return 0
 
 

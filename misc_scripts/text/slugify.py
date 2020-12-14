@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-import re
 import sys
+
+from ..utils import slugify
 
 __all__ = ('main', )
 
 
 def main() -> int:
-    print(
-        re.sub(r'[-\s_]+', '-',
-               re.sub(r'[^\w\s-]', '', sys.argv[1]).strip().lower()))
+    print(slugify(sys.argv[1]))
     return 0
 
 

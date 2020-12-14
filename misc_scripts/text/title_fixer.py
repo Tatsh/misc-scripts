@@ -7,12 +7,14 @@ import sys
 
 from typing_extensions import Final
 
+from ..utils import is_roman_numeral
+
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
 
-__all__ = ('main', )
+__all__ = ('lower_stop', 'main')
 
 ENGLISH_MODE: Final[int] = 1
 JAPANESE_MODE: Final[int] = 1 << 1
@@ -108,15 +110,6 @@ def get_name(word: str) -> Optional[str]:
         if name.lower() == word:
             return output
     return None
-
-
-def is_roman_numeral(string: str) -> bool:
-    if not string:
-        return False
-    # https://l.tat.sh/2HXEIyx
-    return re.match(
-        r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
-        re.I) is not None
 
 
 def fix_apostrophes(word: str) -> str:

@@ -5,14 +5,8 @@ __all__ = ('main', )
 
 
 def main() -> int:
-    # argv mode
-    if len(sys.argv) >= 2:
-        for arg in sys.argv[1:]:
-            print(arg.strip())
-        return 0
-    # stdin mode
-    for arg in sys.stdin.readlines():
-        print(arg.strip())
+    print('\n'.join(x.strip() for x in (
+        sys.argv[1:] if len(sys.argv) >= 2 else sys.stdin.readlines())))
     return 0
 
 

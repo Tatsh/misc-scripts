@@ -1,12 +1,14 @@
 #!/usr/bin/env python
 import sys
 
+from ..utils import ucwords
+
 __all__ = ('main', )
 
 
-def main():
-    for line in sys.stdin.readlines():
-        print(line.strip().title())
+def main() -> int:
+    print('\n'.join(ucwords(x) for x in sys.stdin.readlines()))
+    return 0
 
 
 if __name__ == '__main__':

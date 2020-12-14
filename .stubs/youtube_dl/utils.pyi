@@ -1,2 +1,2 @@
-def sanitize_filename(s: str) -> str:
+def sanitize_filename(s: str, restricted: bool = ...) -> str:
     ...

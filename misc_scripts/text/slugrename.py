@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from os.path import basename, dirname, join as path_join, splitext
 import argparse
-import os
-import re
 import sys
+
+from ..utils import slug_filename, slug_rename
 
 try:
     import argcomplete
@@ -23,18 +22,10 @@ def main() -> int:
     args = parser.parse_args()
     arg: str
     for arg in args.files:
-        name, ext = splitext(arg)
-        if ext in ('.bz2', '.gpg', '.gz'):
-            name, ext2 = splitext(name)
-            ext = f'{ext2}{ext}'
-        name = re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '',
-                                              basename(name))).strip().lower()
-        name += ext.lower()
-        name = path_join(dirname(arg), name)
         if args.dry_run:
-            print(name)
+            print(slug_filename(arg))
         else:
-            os.replace(arg, name)
+            slug_rename(arg)
     return 0
 
 

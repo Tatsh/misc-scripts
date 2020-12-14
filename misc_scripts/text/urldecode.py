@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from typing import Iterable, Iterator, Literal, cast
-from urllib.parse import unquote_plus, urlparse
+from urllib.parse import unquote_plus
 import argparse
 import sys
+
+from ..utils import netloc
 
 try:
     import argcomplete
@@ -21,9 +23,7 @@ def parse(
                     'ignore'] = 'replace') -> Iterator[str]:
     for x in values:
         val = unquote_plus(x, encoding=encoding, errors=errors)
-        if is_netloc:
-            val = urlparse(val).netloc.strip()
-        yield val
+        yield netloc(val) if is_netloc else val
 
 
 class Namespace(argparse.Namespace):
@@ -43,12 +43,11 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
-    arg = args.string if is_atty else sys.stdin.readlines()
-    for x in parse(arg,
-                   is_netloc=is_netloc,
-                   encoding=args.encoding,
-                   errors=args.errors):
-        print(x)
+    print('\n'.join(
+        parse(args.string if is_atty else sys.stdin.readlines(),
+              is_netloc=is_netloc,
+              encoding=args.encoding,
+              errors=args.errors)))
     return 0
 
 

@@ -2,8 +2,9 @@
 # PYTHON_ARGCOMPLETE_OK
 from typing import Sequence, cast
 import argparse
-import re
 import sys
+
+from ..utils import underscorize
 
 try:
     import argcomplete
@@ -23,10 +24,7 @@ def main() -> int:
                         help='Strings to process')
     if argcomplete:
         argcomplete.autocomplete(parser)
-    print(
-        re.sub(r'\s+', '_',
-               ' '.join(cast(Sequence[str],
-                             parser.parse_args().strings))))
+    print(underscorize(cast(Sequence[str], parser.parse_args().strings)))
     return 0
 
 

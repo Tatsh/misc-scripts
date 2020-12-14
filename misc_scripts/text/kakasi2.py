@@ -90,7 +90,6 @@ def main() -> int:
     log = setup_logging_stdout()
     kakasi_bin = find_kakasi()
     iconv = find_iconv()
-
     if not kakasi_bin:
         log.error('No valid `kakasi` binary found.')
         return 1
@@ -98,7 +97,6 @@ def main() -> int:
         log.error('No valid `iconv` binary found (must support Shift-JIS '
                   'conversion).')
         return 1
-
     parser = argparse.ArgumentParser()
     parser.add_argument('words', nargs='*')
     parser.add_argument('-k',
@@ -111,61 +109,43 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
-    words = args.words
-    iconv_to_args = [
-        iconv,
-        '-t',
-        'SJIS',
-    ]
+    iconv_to_args = [iconv, '-t', 'SJIS']
     iconv_from_args = copy(iconv_to_args)
     iconv_from_args[1] = '-f'
-    kakasi_args = (
-        kakasi_bin,
-        '-s',
-        '-Ja',
-        '-Ha',
-        '-Ka',
-    )
-    words = [x.strip() for x in words]
-    words = [x for x in words if len(x) > 0]
-    # stdin
-    stdin_words = [x.strip() for x in sys.stdin.readlines()]
-    stdin_words = [x for x in stdin_words if len(x) > 0]
-    words += stdin_words
-
-    for word_s, word in ((x, x.encode('utf-8')) for x in words):
+    kakasi_args = (kakasi_bin, '-s', '-Ja', '-Ha', '-Ka')
+    for word_s, word in (
+        (x, x.encode()
+         ) for x in [x
+                     for x in (x.strip() for x in args.words) if len(x) > 0] +
+        [x for x in (x.strip() for x in sys.stdin.readlines()) if len(x) > 0]):
         iconv_to_sjis = sp.Popen(iconv_to_args,
                                  stdin=sp.PIPE,
                                  stdout=sp.PIPE,
                                  stderr=sp.PIPE)
         out, err = iconv_to_sjis.communicate(word)
-        err_s = err.decode('utf-8').strip()
+        err_s = err.decode().strip()
         if err_s:
             log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s,
                       err_s)
             continue
-
         kakasi = sp.Popen(kakasi_args,
                           stdin=sp.PIPE,
                           stdout=sp.PIPE,
                           stderr=sp.PIPE)
         out, err = kakasi.communicate(out)
-
         iconv_from_sjis = sp.Popen(iconv_from_args,
                                    stdin=sp.PIPE,
                                    stdout=sp.PIPE,
                                    stderr=sp.PIPE)
         final, err = iconv_from_sjis.communicate(out)
-        err_s = err.decode('utf-8').strip()
+        err_s = err.decode().strip()
         if err_s:
             log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)",
                       word_s, err_s)
             continue
-
-        final_s = final.decode('utf-8')
+        final_s = final.decode()
         if not args.keep_long:
             final_s = final_s.replace('^', '')
-
         if not args.allow_non_ascii:
             for find, repl in JIS_ASCII_MAP:
                 final_s = final_s.replace(find, repl)

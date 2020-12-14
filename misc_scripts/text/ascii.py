@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 import sys
+from ..utils import is_ascii
 
 __all__ = ('main', )
 
 
 def main() -> int:
-    lines = sys.argv[1:] if len(sys.argv) > 1 else sys.stdin.readlines()
-    return (1 if len(''.join(x.strip() for x in lines)) != len(''.join(
-        (''.join(y for y in x.strip() if ord(y) < 128))
-        for x in lines)) else 0)
+    return (1 if not is_ascii(
+        sys.argv[1:] if len(sys.argv) > 1 else sys.stdin.readlines()) else 0)
 
 
 if __name__ == '__main__':
