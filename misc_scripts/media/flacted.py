@@ -21,7 +21,7 @@ def metaflac(*args: Any) -> str:
     return sp.run(('metaflac', ) + cast(Tuple[str, ...], args),
                   check=True,
                   stdout=sp.PIPE,
-                  encoding='utf-8').stdout
+                  text=True).stdout
 
 
 class Namespace(argparse.Namespace):
@@ -36,7 +36,6 @@ class Namespace(argparse.Namespace):
 
 
 def main() -> int:
-    setup_logging_stdout()
     log = setup_logging_stdout()
     invoked_as = basename(sys.argv[0])
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
@@ -92,7 +91,6 @@ def main() -> int:
     args = cast(Namespace, parser.parse_args())
     metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
     cleanup_args = copy(metaflac_args)
-    destroy = args.delete_all_before
     cleanup_args.append('--remove-all-tags')
     cleanup_args.extend(args.files)
     for key in ('title', 'artist', 'album', 'year', 'track', 'genre'):
@@ -119,7 +117,7 @@ def main() -> int:
     if len(metaflac_args) == 2:
         log.error('Not doing anything')
         return 1
-    if destroy:
+    if args.delete_all_before:
         metaflac(*cleanup_args)
     metaflac_args.extend(args.files)
     metaflac(*metaflac_args)
