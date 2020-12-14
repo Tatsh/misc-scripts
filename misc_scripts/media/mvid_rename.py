@@ -9,8 +9,8 @@ __all__ = ('main', )
 def _rename_and_trash(dir_: str) -> None:
     try:
         with open(f'{dir_}/{basename(dir_).lower()}.mkv', 'rb') as _in:
-            new_file = realpath(f'{dir_}/../{basename(dir_)}.mkv')
-            with open(new_file, 'wb+') as out:
+            with open(realpath(f'{dir_}/../{basename(dir_)}.mkv'),
+                      'wb+') as out:
                 out.write(_in.read())
             rmtree(dir_)
     except IOError:
@@ -18,8 +18,7 @@ def _rename_and_trash(dir_: str) -> None:
 
 
 def main() -> int:
-    for x in sys.argv[1:]:
-        x = realpath(x)
+    for x in (realpath(x) for x in sys.argv[1:]):
         if not isdir(x):
             continue
         _rename_and_trash(x)
