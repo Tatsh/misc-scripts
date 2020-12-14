@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+from functools import lru_cache
+from os import path
+from os.path import basename
+from typing import Optional
+import io
+import logging
+import os
+import re
+import shutil
+import sys
+
+from typing_extensions import Final
+
+__all__ = ('main', )
+
+FILESIZE_RE: Final[re.Pattern] = re.compile(r'filesizes="(\d+?)"')
+OFFSET_RE: Final[re.Pattern] = re.compile(r'offset=`head -n (\d+?) "\$0"')
+
+
+
+def main() -> int:
+    log = setup_logging_stdout()
+    if len(sys.argv) == 2:
+        input_path = sys.argv[1]
+        output_path = './'
+    elif len(sys.argv) == 3:
+        input_path = sys.argv[1]
+        output_path = sys.argv[2]
+    else:
+        print(f'Usage: {sys.argv[0]} <input file> <output dir>',
+              file=sys.stderr)
+        return 1
+    game_bin = open(input_path, 'rb')
+    os.makedirs(output_path, exist_ok=True)
+    # Read the first 10kb so we can determine the script line number
+    beginning = game_bin.read(10240).decode('utf-8', errors='ignore')
+    offset_match = OFFSET_RE.search(beginning)
+    if not offset_match:
+        log.error('Failed to find offset', file=sys.stderr)
+        return 1
+    script_lines = int(offset_match.group(1))
+    # Read the number of lines to determine the script size
+    game_bin.seek(0, io.SEEK_SET)
+    for _ in range(0, script_lines):
+        game_bin.readline()
+    script_size = game_bin.tell()
+    log.debug('Makeself script size: %d', script_size)
+    # Read the script
+    game_bin.seek(0, io.SEEK_SET)
+    script_bin = game_bin.read(script_size)
+    with open(path.join(output_path, 'unpacker.sh'), 'wb') as script_f:
+        script_f.write(script_bin)
+    script = script_bin.decode('utf-8')
+    # Filesize is for the MojoSetup archive, not the actual game data
+    filesize_match = FILESIZE_RE.search(script)
+    if not filesize_match:
+        log.error('Failed to find file size value')
+        return 1
+    filesize = int(filesize_match.group(1))
+    log.debug('MojoSetup archive size: %d', filesize)
+    # Extract the setup archive
+    game_bin.seek(script_size, io.SEEK_SET)
+    with open(path.join(output_path, 'mojosetup.tar.gz'), 'wb') as setup_f:
+        setup_f.write(game_bin.read(filesize))
+    # Extract the game data archive
+    dataoffset = script_size + filesize
+    game_bin.seek(dataoffset, io.SEEK_SET)
+    with open(path.join(output_path, 'data.zip'), 'wb') as datafile:
+        shutil.copyfileobj(game_bin, datafile)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

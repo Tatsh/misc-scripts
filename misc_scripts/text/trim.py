@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+import sys
+
+__all__ = ('main', )
+
+
+def main() -> int:
+    # argv mode
+    if len(sys.argv) >= 2:
+        for arg in sys.argv[1:]:
+            print(arg.strip())
+        return 0
+    # stdin mode
+    for arg in sys.stdin.readlines():
+        print(arg.strip())
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

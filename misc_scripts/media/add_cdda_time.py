@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from typing import Iterable, Optional, cast
+import argparse
+import sys
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+__all__ = ('main', )
+
+
+def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
+    if not times:
+        return None
+    total_ms = 0
+    for time in times:
+        minutes = int(time[0:2])
+        seconds = int(time[3:5])
+        frames = int(time[6:8])
+        if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99
+                or seconds > 59 or frames > 75):
+            return None
+        total_ms += (minutes * 60 * 1000) + (seconds * 1000) + int(
+            (frames * 1000) / 75)
+    minutes = int(total_ms / 60000)
+    remainder_ms = int(total_ms % 60000)
+    seconds = int(remainder_ms / 1000)
+    remainder_ms = int(remainder_ms % 1000)
+    frames = int((remainder_ms * 1000 * 75) / 1e6) + 1
+    if minutes > 99 or seconds > 59 or frames > 75:
+        return None
+    return f'{minutes:02d}:{seconds:02d}:{frames:02d}'
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Calculate total CDDA time for use in a CUE sheet')
+    parser.add_argument(
+        'times',
+        metavar='TIMES',
+        nargs='+',
+        help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    args = parser.parse_args()
+    times = add_times(cast(Optional[Iterable[str]], args.times))
+    if not times:
+        return 1
+    print(times)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,31 @@
+#!/usr/bin/env python
+from typing import Any, Mapping
+import json
+import sys
+
+from typing_extensions import Final
+import yaml
+
+__all__ = ('main', )
+
+YD_ARGS: Final[Mapping[str, Any]] = dict(default_flow_style=False, indent=2)
+
+
+def main() -> int:
+    # argv mode
+    if len(sys.argv) >= 2:
+        for arg in sys.argv[1:]:
+            try:
+                with open(arg, 'r') as f:
+                    print(yaml.dump(json.loads(f.read().strip()), **YD_ARGS))
+            except FileNotFoundError:
+                return 1
+        return 0
+    # stdin mode
+    for arg in sys.stdin.readlines():
+        print(yaml.dump(json.loads(arg.strip()), **YD_ARGS))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

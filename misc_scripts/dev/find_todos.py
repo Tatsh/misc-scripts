@@ -1,0 +1,178 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from glob import glob
+from math import floor
+from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
+from os.path import basename, dirname, isdir, join as path_join, realpath
+from typing import AsyncIterable, Iterable, Optional, Set, TextIO, cast
+import argparse
+import asyncio
+import re
+import sys
+
+import magic
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+from ..utils import setup_logging_stdout
+
+__all__ = ('main', )
+
+
+def get_all_excludes(patterns: Iterable[str]) -> Set[str]:
+    ret: Set[str] = set()
+    for pathname in patterns:
+        entries = glob(pathname)
+        if entries:
+            ret |= set(realpath(x) for x in entries)
+        else:
+            ret.add(basename(pathname))
+    return ret
+
+
+async def _get_listing(newdir: str) -> AsyncIterable[str]:
+    for x in sorted(
+            realpath(path_join(newdir, x)) for x in listdir(newdir) if
+            not x.endswith('~') and not x.endswith('.svn-base') and x not in (
+                '.git',
+                '.svn',
+                '.hg',
+                'CVS',
+                '.mypy_cache',
+                '__pycache__',
+                '.vscode',
+                '.ropeproject',
+            )):
+        yield x
+
+
+async def _handle_listing(listing: AsyncIterable[str],
+                          outdir: str,
+                          top: str,
+                          exclusions: Set[str],
+                          verbose: bool = False) -> None:
+    log = setup_logging_stdout(verbose=verbose)
+    async for entry in listing:
+        if (entry.startswith(outdir) or entry in exclusions
+                or entry == sys.argv[0] or basename(entry) in exclusions):
+            continue
+        if isdir(entry):
+            await _handle_listing(_get_listing(entry), outdir, top, exclusions)
+        else:
+            try:
+                file_info = magic.from_file(entry, mime=True)
+            except OSError as e:
+                log.error('%s: %s', entry, e.strerror)
+                continue
+            log.debug('From magic: %s', file_info)
+            if (file_info == 'application/octet-stream'
+                    or (not file_info.startswith('text/')
+                        and not file_info.endswith('+xml'))):
+                continue
+            unix_ts = floor(stat(entry).st_mtime)
+            with open(entry, 'r') as f:
+                dummy_log_fn = f'.{entry[len(top) + 1:]}.txt'
+                dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
+                try:
+                    with open(dummy_log_fn, 'r'):
+                        pass
+                    dummy_unix_ts = floor(stat(dummy_log_fn).st_mtime)
+                    if dummy_unix_ts == unix_ts:
+                        log.debug('Dummy file %s found with same date',
+                                  dummy_log_fn)
+                        continue
+                except FileNotFoundError:
+                    log.debug('Dummy file not found')
+                log.info('Scanning %s', entry)
+                found: Optional[TextIO] = None
+                ctx_count = 0
+                try:
+                    lines = enumerate(f.readlines())
+                except UnicodeDecodeError:
+                    continue
+                for i, line in lines:
+                    line = line.replace('\t', 4 * ' ')
+                    if ctx_count > 0 and found:
+                        found.write(f'{line:s}\n')
+                        ctx_count -= 1
+                        if ctx_count == 0:
+                            found.write('\n')
+                    m = re.search(r'\b(@?todo|fixme|hack)\b', line, flags=re.I)
+                    if m:
+                        log_fn = f'{entry[len(top) + 1:]:s}.txt'
+                        log_fn = realpath(path_join(outdir, log_fn))
+                        try:
+                            last_unix_ts = floor(stat(log_fn).st_mtime)
+                            if last_unix_ts == unix_ts:
+                                log.info('Not scanning %s', entry)
+                                break
+                        except OSError:
+                            pass
+                        makedirs(dirname(log_fn), exist_ok=True)
+                        if not found:
+                            found = open(path_join(outdir, log_fn), 'w')
+                            log.info('Writing to %s', found.name)
+                        found.write(f'{entry:s}:{i:d}\n')
+                        found.write(f'{line:s}\n')
+                        found.write('{space:s}{caret:s}\n'.format(
+                            space=' ' * m.start(),
+                            caret='^' * len(m.group(0))))
+                        ctx_count = 5
+                if found:
+                    filename = found.name
+                    found.close()
+                    setfiletime(filename, (unix_ts, unix_ts))
+                    found = None
+                    try:
+                        with open(dummy_log_fn, 'r'):
+                            pass
+                        rm(dummy_log_fn)
+                    except IOError:
+                        pass
+                else:
+                    dummy_log_fn = f'.{entry[len(top) + 1:]:s}.txt'
+                    dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
+                    makedirs(dirname(dummy_log_fn), exist_ok=True)
+                    with open(dummy_log_fn, 'w+') as f:
+                        f.write('Dummy\n')
+                    setfiletime(dummy_log_fn, (unix_ts, unix_ts))
+                    log.debug('Created dummy %s', dummy_log_fn)
+
+
+class Namespace(argparse.Namespace):
+    debug: bool
+    exclude: Iterable[str]
+    start: str
+    target: str
+    verbose: bool
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('-d', '--debug', action='store_true')
+    parser.add_argument('-e',
+                        '--exclude',
+                        action='append',
+                        nargs='?',
+                        metavar='EXCLUDE_PATTERN')
+    parser.add_argument('start', metavar='START_DIR')
+    parser.add_argument('target', metavar='TARGET')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    args = cast(Namespace, parser.parse_args())
+    asyncio.run(_handle_listing(
+        _get_listing(args.start),
+        realpath(args.target),
+        realpath(args.start),
+        get_all_excludes(args.exclude) if args.exclude else set(),
+        verbose=args.verbose or args.debug),
+                debug=args.debug)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

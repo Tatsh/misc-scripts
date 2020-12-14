@@ -1,0 +1,16 @@
+#!/usr/bin/env python
+import re
+import sys
+
+__all__ = ('main', )
+
+
+def main() -> int:
+    print(
+        re.sub(r'[-\s_]+', '-',
+               re.sub(r'[^\w\s-]', '', sys.argv[1]).strip().lower()))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

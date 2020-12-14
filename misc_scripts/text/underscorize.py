@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from typing import Sequence, cast
+import argparse
+import re
+import sys
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+__all__ = ('main', )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description='Replaces white space with underscores')
+    parser.add_argument('strings',
+                        metavar='STRING',
+                        default=sys.stdin,
+                        nargs='*',
+                        help='Strings to process')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    print(
+        re.sub(r'\s+', '_',
+               ' '.join(cast(Sequence[str],
+                             parser.parse_args().strings))))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

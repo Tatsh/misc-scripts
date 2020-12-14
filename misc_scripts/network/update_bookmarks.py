@@ -1,0 +1,211 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from functools import lru_cache
+from os.path import basename, dirname, splitext
+from tempfile import mkstemp
+from typing import Any, Optional, Sequence, TextIO, Tuple, Union, cast
+import argparse
+import logging
+import os
+import re
+import sys
+
+from bs4 import BeautifulSoup as Soup, Tag
+from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
+from typing_extensions import Final
+import requests
+
+from ..utils import setup_logging_stdout
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+__all__ = ('main', )
+
+
+class FailedConnection:
+    REASON_CONNECTION_ERROR: Final[int] = 3
+    REASON_FILE_URL: Final[int] = 4
+    REASON_INVALID_SCHEMA: Final[int] = 2
+    REASON_INVALID_URL: Final[int] = 1
+    REASON_UNKNOWN: Final[int] = 5
+
+    def __init__(self,
+                 response: requests.Response,
+                 reason: int,
+                 exc: Optional[Exception] = None):
+        self.response = response
+        self.url = response.url
+        self.reason = reason
+        self.exc = exc
+
+    def strreason(self) -> str:
+        if self.reason == self.REASON_INVALID_URL:
+            return f'{self.url} is not a valid URL'
+        if self.reason == self.REASON_FILE_URL:
+            return f'{self.url} is a file URL'
+        if self.reason == self.REASON_INVALID_SCHEMA:
+            return f'{self.url} has an unsupported schema'
+        if self.reason == self.REASON_CONNECTION_ERROR:
+            return f'Connection error: {self.exc}'
+        return f'Unspecified error: {self.exc}'
+
+
+def send(
+    r: Optional[requests.Response]
+) -> Optional[Union[requests.Response, FailedConnection]]:
+    if not r:
+        return None
+    try:
+        r.raise_for_status()
+    except InvalidURL:
+        if re.match(r'^file:///', r.url):
+            return FailedConnection(r, reason=FailedConnection.REASON_FILE_URL)
+        return FailedConnection(r, reason=FailedConnection.REASON_INVALID_URL)
+    except InvalidSchema:
+        return FailedConnection(r,
+                                reason=FailedConnection.REASON_INVALID_SCHEMA)
+    except ConnectionError as e:
+        return FailedConnection(
+            r, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
+    except Exception as e:  # pylint: disable=broad-except
+        return FailedConnection(r,
+                                exc=e,
+                                reason=FailedConnection.REASON_UNKNOWN)
+    return r
+
+
+def head(session: requests.Session, uri: str) -> Optional[requests.Response]:
+    log = setup_logging_stdout()
+    try:
+        return session.head(uri, timeout=5)
+    except Exception as e:  # pylint: disable=broad-except
+        log.error('Failed connection: %s (%s)', e, uri)
+    return None
+
+
+def recursive_scan(
+    soup: Soup,
+    session: requests.Session,
+    verbose: bool = False
+) -> Tuple[Sequence[Tuple[str, str]], Sequence[Tuple[str, Any]]]:
+    log = setup_logging_stdout(verbose=verbose)
+    ret = []
+    errors = []
+    urls = []
+    a: Tag
+    for a in soup.body.select('a'):
+        title = ' '.join(a.contents)
+        urls.append((title, a['href']))
+    index = 0
+    req: Optional[Union[requests.Response, FailedConnection]]
+    url_data: Tuple[str, str]
+    for req, url_data in zip(map(send, (head(session, u[1]) for u in urls)),
+                             urls):
+        if not req:
+            log.error('Failed connection: "%s" @ "%s", reason: other',
+                      url_data[0], url_data[1])
+            index += 1
+            continue
+        if isinstance(req, FailedConnection):
+            log.error('Failed connection: "%s" @ "%s", reason: %s',
+                      url_data[0], url_data[1], req.strreason())
+            index += 1
+            continue
+        if req.status_code != 200:
+            if req.status_code in (301, 302):
+                log.info('%d: "%s" @ "%s" -> now "%s"', req.status_code,
+                         url_data[0], url_data[1], req.headers['location'])
+                ret.append((url_data[1], req.headers['location']))
+            elif req.status_code not in [401, 403]:
+                log.error('%d: "%s" @ "%s"', req.status_code, url_data[0],
+                          url_data[1])
+                errors.append(url_data)
+        else:
+            log.debug('200: "%s"', url_data[1])
+        index += 1
+    return ret, errors
+
+
+class Namespace(argparse.Namespace):
+    file: Sequence[TextIO]
+    limit: int
+    output: Optional[str]
+    quiet: bool
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'file',
+        metavar='IN_FILE',
+        type=argparse.FileType('r'),
+        nargs=1,
+        help='Bookmark HTML file (usually exported from browser)')
+    parser.add_argument(
+        '-o',
+        '--output',
+        metavar='OUTFILE',
+        nargs=1,
+        help=('File to output to (will be determined automatically if not '
+              'specified)'))
+    parser.add_argument('-q',
+                        '--quiet',
+                        action='store_true',
+                        help='Quiet mode')
+    parser.add_argument('-l',
+                        '--limit',
+                        type=int,
+                        help='Number of concurrent requests',
+                        default=2)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    args = cast(Namespace, parser.parse_args())
+    f = args.file[0]
+    log = setup_logging_stdout(verbose=not args.quiet)
+    session = requests.Session()
+    session.headers.update({
+        'user-agent':
+        ('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_1) '
+         'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 '
+         'Safari/537.36'),
+        'upgrade-insecure-requests':
+        '1',
+        'referer':
+        'https://www.google.com/',
+        'pragma':
+        'no-cache',
+        'dnt':
+        '1',
+        'cache-control':
+        'no-cache',
+    })
+    contents = f.read()
+    replacements, errors = recursive_scan(Soup(contents, 'lxml'),
+                                          requests.Session())
+    for find, repl in replacements:
+        contents = contents.replace(find, repl)
+    output_fd = None
+    if not args.output:
+        output_dir = dirname(f.name)
+        output_file = 'new-' + splitext(basename(f.name))[0]
+        output_fd, output_file = mkstemp(prefix=output_file,
+                                         dir=output_dir,
+                                         suffix='.html')
+        log.info('Writing output to "%s"', output_file)
+    if output_fd:
+        os.write(output_fd, contents.encode('utf-8'))
+        os.close(output_fd)
+    else:
+        assert args.output
+        with open(args.output, 'w') as f:
+            f.write(contents)
+    log.info('Updated %d URLs', len(replacements))
+    log.info('%d URLs had unrecoverable errors', len(errors))
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

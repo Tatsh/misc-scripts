@@ -1,0 +1,393 @@
+#!/usr/bin/env python
+from datetime import datetime
+from functools import partial
+from itertools import filterfalse
+from math import floor
+from os import close, listdir, stat, unlink, write
+from os.path import basename, expanduser, isdir, join as path_join, realpath
+from shlex import quote
+from tempfile import mkstemp
+from typing import (Any, Callable, List, Optional, Sequence, Tuple, TypeVar,
+                    Union, cast)
+import argparse
+import json
+import logging
+import re
+import string
+import subprocess as sp
+import sys
+
+from typing_extensions import Literal
+from ..utils import setup_logging_stdout
+
+__all__ = ('main', )
+
+DRAWTEXT_TEMPLATE = string.Template('drawtext='
+                                    'fontfile=${fontfile}:'
+                                    'text=\'${text}\':'
+                                    'fontcolor=${fontcolor}:'
+                                    'fontsize=${fontsize}:'
+                                    'x=${x}:'
+                                    'y=${y}')
+TIME_KEYS = list('st_{}time'.format(x) for x in ('m', 'a', 'c'))
+
+to_lower = str.lower
+
+CondPredicate = Callable[..., bool]
+AnyCallableAnyReturn = Callable[..., Any]
+T = TypeVar('T')
+
+
+def t() -> Literal[True]:
+    return True
+
+
+def cond(
+    l: Sequence[Tuple[CondPredicate, AnyCallableAnyReturn]]
+) -> AnyCallableAnyReturn:
+    def ret(*args: Any) -> Any:
+        for pred, app in l:
+            if pred(*args):
+                return app(*args)
+
+    return ret
+
+
+def complement(x: AnyCallableAnyReturn) -> Callable[..., bool]:
+    def ret(*args: Any, **kwargs: Any) -> bool:
+        return not x(*args, **kwargs)
+
+    return ret
+
+
+def starts_with(val: str, x: str) -> bool:
+    return str.startswith(x, val)
+
+
+def partial_right(func: AnyCallableAnyReturn,
+                  wrapped_args: Sequence[Any]) -> AnyCallableAnyReturn:
+    def ret(*args: Any, **kwargs: Any) -> Any:
+        args = tuple(list(args) + list(wrapped_args))
+        return func(*args, **kwargs)
+
+    return ret
+
+
+def always_first_arg() -> AnyCallableAnyReturn:
+    def ret(*args: Any) -> Any:
+        return args[0]
+
+    return ret
+
+
+def _file_prefix(x: str) -> str:
+    return f'file:{x}'
+
+
+def start_at(i: int, x: Union[str, bytes, Sequence[Any]]) -> Any:
+    return x[i:]
+
+
+def isfile(x: Union[str, int]) -> bool:
+    try:
+        with open(x, 'rb'):
+            return True
+    except FileNotFoundError:
+        return False
+
+
+def setname(name: str) -> None:
+    sys.stdout.write(f'\033k{name[0:10]}\033\\')
+
+
+def ends_with(ending: str, x: str) -> bool:
+    return bool(re.search(r'{}$'.format(re.escape(ending)), x))
+
+
+def ends_with_lower(ending: str, x: str) -> bool:
+    return ends_with(to_lower(ending), to_lower(x))
+
+
+def get_roboto_font() -> str:
+    for path in (expanduser('~/Library/Fonts/Roboto-Regular.ttf'),
+                 '/Library/Fonts/Roboto-Regular.ttf',
+                 '/usr/share/fonts/roboto/Roboto-Regular.ttf'):
+        if isfile(path):
+            return path
+    raise RuntimeError('Cannot find Roboto-Regular.ttf')
+
+
+def make_drawtext_filter(**kwargs: Any) -> str:
+    fontfile = kwargs.pop('fontfile', get_roboto_font())
+    fontcolor = kwargs.pop('fontcolor', 'white')
+    fontsize = str(kwargs.pop('fontsize', 24))
+    x = str(kwargs.pop('x', 72))
+    y = str(kwargs.pop('y', 900))
+    return DRAWTEXT_TEMPLATE.safe_substitute(fontfile=fontfile,
+                                             fontcolor=fontcolor,
+                                             fontsize=fontsize,
+                                             x=x,
+                                             y=y,
+                                             **kwargs)
+
+
+def encode_concat(fn: str,
+                  outfile: str,
+                  log: logging.Logger,
+                  corrected_date: Optional[str] = None,
+                  dry_run: bool = False,
+                  hwaccel: bool = False,
+                  metadata_file: Optional[str] = None) -> None:
+    fn = _maybe_file_prefix(fn)
+    outfile = _maybe_file_prefix(outfile)
+    filters = ['setpts=0.25*PTS']
+    if corrected_date:
+        log.debug('Adding text: %s', corrected_date)
+        filters.append(make_drawtext_filter(text=corrected_date))
+    filters.append(
+        make_drawtext_filter(text=r'%{metadata\:url}', y=920, fontsize=14))
+    codec_args: Tuple[str, ...] = (
+        '-vcodec',
+        'libx264',
+        '-pix_fmt',
+        'yuv420p',
+        '-preset',
+        'veryslow',
+        '-profile:v',
+        'high',
+        '-level',
+        '4.1',
+        '-crf',
+        '23',
+    )
+    read_codec: Tuple[str, ...] = ()
+
+    if hwaccel:
+        out: str = sp.check_output(['ffmpeg', '-encoders'], encoding='utf-8')
+        has_nvenc = has_vt = False
+        for line in out.split('\n'):
+            if 'h264_videotoolbox' in line:
+                has_vt = True
+                break
+            if 'h264_nvenc' in line:
+                has_nvenc = True
+                break
+        if has_vt:
+            read_codec = ('-hwaccel', 'videotoolbox', '-hwaccel_output_format',
+                          'nv12')
+            codec_args = (
+                '-vcodec',
+                'h264_videotoolbox',
+                '-profile:v',
+                'high',
+                '-level',
+                '4.1',
+                '-coder:v',
+                'cabac',
+                '-pix_fmt',
+                'yuv420p',
+                '-b:v',
+                '8M',
+                '-maxrate:v',
+                '11M',
+            )
+            filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
+        elif has_nvenc:
+            read_codec = (
+                '-hwaccel',
+                'cuvid',
+                '-hwaccel_output_format',
+                'nv12',
+                '-c:v',
+                'mjpeg_cuvid',
+            )
+            codec_args = (
+                '-vcodec',
+                'h264_nvenc',
+                '-preset',
+                'llhq',
+                '-profile:v',
+                'high',
+                '-level',
+                '4.1',
+                '-rc',
+                'cbr_ld_hq',
+                '-rc-lookahead',
+                '32',
+                '-temporal-aq',
+                '1',
+                '-coder:v',
+                'cabac',
+                '-pix_fmt',
+                'yuv420p',
+                '-b:v',
+                '8M',
+                '-maxrate:v',
+                '11M',
+            )
+            filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
+        else:
+            log.info('No hardware encoders. Falling back to software')
+
+    metadata_args: Tuple[str, ...] = ()
+    if metadata_file:
+        metadata_args = (
+            '-i',
+            f'file:{metadata_file}',
+            '-map_metadata',
+            '1',
+            '-codec',
+            'copy',
+        )
+
+    cmd = (
+        'ffmpeg',
+        '-loglevel',
+        'warning',
+        '-hide_banner',
+        '-stats',
+        '-y',
+        '-f',
+        'concat',
+        '-safe',
+        '0',
+    ) + read_codec + (
+        '-i',
+        fn,
+    ) + codec_args + ('-filter:v', ','.join(filters), '-colorspace', 'bt470bg',
+                      '-color_trc', 'gamma28', '-color_primaries', 'bt470bg',
+                      '-color_range', 'pc', '-an', outfile) + metadata_args
+    log.info('Executing: %s', ' '.join(map(quote, cmd)))
+    if not dry_run:
+        setname('ffmpeg')
+        start = datetime.now()
+        sp.check_call(cmd)
+        after = datetime.now()
+        log.info('Started at: %s, ended at: %s, delta: %f seconds', start,
+                 after, (after - start).total_seconds())
+
+
+def min_date(fn: str) -> float:
+    return cast(float, min(getattr(stat(fn), x) for x in TIME_KEYS))
+
+
+def name_d(arg: str) -> Callable[[str], Tuple[str, str]]:
+    def ret(x: str) -> Tuple[str, str]:
+        return x, path_join(arg, x)
+
+    return ret
+
+
+def file_line(f: str) -> bytes:
+    return f"file '{f}'\n".encode()
+
+
+def head(x: Sequence[T]) -> T:
+    return x[0]
+
+
+starts_with_file: Callable[[str], bool] = partial_right(starts_with, ['file:'])
+ends_with_avi: Callable[[str], bool] = partial(ends_with_lower, '.avi')
+_maybe_file_prefix: Callable[[str], str] = cond((
+    (complement(starts_with_file), _file_prefix),
+    (t, always_first_arg),
+))
+
+
+def cleanup_cb(*args: Any) -> Callable[[], None]:
+    def cleanup() -> None:
+        for x in args:
+            unlink(x)
+
+    return cleanup
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--dates', nargs='*')
+    parser.add_argument('--outdir', default=realpath('.'), nargs=1)
+    parser.add_argument('-d', '--dry-run', action='store_true')
+    parser.add_argument('-H', '--hwaccel', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
+    parser.add_argument('in_dir', nargs='+')
+    args = parser.parse_args()
+    log = setup_logging_stdout(verbose=args.verbose)
+    assert log is not None
+    outdir: str = args.outdir[0]
+    arg: str
+    cleanup_funcs: List[Callable[[], None]] = []
+    for arg in args.in_dir:
+        arg = realpath(arg)
+        files_ = filterfalse(lambda x: isdir(head(x)),
+                             map(name_d(arg), sorted(listdir(arg))))
+        i = 0
+        for name, d in files_:
+            try:
+                fixed_date = args.dates[i]
+            except (IndexError, TypeError):
+                fixed_date = None
+            tmp_fd, tempfile = mkstemp(prefix=f'encode-list-{name}-',
+                                       suffix='.txt',
+                                       text=True)
+            chapter_fd, chapter_file = mkstemp(prefix=f'chapters-{name}-',
+                                               suffix='.txt',
+                                               text=True)
+            write_tmp_fd = partial(write, tmp_fd)
+            write_chapter_file = partial(write, chapter_fd)
+            write_chapter_file(f';FFMETADATA1\ntitle={name}\n'.encode())
+            try:
+                things = map(
+                    partial(path_join, d),
+                    filter(ends_with_avi,
+                           (x for x in listdir(d) if x[0] != '.')))
+            except NotADirectoryError:
+                log.info('Not a directory: %s', d)
+                continue
+            i += 1
+            start = end = 0
+            for l in (file_line(y)
+                      for y in (realpath(x) for x in sorted(things))):
+                fn: str = l.decode()[6:].replace("'", '').strip()
+                url = basename(fn).replace('.AVI', '')
+                metadata = f'file_packet_metadata url={url}\n'.encode()
+                write_tmp_fd(l)
+                write_tmp_fd(metadata)
+                start = start if start == 0 else end + 1
+                exif_json = json.loads(
+                    sp.check_output(
+                        ('exiftool', '-VideoFrameCount', '-json', fn)))
+                try:
+                    end = exif_json[0]['VideoFrameCount'] / 4
+                except (IndexError, KeyError) as e:
+                    raise KeyError(
+                        f'Key or index error: {e}, JSON: {exif_json}') from e
+                end += start
+                start = floor(start)
+                end = floor(end)
+                log.debug('%s: start = %d, end = %d', url, start, end)
+                write_chapter_file('[CHAPTER]\nTIMEBASE=1/25\nSTART={:d}\n'
+                                   'END={:d}\ntitle={}\n'.format(
+                                       start, end, url).encode())
+                start = floor(end + 1)
+            close(tmp_fd)
+            close(chapter_fd)
+            cleanup_funcs.append(cleanup_cb(*(tempfile, chapter_file)))
+            log.debug('Temporary file: %s', realpath(tempfile))
+            try:
+                encode_concat(tempfile,
+                              path_join(outdir, f'{name}.mkv'),
+                              log,
+                              corrected_date=fixed_date,
+                              dry_run=args.dry_run,
+                              hwaccel=args.hwaccel,
+                              metadata_file=chapter_file)
+            except KeyboardInterrupt:
+                return 1
+
+    for func in cleanup_funcs:
+        func()
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

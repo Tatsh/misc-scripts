@@ -1,0 +1,42 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+from os.path import basename, dirname, join as path_join, splitext
+import argparse
+import os
+import re
+import sys
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+__all__ = ('main', )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-y', '--dry-run', action='store_true')
+    parser.add_argument('files', nargs='*')
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    args = parser.parse_args()
+    arg: str
+    for arg in args.files:
+        name, ext = splitext(arg)
+        if ext in ('.bz2', '.gpg', '.gz'):
+            name, ext2 = splitext(name)
+            ext = f'{ext2}{ext}'
+        name = re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '',
+                                              basename(name))).strip().lower()
+        name += ext.lower()
+        name = path_join(dirname(arg), name)
+        if args.dry_run:
+            print(name)
+        else:
+            os.replace(arg, name)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())

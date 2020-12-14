@@ -1,0 +1,179 @@
+#!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
+# Compatibility script for KAKASI.
+# KAKASI was written in 1999 and supports various JIS encodings but does not
+# support Unicode. This script uses iconv to bridge as much as possible with
+# the Shift-JIS encoding scheme. Note that not every kanji is in the Shift-JIS
+# encoding.
+from copy import copy
+from functools import lru_cache
+from os import environ as env
+from os.path import basename, join as path_join
+from typing import Optional, Sequence, Tuple, cast
+import argparse
+import logging
+import os
+import subprocess as sp
+import sys
+
+from typing_extensions import Final
+
+from ..utils import setup_logging_stdout
+
+try:
+    import argcomplete
+except ImportError:
+    argcomplete = None
+
+__all__ = ('main', )
+
+# NOTE For anything not here, use unidecode
+JIS_ASCII_MAP: Final[Tuple[Tuple[str, str], ...]] = (
+    (u' 、', ','),
+    (u'、', ','),
+    (u' 。', '.'),
+    (u'・', ''),
+    (u'「 ', " '"),
+    (u' 」', "'"),
+    (u' ！', '!'),
+    (u'！', '!'),
+    (u'（ ', '('),
+    (u' ）', ')'),
+    (u'☆', '*'),
+    (u' ：', ':'),
+    (u'×', 'x'),
+)
+KAKASI_HELP_LOOK_FOR: Final[str] = ('KAKASI - Kanji Kana Simple '
+                                    'Inverter  Version 2.3.4')
+
+
+def find_bin(name: str,
+             look_for: str,
+             help_cmd: str = '--help') -> Optional[str]:
+    for path in env['PATH'].split(os.pathsep):
+        candidate = path_join(path, name)
+        try:
+            with open(candidate, 'rb') as f:
+                if os.access(f.name, os.X_OK):
+                    r = sp.Popen([candidate, help_cmd],
+                                 stdout=sp.PIPE,
+                                 stderr=sp.PIPE,
+                                 encoding='utf-8')
+                    r.wait()
+                    err = r.stderr
+                    out = r.stdout
+                    assert err is not None
+                    assert out is not None
+                    for line in (err.read().splitlines() +
+                                 out.read().splitlines()):
+                        line_ = line.strip()
+                        if look_for in line_:
+                            return candidate
+        except FileNotFoundError:
+            pass
+    return None
+
+
+def find_kakasi() -> Optional[str]:
+    return find_bin('kakasi', KAKASI_HELP_LOOK_FOR)
+
+
+def find_iconv() -> Optional[str]:
+    return find_bin('iconv', 'SJIS', '--list')
+
+
+class Namespace(argparse.Namespace):
+    allow_non_ascii: bool
+    keep_long: bool
+    words: Sequence[str]
+
+
+def main() -> int:
+    log = setup_logging_stdout()
+    kakasi_bin = find_kakasi()
+    iconv = find_iconv()
+
+    if not kakasi_bin:
+        log.error('No valid `kakasi` binary found.')
+        return 1
+    if not iconv:
+        log.error('No valid `iconv` binary found (must support Shift-JIS '
+                  'conversion).')
+        return 1
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('words', nargs='*')
+    parser.add_argument('-k',
+                        '--keep-long',
+                        action='store_true',
+                        default=False)
+    parser.add_argument('--allow-non-ascii',
+                        action='store_true',
+                        default=False)
+    if argcomplete:
+        argcomplete.autocomplete(parser)
+    args = cast(Namespace, parser.parse_args())
+    words = args.words
+    iconv_to_args = [
+        iconv,
+        '-t',
+        'SJIS',
+    ]
+    iconv_from_args = copy(iconv_to_args)
+    iconv_from_args[1] = '-f'
+    kakasi_args = (
+        kakasi_bin,
+        '-s',
+        '-Ja',
+        '-Ha',
+        '-Ka',
+    )
+    words = [x.strip() for x in words]
+    words = [x for x in words if len(x) > 0]
+    # stdin
+    stdin_words = [x.strip() for x in sys.stdin.readlines()]
+    stdin_words = [x for x in stdin_words if len(x) > 0]
+    words += stdin_words
+
+    for word_s, word in ((x, x.encode('utf-8')) for x in words):
+        iconv_to_sjis = sp.Popen(iconv_to_args,
+                                 stdin=sp.PIPE,
+                                 stdout=sp.PIPE,
+                                 stderr=sp.PIPE)
+        out, err = iconv_to_sjis.communicate(word)
+        err_s = err.decode('utf-8').strip()
+        if err_s:
+            log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s,
+                      err_s)
+            continue
+
+        kakasi = sp.Popen(kakasi_args,
+                          stdin=sp.PIPE,
+                          stdout=sp.PIPE,
+                          stderr=sp.PIPE)
+        out, err = kakasi.communicate(out)
+
+        iconv_from_sjis = sp.Popen(iconv_from_args,
+                                   stdin=sp.PIPE,
+                                   stdout=sp.PIPE,
+                                   stderr=sp.PIPE)
+        final, err = iconv_from_sjis.communicate(out)
+        err_s = err.decode('utf-8').strip()
+        if err_s:
+            log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)",
+                      word_s, err_s)
+            continue
+
+        final_s = final.decode('utf-8')
+        if not args.keep_long:
+            final_s = final_s.replace('^', '')
+
+        if not args.allow_non_ascii:
+            for find, repl in JIS_ASCII_MAP:
+                final_s = final_s.replace(find, repl)
+        log.info(final_s)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
