@@ -42,8 +42,7 @@ def main() -> int:
     fd, tmp = mkstemp(suffix='.png')
     close(fd)
     unlink(tmp)
-    bn = basename(args.input)
-    out = f'{splitext(bn)[0]}-audio.mkv'
+    out = f'{splitext(basename(args.input))[0]}-audio.mkv'
     sp.run(('convert', '-size', '1920x1080', 'xc:black', '-fill', 'white',
             '-pointsize', '50', '-draw',
             f"gravity Center text 0,0 '{args.title}'", tmp),
@@ -53,31 +52,12 @@ def main() -> int:
                               '-y', '-loop', '1', '-i', tmp, '-i', args.input,
                               '-shortest', '-acodec', 'copy')
     if args.nvenc:
-        args_start += (
-            '-vcodec',
-            'h264_nvenc',
-            '-profile:v',
-            'high',
-            '-level',
-            '1',
-            '-preset',
-            'llhq',
-            '-coder:v',
-            'cabac',
-            '-b:v',
-            '1M',
-        )
+        args_start += ('-vcodec', 'h264_nvenc', '-profile:v', 'high', '-level',
+                       '1', '-preset', 'llhq', '-coder:v', 'cabac', '-b:v',
+                       '1M')
     elif args.videotoolbox:
-        args_start += (
-            '-vcodec',
-            'hevc_videotoolbox',
-            '-profile:v',
-            'main',
-            '-level',
-            '1',
-            '-b:v',
-            '0.5M',
-        )
+        args_start += ('-vcodec', 'hevc_videotoolbox', '-profile:v', 'main',
+                       '-level', '1', '-b:v', '0.5M')
     else:
         args_start += ('-vcodec', 'libx265', '-crf', '20', '-level', '1',
                        '-profile:v', 'main')
