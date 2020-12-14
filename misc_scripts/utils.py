@@ -75,7 +75,7 @@ def env_no_case(key: str) -> str:
     raise KeyError(key)
 
 
-def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[os.DirEntry[str]]:  # pylint: disable=unsubscriptable-object
+def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[os.DirEntry]:
     try:
         return os.scandir(*args, **kwargs)
     except OSError:
