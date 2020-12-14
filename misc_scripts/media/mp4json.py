@@ -50,7 +50,7 @@ MKVPROPEDIT_WRITE_CMD_TEMPLATE: Final[Tuple[str, ...]] = (
     '--attachment-name',
     'info.json',
     '--add-attachment')
-UPLOAD_DATE_FORMAT = '%Y%m%d'
+UPLOAD_DATE_FORMAT: Final[str] = '%Y%m%d'
 
 
 def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
