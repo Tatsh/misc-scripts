@@ -56,5 +56,5 @@ setup(
         list(find_scripts()) + [
             f'flac-{x} = misc_scripts.media:flacted'
             for x in ('album', 'artist', 'genre', 'title', 'track', 'year')
-        ]
+        ] + ['netloc = misc_scripts.text:urldecode']
     })
