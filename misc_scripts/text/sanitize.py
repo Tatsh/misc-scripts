@@ -6,10 +6,10 @@ from ..utils import sanitize
 __all__ = ('main', )
 
 
-def main(s: str) -> int:
-    print(sanitize(s))
+def main() -> int:
+    print(sanitize(sys.argv[1]))
     return 0
 
 
 if __name__ == '__main__':
-    sys.exit(main(sys.argv[1]))
+    sys.exit(main())
