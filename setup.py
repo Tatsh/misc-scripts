@@ -1,25 +1,29 @@
 """Module for package-specific tasks."""
 from os import listdir
-from typing import Iterator
+from typing import Iterator, Tuple
 import pathlib
 
 from setuptools import setup
 
 
 def find_scripts() -> Iterator[str]:
-    p = pathlib.Path(__file__).parent.absolute().joinpath('misc_scripts')
-    for item, full in ((x, p.joinpath(x)) for x in listdir(p)
-                       if p.joinpath(x).is_dir()):
-        for module in listdir(full):
-            if (module in ('__init__.py', 'utils.py')
-                    or not module.endswith('.py')):
-                continue
-            module = module.replace('.py', '')
-            command = module.replace('_', '-')
-            path = f'misc_scripts.{item}:{module}'
-            if item == 'chrome':
-                command = f'chrome-{command}'
-            yield f'{command} = {path}'
+    mod_path = (
+        pathlib.Path(__file__).parent.absolute().joinpath('misc_scripts'))
+
+    def _find_them() -> Iterator[Tuple[str, str, str, str]]:
+        for item, modules, prefix in ((x, listdir(y),
+                                       'chrome-' if x == 'chrome' else '')
+                                      for x, y in ((x, mod_path.joinpath(x))
+                                                   for x in listdir(mod_path))
+                                      if y.is_dir()):
+            yield from ((item, m, prefix, n)
+                        for m, n in ((n, n.replace('_', '-')) for n in (
+                            m.replace('.py', '') for m in modules
+                            if m.endswith('.py') and m not in ('__init__.py',
+                                                               'utils.py'))))
+
+    for item, module, prefix, command in _find_them():
+        yield f'{prefix}{command} = misc_scripts.{item}:{module}'
 
 
 setup(
