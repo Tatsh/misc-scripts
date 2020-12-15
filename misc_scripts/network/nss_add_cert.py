@@ -19,9 +19,9 @@ def main() -> int:
         print('Not a valid port', file=sys.stderr)
         return 1
     p = sp.Popen(('openssl', 's_client', '-connect', f'{sys.argv[1]}:{port}'),
-                 text=True,
+                 stdin=sp.PIPE,
                  stdout=sp.PIPE,
-                 stdin=sp.PIPE)
+                 text=True)
     stdout, _ = p.communicate()
     in_cert = False
     cert_lines = []
