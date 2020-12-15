@@ -1,32 +1,19 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
 from os.path import basename
 from typing import Mapping, Optional, Sequence, Tuple, cast
 import argparse
 import glob
-import logging
 import os
 import subprocess as sp
 import sys
+
+from ..utils import setup_logging_stdout
 
 try:
     import argcomplete
 except ImportError:
     argcomplete = None
-
-
-@lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
-    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
 
 
 def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
