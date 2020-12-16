@@ -56,6 +56,6 @@ setup(
         ] + ['netloc = misc_scripts.text:urldecode']
     },
     scripts=[
-        'other/backup-wechat', 'other/cleanup', 'other/reset-open-with',
-        'other/unpack-0day'
+        f'other/{name}' for name in listdir(
+            pathlib.Path(__file__).parent.absolute().joinpath('other'))
     ])
