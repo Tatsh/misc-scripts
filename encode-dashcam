@@ -178,7 +178,7 @@ def encode_concat(fn: str,
             if 'h264_videotoolbox' in line:
                 has_vt = True
                 break
-            if 'h264_nvenc' in line:
+            if 'hevc_nvenc' in line:
                 has_nvenc = True
                 break
         if has_vt:
@@ -204,37 +204,29 @@ def encode_concat(fn: str,
         elif has_nvenc:
             read_codec = (
                 '-hwaccel',
-                'cuvid',
-                '-hwaccel_output_format',
-                'nv12',
+                'auto',
                 '-c:v',
                 'mjpeg_cuvid',
             )
             codec_args = (
                 '-vcodec',
-                'h264_nvenc',
+                'hevc_nvenc',
                 '-preset',
-                'llhq',
-                '-profile:v',
-                'high',
+                'p7',
                 '-level',
-                '4.1',
+                '5.2',
+                '-tier',
+                'high',
                 '-rc',
-                'cbr_ld_hq',
-                '-rc-lookahead',
-                '32',
-                '-temporal-aq',
-                '1',
-                '-coder:v',
-                'cabac',
+                'constqp',
+                '-qp', '23',
                 '-pix_fmt',
                 'yuv420p',
                 '-b:v',
-                '8M',
+                '0K',
                 '-maxrate:v',
-                '11M',
+                '8M',
             )
-            filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
         else:
             log.info('No hardware encoders. Falling back to software')
 
