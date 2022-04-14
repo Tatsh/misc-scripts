@@ -19,6 +19,9 @@ import sys
 
 from typing_extensions import Literal
 
+# https://stackoverflow.com/a/11175851/374110
+# ffmpeg -y -hwaccel auto -c:v hevc_cuvid -i back_norm/2021_10_13_155111_00_b.MP4 -i front_norm/2021_10_13_155111_01.MP4 -map 0:v:0 -map 1:v:0 -filter_complex "[0]crop=1916:890:4:140,scale=iw/1.5:ih/1.5 [pip]; [1][pip] overlay=main_w-overlay_w:main_h-overlay_h,setpts=0.25*PTS" -vcodec hevc_nvenc -an -preset p5 -tier high -level 5 -maxrate:v 25M -b:v 0k out.mkv
+
 DRAWTEXT_TEMPLATE = string.Template('drawtext='
                                     'fontfile=${fontfile}:'
                                     'text=\'${text}\':'
