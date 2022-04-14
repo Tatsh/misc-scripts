@@ -1,21 +1,33 @@
 #!/usr/bin/env python
-from typing import Any, Dict, Optional, Sequence, cast
+from os.path import expanduser
+from typing import Final, Optional, cast
 import sys
+import time
 
 from pydbus import SessionBus
 
+KEY_FILE: Final[str] = expanduser('~/.cache/toggle-inhibit-key')
 
-def toggleInhibit(inhibit_key: Optional[int] = None) -> Optional[int]:
+
+def toggle_inhibit() -> Optional[int]:
     bus = SessionBus()
-    notifications = bus.get("org.freedesktop.Notifications",
-                            "/org/freedesktop/Notifications")
+    notifications = bus.get('org.freedesktop.Notifications',
+                            '/org/freedesktop/Notifications')
     if notifications.Inhibited:
-        return cast(int, notifications.UnInhibit(inhibit_key))
-    return toggleInhibit(cast(int, notifications.Inhibit('*', 'None', {})))
+        print('Enabling notifications', file=sys.stderr)
+        with open(KEY_FILE) as fp:
+            return cast(Optional[int],
+                        notifications.UnInhibit(int(fp.read().strip())))
+    with open(KEY_FILE, 'w+') as fp:
+        print(f'Saving key to {fp.name}', file=sys.stderr)
+        key = cast(Optional[int], notifications.Inhibit('*', 'None', {}))
+        fp.write(f'{key}\n')
+        time.sleep(10)
+        return key
 
 
 def main() -> int:
-    toggleInhibit()
+    toggle_inhibit()
     return 0
 
 
