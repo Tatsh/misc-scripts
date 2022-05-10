@@ -22,9 +22,9 @@ def main() -> int:
     if argcomplete:
         argcomplete.autocomplete(parser)
     print(
-        re.sub(r'\s+', '_',
-               ' '.join(cast(Sequence[str],
-                             parser.parse_args().strings))))
+        re.sub(r'\s+', '_', ' '.join(
+            cast(Sequence[str],
+                 parser.parse_args().strings))))
     return 0
 
 
