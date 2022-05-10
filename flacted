@@ -29,7 +29,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def metaflac(*args: Any) -> str:
-    return sp.run(('metaflac', ) + cast(Tuple[str, ...], args),
+    return sp.run(('metaflac',) + cast(Tuple[str, ...], args),
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
@@ -50,6 +50,7 @@ def main() -> int:
     setup_logging_stdout()
     log = setup_logging_stdout()
     invoked_as = basename(sys.argv[0])
+    # pylint: disable=too-many-nested-blocks
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
         tag_requested = invoked_as.split('-')[1]
         possible: Tuple[str,
