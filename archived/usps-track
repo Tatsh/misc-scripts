@@ -95,7 +95,7 @@ def main() -> int:
         if 'could not locate the tracking information' in content:
             log.error('Failed with tracking number %s', arg)
             continue
-        data = cast(Dict[str, str], dict(
+        data = dict(
             confirmSms='on',
             email1=NAME1_EMPTY_VALUE,
             label=arg,
@@ -108,7 +108,7 @@ def main() -> int:
             textOA='on',
             textPickup='on',
             textToday='on',
-        ))
+        )
         log.debug('POST data: %s', data)
         add_headers = {
             'Referer': f'{GET_URL}?qtc_tLabels1={arg}',
