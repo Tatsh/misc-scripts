@@ -1,2 +1,5 @@
 #!/usr/bin/env bash
-mpv --vf 'lavfi=[setpts=6*PTS]' --af 'atempo=0.66667,atempo=0.5,atempo=0.5' "$@"
+mpv \
+    --vf 'lavfi=[setpts=6*PTS]' \
+    --af 'atempo=0.66667,atempo=0.5,atempo=0.5' \
+    "$@"
