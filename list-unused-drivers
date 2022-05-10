@@ -28,7 +28,7 @@ def main() -> None:
         (ignored_modules +
          list(recommended)) if ignored_modules else recommended)
     items_dict: Dict[str, List[str]] = {}
-    with sp.Popen(('hwinfo', ), stdout=sp.PIPE, text=True) as p:
+    with sp.Popen(('hwinfo',), stdout=sp.PIPE, text=True) as p:
         enabled = False
         while not p.poll():
             if p.stdout and (line := p.stdout.readline().strip()):
