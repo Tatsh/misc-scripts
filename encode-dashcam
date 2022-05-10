@@ -29,7 +29,7 @@ DRAWTEXT_TEMPLATE = string.Template('drawtext='
                                     'fontsize=${fontsize}:'
                                     'x=${x}:'
                                     'y=${y}')
-TIME_KEYS = list('st_{}time'.format(x) for x in ('m', 'a', 'c'))
+TIME_KEYS = list(f'st_{x}time' for x in ('m', 'a', 'c'))
 
 to_lower = str.lower
 
@@ -113,7 +113,7 @@ def setname(name: str) -> None:
 
 
 def ends_with(ending: str, x: str) -> bool:
-    return bool(re.search(r'{}$'.format(re.escape(ending)), x))
+    return bool(re.search(f'{re.escape(ending)}$', x))
 
 
 def ends_with_lower(ending: str, x: str) -> bool:
@@ -222,7 +222,8 @@ def encode_concat(fn: str,
                 'high',
                 '-rc',
                 'constqp',
-                '-qp', '23',
+                '-qp',
+                '23',
                 '-pix_fmt',
                 'yuv420p',
                 '-b:v',
@@ -369,9 +370,9 @@ def main() -> int:
                 start = floor(start)
                 end = floor(end)
                 log.debug('%s: start = %d, end = %d', url, start, end)
-                write_chapter_file('[CHAPTER]\nTIMEBASE=1/25\nSTART={:d}\n'
-                                   'END={:d}\ntitle={}\n'.format(
-                                       start, end, url).encode())
+                write_chapter_file('[CHAPTER]\nTIMEBASE=1/25\n'
+                                   f'START={start}\n'
+                                   f'END={end}\ntitle={url}\n'.encode())
                 start = floor(end + 1)
             close(tmp_fd)
             close(chapter_fd)
