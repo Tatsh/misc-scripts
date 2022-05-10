@@ -7,7 +7,7 @@ from functools import lru_cache
 from os import environ as env, remove as rm
 from os.path import basename, dirname, isdir, join as path_join, realpath
 from shutil import rmtree
-from typing import Optional
+from typing import Final, Optional
 import argparse
 import logging
 import re
@@ -15,8 +15,6 @@ import signal
 import subprocess as sp
 import sys
 import tarfile
-
-from typing_extensions import Final
 
 import gnupg
 
@@ -56,14 +54,14 @@ def rm_if_exists(fn: str) -> bool:
 
 
 def psql(*args: str) -> str:
-    return sp.run(('psql', ) + args,
+    return sp.run(('psql',) + args,
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
 
 
 def pg_dump(*args: str) -> str:
-    return sp.run(('pg_dump', ) + args,
+    return sp.run(('pg_dump',) + args,
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
@@ -130,7 +128,7 @@ def main() -> int:
             log.info(
                 'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
                 '--encrypt %s --armor --output %s.tar.gpg', gpg_home,
-                ' '.join('--recipient %s' % (x) for x in recipients), fn)
+                ' '.join(f'--recipient {x}' for x in recipients), fn)
             log.info('rm %s.tar', fn)
             continue
 
@@ -146,7 +144,7 @@ def main() -> int:
         if out:
             log.warning(out)
 
-        tar_fn = '%s.tar' % (fn, )
+        tar_fn = f'{fn}.tar'
         log.info("Tar'ing to %s", tar_fn)
         tar = tarfile.open(tar_fn, 'w')
 
@@ -175,7 +173,7 @@ def main() -> int:
             rm_if_exists(tar_fn)
             return 1
 
-        output_fn = '%s.gpg' % (tar_fn, )
+        output_fn = f'{tar_fn}.gpg'
         log.info('Encrypting "%s" to "%s"', basename(tar_fn),
                  basename(output_fn))
         with open(tar_fn, 'rb') as fp:
