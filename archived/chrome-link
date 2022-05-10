@@ -195,7 +195,8 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
         else:
             log.debug('Converting icon from %s to PNG', icon_ext[1:].upper())
             fd, tmp_name = mkstemp(suffix=icon_ext)
-            icon = expanduser('~/.local/share/pixmaps/' f'{short_name}.png')
+            icon = expanduser('~/.local/share/pixmaps/'
+                              f'{short_name}.png')
             for chunk in r.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
@@ -322,7 +323,7 @@ Icon={args.icon}
 def _create_iconset(args: MainArgs) -> str:
     assert args.icon is not None
     iconset_dir = mkdtemp(suffix='.iconset')
-    for width in (2**x for x in range(1, 11)):
+    for width in (2 ** x for x in range(1, 11)):
         subprocess.check_call(
             ('sips', '-z', str(width), str(width), args.icon, '--out',
              path_join(iconset_dir, f'icon_{width}x{width}.png')),
@@ -343,7 +344,8 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     macos_dir = path_join(contents_dir, 'MacOS')
     res_dir = path_join(contents_dir, 'Resources')
     profile_dir_short = args.profile_name.replace(' ', '')
-    bundle_id = ('com.google.Chrome.app.' f'{profile_dir_short}-{short_name}')
+    bundle_id = ('com.google.Chrome.app.'
+                 f'{profile_dir_short}-{short_name}')
     info_plist_data = dict(
         CFBundleExecutable='app_mode_loader',
         CFBundleIconFile='app.icns',
