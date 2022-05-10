@@ -15,7 +15,7 @@ except ImportError:
 
 
 def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
-    sp.run(('ffmpeg', ) + tuple(args), check=True, **kwargs)
+    sp.run(('ffmpeg',) + tuple(args), check=True, **kwargs)
 
 
 def main() -> int:
@@ -48,7 +48,7 @@ def main() -> int:
                                 f'{splitext(basename(input_video))[0]}.gif')
     else:
         output_file = args.output
-    ffmpeg_args: Tuple[str, ...] = ('-y', )
+    ffmpeg_args: Tuple[str, ...] = ('-y',)
     palette_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
                       'palettegen')
     if args.to and args.t:
@@ -65,7 +65,7 @@ def main() -> int:
     ffmpeg(ffmpeg_args)
     video_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos[x];'
                     '[x][1:v]paletteuse')
-    ffmpeg_args = ('-y', )
+    ffmpeg_args = ('-y',)
     if args.ss:
         ffmpeg_args += ('-ss', args.ss)
     if args.to:
@@ -76,7 +76,7 @@ def main() -> int:
                     video_filter)
     if args.gifflags:
         ffmpeg_args += ('-gifflags', args.gifflags)
-    ffmpeg(ffmpeg_args + (output_file, ))
+    ffmpeg(ffmpeg_args + (output_file,))
     close_fd(fd)
     unlink(palette_fn)
     return 0
