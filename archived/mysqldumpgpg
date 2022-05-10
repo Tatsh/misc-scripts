@@ -6,14 +6,12 @@ from datetime import datetime
 from functools import lru_cache
 from os import environ as env, remove as rm
 from os.path import basename, expanduser, join as path_join, realpath
-from typing import Optional, Tuple
+from typing import Final, Optional, Tuple
 import argparse
 import logging
 import signal
 import subprocess as sp
 import sys
-
-from typing_extensions import Final
 
 from pretty_bad_protocol import gnupg
 import MySQLdb as mysql
