@@ -23,10 +23,11 @@ try:
 except ImportError:
     argcomplete = None
 
-MYSQL_USER: Final = env['USER']
-MYSQL_HOST: Final = 'localhost'
-LOCK_WAIT_TIMEOUT: Final = 10
-DB_BLACKLIST: Final = ('information_schema', 'mysql', 'performance_schema')
+MYSQL_USER: Final[str] = env['USER']
+MYSQL_HOST: Final[str] = 'localhost'
+LOCK_WAIT_TIMEOUT: Final[int] = 10
+DB_BLACKLIST: Final[Tuple[str, ...]] = ('information_schema', 'mysql',
+                                        'performance_schema')
 
 
 @lru_cache()
@@ -44,7 +45,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 def mysqldump(args: Tuple[str, ...], outpath: str) -> None:
     with open(outpath, 'wb+') as f:
-        sp.run(('mysqldump', ) + args, stdout=f, check=True)
+        sp.run(('mysqldump',) + args, stdout=f, check=True)
 
 
 def rm_if_exists(filename: str) -> bool:
@@ -124,7 +125,7 @@ def main() -> int:
             log.info(
                 'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
                 ' --encrypt %s --armor --output %s.gpg', gpg_home,
-                ' '.join('--recipient %s' % (x) for x in recipients), fn)
+                ' '.join(f'--recipient {x}' for x in recipients), fn)
             log.info('rm %s.tar', fn)
             continue
 
