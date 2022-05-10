@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 main() {
     local -r no=1
     if ! [ -f "$1" ]; then
@@ -11,5 +10,4 @@ main() {
     fi
     perl -E 'exit((-B $ARGV[0])?0:1);' "$1" && return 0
 }
-
 main "$1"
