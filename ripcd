@@ -3,63 +3,59 @@ main() {
     local category artist album genre year album_dir wav_file flac_file i \
         track_artist track_n title track_artist
     local -r disc_id_out=$(cd-discid "${1:-/dev/cdrom}")
-    local -r disc_id=$(cut -d ' ' -f1 <<< "$disc_id_out")
-    local -r track_count=$(cut -d ' ' -f2 <<< "$disc_id_out")
-    local -r track_info=$(cut -d ' ' -f2-$((track_count + 2)) <<< "$disc_id_out")
-    local -r track_data=$(rev <<< "$disc_id_out" | cut -d ' ' -f1 | rev)
-
+    local -r disc_id=$(cut '-d ' -f1 <<< "$disc_id_out")
+    local -r track_count=$(cut '-d ' -f2 <<< "$disc_id_out")
+    local -r track_data=$(rev <<< "$disc_id_out" | cut '-d ' -f1 | rev)
+    mapfile -t track_info < <(cut '-d ' -f2-$((track_count + 2)))
     echo "Disc ID: ${disc_id}"
-
-    # shellcheck disable=SC2086
-    local -r out=$(cddb_query -s gnudb.gnudb.org -P http query "$track_data" $track_info)
-    local -r num_matches=$(head -n 1 <<< "$out" | sed -r -e 's/^Number of matches\: //')
+    local -r out=$(
+        cddb_query -s gnudb.gnudb.org -P http query "$track_data"
+        "${track_info[@]}"
+    )
+    local -r num_matches=$(head -n 1 <<< "$out" |
+        sed -re 's/^Number of matches\: //')
     if [ -z "$RIPCD_TAKE_FIRST_MATCH" ]; then
         if [ -z "$num_matches" ] ||
             ((num_matches == 0)) ||
             ((num_matches > 1)); then
             echo 'Take a look at results:'
-            # shellcheck disable=SC2086
-            cddb_query query "$track_data" $track_info
+            cddb_query query "$track_data" "${track_info[@]}"
             return 1
         fi
     fi
-
     while IFS=$'\n' read -r l; do
         if grep -q -E ' +category\: ' <<< "$l"; then
-            category="$(cut -d ' ' -f4 <<< "$l")"
+            category="$(cut '-d ' -f4 <<< "$l")"
             break
         fi
     done <<< "$out"
-
     if [ -z "$category" ]; then
         echo 'Failed to parse category' >&2
         return 1
     fi
-
     while IFS=$'\n' read -r l; do
         if grep -q -E '^Artist\: ' <<< "$l"; then
-            artist=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            artist=$(cut '-d ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
             echo "Album artist: ${artist}"
         elif grep -q -E '^Title\: ' <<< "$l"; then
-            album=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            album=$(cut '-d ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
             echo "Album: ${album}"
         elif grep -q -E '^Genre\: ' <<< "$l"; then
-            genre=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            genre=$(cut '-d ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
             echo "Genre: ${genre}"
         elif grep -q -E 'Year\: ' <<< "$l"; then
-            year=$(cut -d' ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
+            year=$(cut '-d ' -f2- <<< "$l" | perl -lpe 's/^\s+|\s+$//g')
             echo "Year: ${year}"
         elif grep -q -E ' +\[[0-9]+\] +' <<< "$l"; then
-            track_number=$(cut -d' ' -f3 <<< "$l" | tr -d '[' | tr -d ']')
-            track_n=$(sed -r -e 's/^0+//' <<< "$track_number")
-            title=$(sed -r -e "s/\\s+\\[[0-9]+\\]\\s+(.*)' by [^\\(]+.*/\\1/" \
+            track_number=$(cut '-d ' -f3 <<< "$l" | tr -d '[' | tr -d ']')
+            track_n=$(sed -re 's/^0+//' <<< "$track_number")
+            title=$(sed -re "s/\\s+\\[[0-9]+\\]\\s+(.*)' by [^\\(]+.*/\\1/" \
                 -e "s/^'//" -e "s:/:-:g" <<< "$l" |
                 perl -lpe 's/^\s+|\s+$//g')
             track_artist=$(cut -d"'" -f3- <<< "$l" |
-                cut -d' ' -f3- |
-                sed -r -e 's/\s+\([0-9]+\:[0-9]+\)//' -e "s:/:-:g" |
+                cut '-d ' -f3- |
+                sed -re 's/\s+\([0-9]+\:[0-9]+\)//' -e "s:/:-:g" |
                 perl -lpe 's/^\s+|\s+$//g')
-
             if [ -z "$artist" ] ||
                 [ -z "$album" ] ||
                 [ -z "$genre" ] ||
@@ -71,21 +67,17 @@ main() {
                 echo 'Failed to find a field' >&2
                 continue
             fi
-
             album_dir="${artist}-${album}-${year}"
             mkdir -p "$album_dir"
-
             wav_file="${album_dir}/${track_number}-${track_artist}-${title}.wav"
             flac_file="${album_dir}/${track_number}-${track_artist}-${title}.flac"
             log_file="${album_dir}/${track_number}-${track_artist}-${title}.log"
-
             if [ -f "$flac_file" ]; then
                 continue
             fi
-
-            #eject
-            #eject -t
-            #sleep 15
+            # eject
+            # eject -t
+            # sleep 15
             cdparanoia \
                 --never-skip=5 \
                 --log-debug="$log_file" \
@@ -124,5 +116,4 @@ main() {
         fi
     done < <(cddb_query read "$category" "$disc_id")
 }
-
 main "$@"
