@@ -126,7 +126,7 @@ def fix_apostrophes(word: str) -> str:
 
 
 def lower_stop(words: str,
-               modes: Iterable[int] = (ENGLISH_MODE, ),
+               modes: Iterable[int] = (ENGLISH_MODE,),
                disable_names: bool = False,
                ampersands: bool = False) -> str:
     original_words = words.strip().split()
@@ -200,12 +200,10 @@ def lower_stop(words: str,
 
             ordinal_match = re.match(ENGLISH_ORDINAL_RE, word, flags=re.I)
             if mode == ENGLISH_MODE and ordinal_match is not None:
-                word = '%s%s' % (
-                    ordinal_match.group(1),
-                    ordinal_match.group(2).lower(),
-                )
+                word = (ordinal_match.group(1) +
+                        ordinal_match.group(2).lower())
 
-            word = '%s%s%s' % (begin, word, end)
+            word = f'{begin}{word}{end}'
 
             try:
                 title[index] = word
@@ -274,7 +272,7 @@ def main() -> int:
     for title in args.titles:
         print(
             lower_stop(title,
-                       args.mode or (ENGLISH_MODE, ),
+                       args.mode or (ENGLISH_MODE,),
                        args.no_names,
                        ampersands=args.ampersands))
     return 0
