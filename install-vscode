@@ -9,7 +9,9 @@ import sys
 import requests
 
 URL_PREFIX = 'https://packages.microsoft.com/repos/vscode'
-DESKTOP_FILES = (expanduser('~/.local/share/applications/code.desktop'), expanduser('~/.local/share/applications/code-url-handler.desktop'))
+DESKTOP_FILES = (
+    expanduser('~/.local/share/applications/code.desktop'),
+    expanduser('~/.local/share/applications/code-url-handler.desktop'))
 
 
 def main() -> int:
@@ -44,18 +46,22 @@ def main() -> int:
                  symlinks=True)
         rm(deb_file)
         print('Fixing desktop files', file=sys.stderr)
-        for df in DESKTOP_FILES:
+        for desktop_file in DESKTOP_FILES:
             lines = []
-            with open(df) as f:
+            with open(desktop_file) as f:
                 for line in f.readlines():
                     if '/usr/share' in line:
-                        lines.append(line.replace('/usr/share', expanduser('~/.local/share')))
+                        lines.append(
+                            line.replace('/usr/share',
+                                         expanduser('~/.local/share')))
                     else:
                         lines.append(line)
-            with open(df, 'w') as f:
+            with open(desktop_file, 'w') as f:
                 for line in lines:
                     f.write(line)
-        sp.run(('update-desktop-database', expanduser('~/.local/share/applications/')), check=True)
+        sp.run(('update-desktop-database',
+                expanduser('~/.local/share/applications/')),
+               check=True)
     return 0
 
 
