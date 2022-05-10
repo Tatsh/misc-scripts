@@ -49,8 +49,8 @@ def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
     log = setup_logging_stdout('test_extraction', verbose=verbose)
     args: Tuple[str, ...] = ('unrar', 't')
     if not verbose:
-        args += ('-inul', )
-    args += (rar_filename, )
+        args += ('-inul',)
+    args += (rar_filename,)
     log.debug('Executing: %s', ' '.join(args))
     try:
         sp.run(args, check=True)
@@ -116,10 +116,10 @@ def unrar_cdrecord_pipe(rar_filename: str,
         f'tsize={tsize}',
     )
     if device_name:
-        cdrecord_args += (f'dev={device_name}', )
+        cdrecord_args += (f'dev={device_name}',)
     cdrecord_args += ('-dao', '-eject', '-')
     if verbose:
-        cdrecord_args += ('-v', )
+        cdrecord_args += ('-v',)
     log.debug('Command: %s | %s', ' '.join(unrar_args),
               ' '.join(cdrecord_args))
     first = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
