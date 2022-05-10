@@ -28,7 +28,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 def get_ultraiso_path(prefix: str) -> Optional[str]:
     name_of_exe = 'UltraISO.exe'
-    paths = (path_join(prefix, 'drive_c', 'Program Files%s' % (x), 'UltraISO',
+    paths = (path_join(prefix, 'drive_c', f'Program Files{x}', 'UltraISO',
                        name_of_exe) for x in ('', ' (x86)'))
     actual_exe_path = None
     for exe in paths:
@@ -77,6 +77,7 @@ def main() -> int:
         actual_exe_path = get_ultraiso_path(default_wine_prefix)
         assert actual_exe_path is not None
         assumed_xauthority = expanduser('~/.Xauthority')
+        # pylint: disable=subprocess-run-check
         sp.run(['wine', actual_exe_path] + sys.argv[1:],
                env=dict(WINEPREFIX=default_wine_prefix,
                         DISPLAY=os.environ.get('DISPLAY', ''),
@@ -317,7 +318,7 @@ def main() -> int:
         'crc32',
         'crc16',
     )
-    fix_to_one = ('optimise', )
+    fix_to_one = ('optimise',)
 
     if actual_exe_path is None:
         log.error('UltraISO.exe not found')
@@ -336,9 +337,9 @@ def main() -> int:
             continue
 
         if arg in need_two_dashes and arg not in fix_to_one:
-            sp_args.append('--%s' % (arg, ))
+            sp_args.append(f'--{arg}')
         else:
-            sp_args.append('-%s' % (arg, ))
+            sp_args.append(f'-{arg}')
 
         val = getattr(args, arg)
         if val is True:
@@ -351,6 +352,7 @@ def main() -> int:
 
     wprefix_env = quote(f'WINEPREFIX={args.prefix}')
     log.debug('env %s %s', wprefix_env, ' '.join(quote(x) for x in sp_args))
+    # pylint: disable=subprocess-run-check
     p = sp.run(sp_args, stderr=sp.PIPE, env=env, encoding='utf-8')
     stderr: str = p.stderr.strip()
     exit_status = p.returncode
