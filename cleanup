@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -e
-
 find . -type f \( -iname '*~' -o \
     -iname '*.swp' -o \
     -iname 'ehthumbs.db' -o \
