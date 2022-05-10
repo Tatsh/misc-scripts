@@ -3,14 +3,12 @@
 from datetime import datetime
 from logging.handlers import SysLogHandler
 from os.path import realpath
-from typing import Any, NoReturn, Optional, TextIO, cast
+from typing import Any, Final, NoReturn, Optional, TextIO, cast
 import argparse
 import logging
 import signal
 import subprocess as sp
 import sys
-
-from typing_extensions import Final
 
 try:
     import argcomplete
@@ -19,26 +17,25 @@ except ImportError:
 
 try:
     import yaml
-    HAS_YAML = True
 except ImportError:
-    HAS_YAML = False
+    yaml = None
 
 LOG_FORMATTER: Final[logging.Formatter] = logging.Formatter('%(message)s')
 log_handle: Optional[TextIO] = None
 syslog_handle: Optional[SysLogHandler] = None
 
 
-def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess:
+def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess[str]:
     kwargs.pop('check')
     kwargs.pop('stdout')
     kwargs.pop('encoding')
     kwargs['check'] = True
     kwargs['stdout'] = sp.PIPE
     kwargs['encoding'] = 'utf-8'
-    return sp.run(('speedtest', ) + args,
+    return sp.run(('speedtest',) + args,
                   check=True,
                   stdout=sp.PIPE,
-                  encoding='utf-8',
+                  text=True,
                   **kwargs)
 
 
@@ -49,6 +46,7 @@ def ctrl_c(signum: int, frame: Any) -> NoReturn:
 def maybe_log_yaml(handle: Optional[TextIO], **kwargs: Any) -> None:
     if handle:
         kwargs['time'] = str(datetime.today())
+        assert yaml is not None
         handle.write(
             yaml.safe_dump([kwargs],
                            default_flow_style=False,
@@ -89,7 +87,7 @@ def main() -> int:
         args.log_file = realpath(args.log_file)
         log_fh = open(args.log_file, 'a+')
         assert log_fh is not None
-        if HAS_YAML:
+        if yaml:
             log_yaml_handle = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
