@@ -3,12 +3,11 @@ filenames=()
 final_args=()
 for arg in "$@"; do
     if [ -e "$arg" ]; then
-        filenames+=( "$arg" )
+        filenames+=("$arg")
     else
-        final_args+=( "$arg" )
+        final_args+=("$arg")
     fi
 done
-
 if [ -x /Applications/MacPorts/KF5/kate.app/Contents/MacOS/kate ]; then
     open -a /Applications/MacPorts/KF5/kate.app/Contents/MacOS/kate \
         "${filenames[@]}" --args "${final_args[@]}"

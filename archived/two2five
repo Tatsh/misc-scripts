@@ -2,17 +2,14 @@
 input="$1"
 _bn=$(basename "$input")
 out="${_bn%.*}-5ch.mkv"
-
 cfe=$(mktemp __cfe.XXXXXXXXXX --suffix=.wav)
 left=$(mktemp __left.XXXXXXXXXX --suffix=.wav)
 right=$(mktemp __right.XXXXXXXXXX --suffix=.wav)
 no_aud=$(mktemp __no_aud.XXXXXXXXXX --suffix=.mkv)
-
 del_tmp() {
     rm -f "$cfe" "$left" "$right" "$no_aud"
 }
 trap del_tmp EXIT
-
 ffmpeg -y -i "$input" -ac 1 "$cfe"
 ffmpeg \
     -y \

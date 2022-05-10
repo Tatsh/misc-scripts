@@ -7,7 +7,6 @@ main() {
     files=()
     rm_args=()
     scp_args=()
-
     while getopts "hc:F:i:l:o:P:S:1246BCEpqrv" OPTION; do
         case $OPTION in
             1 | 2 | 4 | 6 | B | C | E | p | q | r | v)
@@ -16,47 +15,37 @@ main() {
                 [ "$OPTION" = "v" ] && rm_args+=("-v")
                 [ "$OPTION" = "r" ] && rm_args+=("-R")
                 ;;
-
             c)
                 scp_args+=("-c $OPT_ARG")
                 ;;
-
             F)
                 scp_args+=("-F $OPT_ARG")
                 ;;
-
             i)
                 scp_args+=("-i $OPT_ARG")
                 ;;
-
             l)
                 scp_args+=("-l $OPT_ARG")
                 ;;
-
             o)
                 scp_args+=("-o $OPT_ARG")
                 ;;
-
             P)
                 scp_args+=("-P $OPT_ARG")
                 ;;
-
             S)
                 scp_args+=("-S $OPT_ARG")
                 ;;
-
             h)
                 scp -h 2>&1 | grep -v illegal | sed -e 's/scp/smv/g'
                 return 1
                 ;;
-
             ?)
                 scp -h
                 return 1
                 ;;
         esac
     done
-
     if [ -n "$DASH_ARG" ]; then
         scp_args+=("$DASH_ARG")
     fi

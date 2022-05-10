@@ -2,34 +2,27 @@
 
 main() {
     local -r mount_point="$1"
-
     if [ -z "${mount_point}" ]; then
         echo "Usage: $0 mount_point"
         return 1
     fi
-
     if (($(mount | grep -c "on ${mount_point}") == 0)); then
         echo "${mount_point} is not mounted. Quitting..." >&2
         return 1
     fi
-
     for i in sys tmp; do
         umount -l "${mount_point}/${i}" 2> /dev/null
     done
-
     for i in pts shm; do
         if [[ -d "${mount_point}/dev/${i}" ]]; then
             umount -l "${mount_point}/dev/${i}" 2> /dev/null
         fi
     done
-
     if [[ -d "${mount_point}/usr/portage" ]]; then
         umount -l "${mount_point}/usr/portage" 2> /dev/null
     fi
-
     umount -l "${mount_point}/dev" 2> /dev/null
     umount -l "${mount_point}/proc" 2> /dev/null
     umount -l "${mount_point}" 2> /dev/null
 }
-
 main "$@"
