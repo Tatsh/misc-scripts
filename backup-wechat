@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -e
-
 date-prefix() {
     date +%Y%m%d -r "$1"
 }
-
 convert-audio() {
     local in out_pcm out use
     in="$1"
@@ -14,15 +12,12 @@ convert-audio() {
     fi
     out_pcm="./$(basename "$in").pcm"
     out="./$(date-prefix "$in")-$(basename "${in%.*}").flac"
-
     if [ -f "$out" ]; then
         echo "File '$out' already exists" >&2
         return
     fi
-
     cp "$in" .
     use="./$(basename "$in")"
-
     silk-v3-decoder "$use" "$out_pcm"
     rm "$use"
     ffmpeg -y -f s16le -ar 24000 -ac 1 -i "$out_pcm" "$out"
@@ -36,7 +31,6 @@ convert-audio() {
         --import-picture-from=wechat-icon.png \
         "$out"
 }
-
 convert-audio-main() {
     find "${HOME}/Library/Containers/com.tencent.xinWeChat" -type d -name 'Message' |
         while IFS=$'\n' read -r l; do
@@ -44,7 +38,6 @@ convert-audio-main() {
                 while IFS=$'\n' read -r n; do convert-audio "$n"; done
         done
 }
-
 mkdir -p ~/.local/share/wechat-backup
 cd ~/.local/share/wechat-backup/
 mkdir -p audio image video
