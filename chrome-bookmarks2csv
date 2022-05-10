@@ -92,11 +92,11 @@ def get_strings(children: Iterable[Union[URL, Folder]],
     for x in children:
         if x['type'] == 'folder':
             name = x['name']
-            yield from get_strings(cast(Folder, x)['children'],
-                                   folder_names=folder_names,
-                                   prefix=prefix +
-                                   f' » {name}' if prefix else name,
-                                   ignore_empty_names=ignore_empty_names)
+            yield from get_strings(
+                x['children'],
+                folder_names=folder_names,
+                prefix=prefix + f' » {name}' if prefix else name,
+                ignore_empty_names=ignore_empty_names)
         elif x['type'] == 'url':
             if not x['name'] and ignore_empty_names:
                 continue
@@ -111,7 +111,7 @@ def get_strings(children: Iterable[Union[URL, Folder]],
                     meta_info['last_visited_desktop']).strftime('%Y-%m-%d')
             yield (chrome_timestamp_to_date(
                 x['date_added']).strftime('%Y-%m-%d'), last_visited, name,
-                   cast(URL, x)['url'])
+                   x['url'])
 
 
 class Namespace(argparse.Namespace):
