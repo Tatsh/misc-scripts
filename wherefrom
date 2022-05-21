@@ -100,8 +100,6 @@ def main() -> int:
             sys.stdout.write(f'{val}\n')
         except Exception:  # pylint: disable=broad-except
             ret = 1
-        except KeyboardInterrupt:
-            return 1
     return ret
 
 
