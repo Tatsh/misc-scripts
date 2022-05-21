@@ -5,6 +5,7 @@ from os.path import basename
 from typing import Iterator, Optional, Sequence, cast
 import argparse
 import logging
+import platform
 import plistlib
 import re
 import subprocess as sp
@@ -17,6 +18,7 @@ try:
 except ImportError:
     argcomplete = None
 
+KEY_ORIGIN_URL: Final[str] = 'user.xdg.origin.url'
 KEY_WHEREFROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
 
 
@@ -45,13 +47,21 @@ def hexstr2bytes(s: str) -> bytes:
     return bytes(hexstr2bytes_generator(s))
 
 
-def xattr(key: str, filename: str) -> str:
+def xattr_mac(key: str, filename: str) -> str:
     return re.sub(
         r'\s+', '',
         sp.run(('xattr', '-p', key, filename),
-               encoding='utf-8',
+               text=True,
                stdout=sp.PIPE,
                check=True).stdout)
+
+
+def xattr_linux(key: str, filename: str) -> Optional[str]:
+    return (sp.run(('getfattr', '-n', key, '--only-values', filename),
+                   text=True,
+                   check=True,
+                   stderr=sp.DEVNULL,
+                   stdout=sp.PIPE).stdout.strip() or None)
 
 
 class Namespace(argparse.Namespace):
@@ -78,10 +88,13 @@ def main() -> int:
     ret = 0
     for arg in args.files:
         try:
-            val = cast(
-                Sequence[str],
-                plistlib.loads(hexstr2bytes(xattr(KEY_WHEREFROMS,
-                                                  arg))))[index]
+            if platform.uname().system == 'Linux':
+                val = xattr_linux(KEY_ORIGIN_URL, arg)
+            else:
+                val = cast(
+                    Sequence[str],
+                    plistlib.loads(hexstr2bytes(xattr_mac(KEY_WHEREFROMS,
+                                                          arg))))[index]
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
