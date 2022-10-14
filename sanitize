@@ -2,7 +2,7 @@
 import re
 import sys
 
-from youtube_dl.utils import sanitize_filename
+from yt_dlp.utils import sanitize_filename
 
 
 def main(s: str) -> int:
@@ -10,8 +10,7 @@ def main(s: str) -> int:
         r = sanitize_filename(s, restricted=True)
     except IndexError:
         return 1
-    r = r.strip()
-    if not r:
+    if not (r := r.strip()):
         return 1
     print(
         re.sub(r'([a-z0-9])\-s\-', r'\1s-',
