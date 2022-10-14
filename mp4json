@@ -1,61 +1,82 @@
 #!/usr/bin/env python
 from base64 import standard_b64encode
 from datetime import datetime
-from os import unlink as rm, utime
-from os.path import splitext
+from os import replace, unlink as rm, utime
+from os.path import dirname, splitext
 from shutil import copyfile
-from typing import Any, AnyStr, Sequence, TextIO, Tuple, Union
+from typing import Any, AnyStr, Final, Literal, Sequence, TextIO
 import json
 import re
 import subprocess as sp
 import sys
+import tempfile
 
-from typing_extensions import Final
+L = Literal
 
 CUSTOM_ATOM_NAME: Final[str] = 'json'
+ID3_TEXT_FRAME: Final[str] = 'TXXX'
 MIMETYPE: Final[str] = 'application/json'
 TAG_DESCRIPTION: Final[str] = 'youtube-dl metadata'
-MP4BOX_REM_ITEM_CMD: Final[Tuple[str, ...]] = (
-    'MP4Box',
-    '-rem-item',
-    '1',
-    '',  # MP4 filename
-)
-# https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/
-MP4BOX_SET_META_CMD: Final[Tuple[str, ...]] = (
-    'MP4Box',
-    '-set-meta',
-    'mp21',
-    '',  # MP4 filename
-)
-MP4BOX_WRITE_CMD_TEMPLATE: Final[Tuple[str, ...]] = (
-    'MP4Box', '-add-item',
-    ':name=youtube-dl metadata:mime=application/json:encoding=utf8', '')
-ID3_TEXT_FRAME = 'TXXX'
-ID3TED_REMOVE_FRAME_TEMPLATE: Final[Tuple[str, ...]] = (
-    'id3ted',
-    '--preserve-times',
-    '--remove',
-    ID3_TEXT_FRAME,
-    '',  # MP3 filename
-)
-ID3TED_WRITE_CMD_TEMPLATE: Final[Tuple[str,
-                                       ...]] = ('id3ted', '--preserve-times',
-                                                '-3', '--TXXX', '', '')
-MKVPROPEDIT_WRITE_CMD_TEMPLATE: Final[Tuple[str, ...]] = (
-    'mkvpropedit',
-    '',  # MKV filename
-    '--attachment-name',
-    'info.json',
-    '--add-attachment')
-UPLOAD_DATE_FORMAT = '%Y%m%d'
+UPLOAD_DATE_FORMAT: Final[str] = '%Y%m%d'
+
+
+def mkvpropedit_write_command(mkv_filename: str,
+                              attachment_filename: str) -> tuple[str, ...]:
+    return ('mkvpropedit', mkv_filename, '--attachment-name', 'info.json',
+            '--add-attachment', attachment_filename)
+
+
+def id3ted_write_command(
+    txxx_value: str, mp3_filename: str
+) -> tuple[L['id3ted'], L['--preserve-times'], L['-3'], str, str, str]:
+    return ('id3ted', '--preserve-times', '-3', f'--{ID3_TEXT_FRAME}',
+            txxx_value, mp3_filename)
+
+
+def id3ted_remove_frame_command(
+    mp3_filename: str
+) -> tuple[L['id3ted'], L['--preserve-times'], L['--remove'], str, str]:
+    return ('id3ted', '--preserve-times', '--remove', ID3_TEXT_FRAME,
+            mp3_filename)
+
+
+def mp4box_write_command(
+    json_filename: str, mp4_filename: str
+) -> tuple[L['MP4Box'], L['-add-item'],
+           L[':name=youtube-dl metadata:mime=application/json:encoding=utf8'],
+           str, str]:
+    return ('MP4Box', '-add-item',
+            ':name=youtube-dl metadata:mime=application/json:encoding=utf8',
+            json_filename, mp4_filename)
+
+
+def mp4box_set_meta_command(
+        mp4_filename: str
+) -> tuple[L['MP4Box'], L['-set-meta'], L['mp21'], str]:
+    """https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/"""
+    return ('MP4Box', '-set-meta', 'mp21', mp4_filename)
+
+
+def mp4box_rem_item_command(
+        mp4_filename: str) -> tuple[L['MP4Box'], L['-rem-item'], L['1'], str]:
+    return ('MP4Box', '-rem-item', '1', mp4_filename)
+
+
+def ffmpeg_set_meta_command(
+    input_filename: str, metadata_arg: str, output_filename: str
+) -> tuple[L['ffmpeg'], L['-y'], L['-i'], str, L['-codec'], L['copy'],
+           L['-map_metadata'], L['0'], L['-metadata'], str, L['-map'], L['0'],
+           str]:
+    return ('ffmpeg', '-y', '-i', input_filename, '-codec', 'copy',
+            '-map_metadata', '0', '-metadata', metadata_arg, '-map', '0',
+            output_filename)
 
 
 def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
     try:
-        arg: Union[int, TextIO] = sp.DEVNULL
+        arg: int | TextIO = sp.DEVNULL
     except AttributeError:
-        arg = open('/dev/null')
+        arg = open('/dev/null')  # pylint: disable=consider-using-with
     if 'check' in kwargs:
         kwargs.pop('check')
     kwargs['stdout'] = arg
@@ -76,25 +97,16 @@ def set_date(path: str, json_str: bytes) -> None:
 
 
 def mp4box_add_json(filename: str, json_filename: str) -> bool:
-    cmd = list(MP4BOX_REM_ITEM_CMD)
-    cmd[3] = filename
     try:
-        quiet_subprocess_check_call(cmd)
+        quiet_subprocess_check_call(mp4box_rem_item_command(filename))
     except sp.CalledProcessError:
         pass
-
-    cmd = list(MP4BOX_SET_META_CMD)
-    cmd[3] = filename
+    cmd = mp4box_set_meta_command(filename)
     quiet_subprocess_check_call(cmd)
-
     better_json_filename = 'info.json'
     copyfile(json_filename, better_json_filename)
-
-    cmd = list(MP4BOX_WRITE_CMD_TEMPLATE)
-    cmd[2] = f'{better_json_filename}{cmd[2]}'
-    cmd[3] = filename
-    quiet_subprocess_check_call(cmd)
-
+    quiet_subprocess_check_call(
+        mp4box_write_command(f'{better_json_filename}{cmd[2]}', filename))
     rm(better_json_filename)
     with open(json_filename, 'rb') as f:
         set_date(filename, f.read())
@@ -102,31 +114,25 @@ def mp4box_add_json(filename: str, json_filename: str) -> bool:
 
 
 def id3ted_add_json(filename: str, json_filename: str) -> bool:
-    cmd = list(ID3TED_REMOVE_FRAME_TEMPLATE)
-    cmd[-1] = filename
-    quiet_subprocess_check_call(cmd)
-    cmd = list(ID3TED_WRITE_CMD_TEMPLATE)
+    quiet_subprocess_check_call(id3ted_remove_frame_command(filename))
     with open(json_filename, 'rb') as f:
         new_json = f.read()
     encoded = standard_b64encode(new_json).decode()
-    cmd[-2] = f'{encoded}:{TAG_DESCRIPTION}'
-    cmd[-1] = filename
-    quiet_subprocess_check_call(cmd)
+    quiet_subprocess_check_call(
+        id3ted_write_command(f'{encoded}:{TAG_DESCRIPTION}', filename))
     set_date(filename, new_json)
     return True
 
 
 def mkvpropedit_add_json(filename: str, json_filename: str) -> bool:
-    cmd = list(MKVPROPEDIT_WRITE_CMD_TEMPLATE)
-    cmd[1] = filename
-    cmd.append(json_filename)
+    cmd = mkvpropedit_write_command(filename, json_filename)
     quiet_subprocess_check_call(cmd)
     with open(json_filename, 'rb') as f:
         set_date(filename, f.read())
     return True
 
 
-def isfile(path: Union[AnyStr, int]) -> bool:
+def isfile(path: AnyStr | int) -> bool:
     try:
         with open(path):
             pass
@@ -135,10 +141,26 @@ def isfile(path: Union[AnyStr, int]) -> bool:
     return True
 
 
+def ffmpeg_add_json(filename: str, json_filename: str) -> bool:
+    with tempfile.NamedTemporaryFile(suffix='.txt') as ffm:
+        ffm.write(b';FFMETADATA1')
+    with open(json_filename) as f:
+        json_data = f'info_json={f.read()}'
+    _, ext = splitext(filename)
+    out_dir = dirname(filename)
+    with tempfile.NamedTemporaryFile(suffix=ext, delete=False,
+                                     dir=out_dir) as temp_file:
+        quiet_subprocess_check_call(
+            ffmpeg_set_meta_command(filename, json_data, temp_file.name))
+        replace(temp_file.name, filename)
+    return True
+
+
 def main() -> int:
-    mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
-    mp3_ext_regex = re.compile(r'\.mp3')
     mkv_ext_regex = re.compile(r'\.mkv')
+    mp3_ext_regex = re.compile(r'\.mp3')
+    mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
+    opus_ext_regex = re.compile(r'\.opus')
     for arg in sys.argv[1:]:
         json_filename = f'{splitext(arg)[0]}.info.json'
         if not isfile(json_filename):
@@ -150,6 +172,8 @@ def main() -> int:
             can_delete = id3ted_add_json(arg, json_filename)
         elif re.search(mkv_ext_regex, arg):
             can_delete = mkvpropedit_add_json(arg, json_filename)
+        elif re.search(opus_ext_regex, arg):
+            can_delete = ffmpeg_add_json(arg, json_filename)
         if can_delete:
             rm(json_filename)
     return 0
