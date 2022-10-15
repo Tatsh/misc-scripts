@@ -40,7 +40,9 @@ cygpath
 discid
 dists
 dpkg
+econnrefused
 ehthumbs
+enoent
 epqrv
 epub
 executable's
@@ -188,6 +190,7 @@ uids
 uint
 ukpabmc
 umount
+umpv
 unrar
 usbfs
 usec
