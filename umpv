@@ -57,19 +57,17 @@ def setup_syslog(name: Optional[str] = None,
 
 
 def is_url(filename: str) -> bool:
-    """this is the same method mpv uses to decide this"""
+    """This is the same method mpv uses to decide this."""
     parts = filename.split("://", 1)
     if len(parts) < 2:
         return False
     # protocol prefix has no special characters => it's a URL
     return all(
-        c in f'{string.ascii_letters}{string.digits}_' for c in parts[0])
+        x in f'{string.ascii_letters}{string.digits}_' for x in parts[0])
 
 
 def make_abs(filename: str) -> str:
-    """
-    make them absolute; also makes them safe against interpretation as options
-    """
+    """Make them filename absolute. Also makes filename safe against interpretation as options."""
     return filename if is_url(filename) else realpath(filename)
 
 
@@ -94,16 +92,18 @@ def main() -> int:
         # Unhandled race condition: what if mpv is terminating right now?
         for f in files:
             # escape: \ \n "
+            # pylint: disable=invalid-string-quote
             f = f.replace("\\", "\\\\").replace("\"", "\\\"").replace(
                 "\n", "\\n")
+            # pylint: enable=invalid-string-quote
             sock.send(f'raw loadfile "{f}"\n'.encode())
-            log.info('Loading file "%s"', f)
+            log.info('Loading file "%s"', f)  # pylint: disable=logging-too-many-args
     else:
         log.info('Starting new mpv instance')
         # Let mpv recreate socket if it does not already exist.
         opts = (os.getenv('MPV') or 'mpv').split()
-        opts.extend(([] if verbose else ['--no-terminal']) +
-                    ['--force-window', f'--input-ipc-server={SOCK}', '--'])
+        opts.extend((() if verbose else ('--no-terminal',)) +
+                    ('--force-window', f'--input-ipc-server={SOCK}', '--'))
         opts.extend(files)
         subprocess.run(opts, check=True)
     return 0
