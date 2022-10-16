@@ -6,4 +6,7 @@ elif [[ $fn == *.mp3 ]]; then
     id3ted -l "$fn" | grep -F TXXX | cut -d ':' -f3- | tr -d ' ' | base64 -d
 elif [[ $fn == *.mkv ]]; then
     mkvextract "$fn" attachments 1:/dev/stdout | tail -n +2
+elif [[ $fn == *.flac ]]; then
+    ffprobe -v quiet -print_format json -show_format -show_streams "$fn" |
+        jq -r .format.tags.info_json | jq .
 fi
