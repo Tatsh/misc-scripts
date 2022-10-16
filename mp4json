@@ -11,6 +11,8 @@ import subprocess as sp
 import sys
 import tempfile
 
+from mutagen.flac import FLAC, Picture
+
 L = Literal
 
 CUSTOM_ATOM_NAME: Final[str] = 'json'
@@ -156,13 +158,36 @@ def ffmpeg_add_json(filename: str, json_filename: str) -> bool:
     return True
 
 
+def mutagen_flac_add_thumbnail(filename: str, thumbnail_filename: str) -> bool:
+    pic = Picture()
+    pic.mime = 'image/jpeg'
+    with open(thumbnail_filename, 'rb') as f:
+        pic.data = f.read()
+    pic.type = 3
+    _, ext = splitext(filename)
+    with tempfile.NamedTemporaryFile(suffix=ext,
+                                     delete=False,
+                                     dir=dirname(filename)) as temp_file:
+        with open(filename, 'rb') as input_file:
+            temp_file.write(input_file.read())
+    obj = FLAC(temp_file.name)
+    obj.add_picture(pic)
+    obj.save()
+    replace(temp_file.name, filename)
+    rm(thumbnail_filename)
+    return True
+
+
 def main() -> int:
     mkv_ext_regex = re.compile(r'\.mkv')
     mp3_ext_regex = re.compile(r'\.mp3')
     mp4_ext_regex = re.compile(r'\.(?:mp4|m4[pabrv])$')
     opus_ext_regex = re.compile(r'\.opus')
+    flac_ext_regex = re.compile(r'\.flac')
     for arg in sys.argv[1:]:
-        json_filename = f'{splitext(arg)[0]}.info.json'
+        prefix = splitext(arg)[0]
+        json_filename = f'{prefix}.info.json'
+        thumbnail_filename = f'{prefix}.jpg'
         if not isfile(json_filename):
             continue
         can_delete = False
@@ -172,8 +197,11 @@ def main() -> int:
             can_delete = id3ted_add_json(arg, json_filename)
         elif re.search(mkv_ext_regex, arg):
             can_delete = mkvpropedit_add_json(arg, json_filename)
-        elif re.search(opus_ext_regex, arg):
+        elif re.search(opus_ext_regex, arg) or re.search(flac_ext_regex, arg):
             can_delete = ffmpeg_add_json(arg, json_filename)
+            if isfile(thumbnail_filename) and re.search(flac_ext_regex, arg):
+                can_delete = mutagen_flac_add_thumbnail(
+                    arg, thumbnail_filename)
         if can_delete:
             rm(json_filename)
     return 0
