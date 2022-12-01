@@ -31,6 +31,7 @@ Note: you can supply custom mpv path and options with the MPV environment
 from functools import lru_cache
 from logging.handlers import SysLogHandler
 from os.path import basename, expanduser, realpath
+from shlex import split
 from typing import Optional
 import errno
 import logging
@@ -39,6 +40,8 @@ import socket
 import string
 import subprocess
 import sys
+
+import psutil
 
 SOCK = expanduser('~/.cache/umpv-socket')
 
@@ -58,7 +61,7 @@ def setup_syslog(name: Optional[str] = None,
 
 def is_url(filename: str) -> bool:
     """This is the same method mpv uses to decide this."""
-    parts = filename.split("://", 1)
+    parts = filename.split('://', 1)
     if len(parts) < 2:
         return False
     # protocol prefix has no special characters => it's a URL
@@ -87,8 +90,14 @@ def main() -> int:
             log.debug('Socket does not exist')
             sock = None  # does not exist
         else:
+            log.error('Socket errno: %d', e.errno, exc_info=True)
             raise e
-    if sock:
+    opts = split(os.getenv('MPV') or 'mpv')
+    mpv_bin = opts[0]
+    mpv_running = len([
+        x for x in psutil.process_iter(['pid', 'name']) if x.name() == mpv_bin
+    ]) > 0
+    if sock and mpv_running:
         # Unhandled race condition: what if mpv is terminating right now?
         for f in files:
             # escape: \ \n "
@@ -101,7 +110,6 @@ def main() -> int:
     else:
         log.info('Starting new mpv instance')
         # Let mpv recreate socket if it does not already exist.
-        opts = (os.getenv('MPV') or 'mpv').split()
         opts.extend((() if verbose else ('--no-terminal',)) +
                     ('--force-window', f'--input-ipc-server={SOCK}', '--'))
         opts.extend(files)
