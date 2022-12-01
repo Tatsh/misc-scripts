@@ -273,6 +273,7 @@ popen
 printf
 printmsg
 psql
+psutil
 pushd
 pycache
 pydbus
