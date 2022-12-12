@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-if command -v sw_vers &>/dev/null; then
+if command -v sw_vers &> /dev/null; then
     /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
         -kill \
         -seed \
