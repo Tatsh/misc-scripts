@@ -47,9 +47,9 @@ def mp4box_write_command(
 ) -> tuple[L['MP4Box'], L['-add-item'],
            L[':name=youtube-dl metadata:mime=application/json:encoding=utf8'],
            str, str]:
-    return ('MP4Box', '-add-item',
-            ':name=youtube-dl metadata:mime=application/json:encoding=utf8',
-            json_filename, mp4_filename)
+    options = ':'.join(('replace', 'name=youtube-dl metadata',
+                        'mime=application/json', 'encoding=utf8'))
+    return ('MP4Box', '-add-item', f'{json_filename}:{options}', mp4_filename)
 
 
 def mp4box_set_meta_command(
@@ -108,7 +108,7 @@ def mp4box_add_json(filename: str, json_filename: str) -> bool:
     better_json_filename = 'info.json'
     copyfile(json_filename, better_json_filename)
     quiet_subprocess_check_call(
-        mp4box_write_command(f'{better_json_filename}{cmd[2]}', filename))
+        mp4box_write_command(better_json_filename, filename))
     rm(better_json_filename)
     with open(json_filename, 'rb') as f:
         set_date(filename, f.read())
