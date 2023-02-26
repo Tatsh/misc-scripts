@@ -8,6 +8,7 @@ alayka
 alayya
 algo
 alrm
+alsa
 amerge
 an
 anhu
@@ -247,6 +248,7 @@ numargv
 nvenc
 objectdb
 openssl
+optarg
 optimise
 oradiag
 osascript
@@ -262,6 +264,7 @@ pathlib
 pathsep
 pdfkit
 personalblindness
+pipewire
 pixmaps
 platformtheme
 plist
@@ -296,6 +299,7 @@ rockridge
 ropeproject
 rstrip
 safemv
+samplerate
 scandir
 setattr
 setfiletime
