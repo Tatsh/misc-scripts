@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+from pprint import pprint
+from time import sleep
+import json
+import subprocess as sp
+import sys
+
+
+def start_test(flags, old_content, sn, new_ls):
+    print('Testing flags:')
+    pprint(flags)
+    old_content['browser']['enabled_labs_experiments'] = flags
+    with open(new_ls, 'w+') as f:
+        json.dump(old_content, f)
+    print('Start browser and test for the issue')
+    input()
+    sp.run(('killall', sn))
+    sleep(0.5)
+    if input('Did the problem occur? ').lower().startswith('y'):
+        if len(flags) == 1:
+            print(f'Problem flag: {flags[0]}')
+            return
+        do_test(flags, new_ls, sn)
+
+
+def do_test(flags, new_ls, sn):
+    l = len(flags)
+    if l == 0:
+        print('Nothing to test')
+        return
+    with open(new_ls, 'r') as f:
+        old_content = json.load(f)
+    start_test(flags[:l // 2], old_content, sn, new_ls)
+    start_test(flags[l // 2:], old_content, sn, new_ls)
+
+
+def main():
+    old_ls = sys.argv[1]
+    new_ls = sys.argv[2]
+    try:
+        subprocess_name = sys.argv[3]
+    except IndexError:
+        subprocess_name = 'chrome'
+    with open(old_ls, 'r') as f:
+        flags = json.load(f)['browser']['enabled_labs_experiments']
+    input('Exit the browser and press any key')
+    do_test(flags, new_ls, subprocess_name)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
