@@ -12,11 +12,7 @@ import subprocess as sp
 import sys
 
 from typing_extensions import Final, Literal
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 VERSION_MAPPING: Final[Mapping[str, str]] = {
     '10': 'win10',
@@ -37,16 +33,14 @@ class Args(argparse.Namespace):
     prefix_name: str
     thirty2bit: bool
     no_xdg: bool
-    windows_version: Sequence[Literal['10', 'vista', '2k3', '7', '8', 'xp',
-                                      '81', '2k', '98', '95']]
+    windows_version: Sequence[Literal['10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']]
     sandbox: bool
     vd: str
     verbose: bool
 
 
 @lru_cache()
-def setup_logging_stderr(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stderr(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -76,8 +70,7 @@ def wine(args: Args) -> int:
     if isdir(target):
         log.error('Not touching existing prefix at %s', target)
         return 1
-    arch: Final[Literal['win32',
-                        'win64']] = ('win32' if args.thirty2bit else 'win64')
+    arch: Final[Literal['win32', 'win64']] = ('win32' if args.thirty2bit else 'win64')
     env: Final[Dict[str, str]] = dict(WINEPREFIX=target,
                                       DISPLAY=environ.get('DISPLAY', ''),
                                       XAUTHORITY=environ.get('XAUTHORITY', ''),
@@ -86,8 +79,8 @@ def wine(args: Args) -> int:
         env['DISPLAY'] = ':0'
     if args.no_xdg:
         try:
-            run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides',
-                 '/t', 'REG_SZ', '/v', 'winemenubuilder.exe', '/f'),
+            run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
+                 'winemenubuilder.exe', '/f'),
                 env=env,
                 check=True,
                 stdout=open(devnull, 'w'),
@@ -108,9 +101,7 @@ def wine(args: Args) -> int:
         log.error('Winetricks is not installed.')
         return 1
     prefix_arg = f'prefix={prefix_name}'
-    winetricks_args = [
-        winetricks, prefix_arg, VERSION_MAPPING[args.windows_version[0]]
-    ]
+    winetricks_args = [winetricks, prefix_arg, VERSION_MAPPING[args.windows_version[0]]]
     if args.sandbox:
         winetricks_args.append('isolate_home')
         winetricks_args.append('sandbox')
@@ -119,8 +110,7 @@ def wine(args: Args) -> int:
     try:
         run(winetricks_args, check=True, stdout=sp.PIPE, encoding='utf-8')
     except sp.CalledProcessError as e:
-        log.warning('Winetricks exit code was %d but it may have succeeded',
-                    e.returncode)
+        log.warning('Winetricks exit code was %d but it may have succeeded', e.returncode)
         log.warning('%s', e.output)
     except KeyboardInterrupt:
         rmtree(o_target)
@@ -142,23 +132,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description='Create a Wine prefix with custom settings',
         epilog='This should be used with eval: eval $(mkwineprefix ...)')
-    parser.add_argument('--no-xdg',
-                        action='store_true',
-                        help='Disable winemenubuilder.exe')
-    parser.add_argument('--32',
-                        help='Use 32-bit prefix',
-                        dest='thirty2bit',
-                        action='store_true')
+    parser.add_argument('--no-xdg', action='store_true', help='Disable winemenubuilder.exe')
+    parser.add_argument('--32', help='Use 32-bit prefix', dest='thirty2bit', action='store_true')
     parser.add_argument('-V',
                         '--windows-version',
                         default=['xp'],
                         help='Windows version',
                         nargs=1,
                         choices=VERSION_MAPPING.keys())
-    parser.add_argument('-S',
-                        '--sandbox',
-                        action='store_true',
-                        help='Sandbox the prefix')
+    parser.add_argument('-S', '--sandbox', action='store_true', help='Sandbox the prefix')
     parser.add_argument('--vd',
                         metavar='SIZE',
                         nargs=1,
@@ -166,8 +148,7 @@ def main() -> int:
                         help='Virtual desktop size, e.g. 1024x768.')
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('prefix_name')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     return wine(cast(Args, parser.parse_args()))
 
 

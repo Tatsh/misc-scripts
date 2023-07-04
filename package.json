@@ -1,0 +1,23 @@
+{
+  "author": "Andrew Udvare <audvare@gmail.com>",
+  "dependencies": {},
+  "devDependencies": {
+    "cspell": "^6.31.1",
+    "prettier": "^2.8.7",
+    "prettier-plugin-ini": "^1.1.0",
+    "prettier-plugin-toml": "^0.3.1"
+  },
+  "license": "MIT",
+  "name": "misc-scripts",
+  "repository": "git@github.com:Tatsh/misc-scripts.git",
+  "scripts": {
+    "check-formatting": "prettier -c './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && isort . --check && yapf -rd .",
+    "check-spelling": "cspell --no-progress './**/*'  './**/.*'",
+    "format": "prettier -w './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && isort . && yapf -ri .",
+    "install-python-deps": "python -m pip install --upgrade pip && pip install poetry && poetry install && pip install -e . && pip install mypy pylint pylint-quotes pytest pytest-cov coveralls pytest-mock types-requests toml yapf",
+    "mypy": "bash .run-mypy",
+    "pylint": "bash .run-pylint",
+    "qa": "yarn mypy && yarn pylint && yarn check-spelling && yarn check-formatting"
+  },
+  "version": "0.2.0"
+}

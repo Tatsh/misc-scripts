@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from os.path import expanduser
-from typing import Final, Optional, cast
+from typing import Final
 import sys
 import time
 
@@ -9,18 +9,16 @@ from pydbus import SessionBus
 KEY_FILE: Final[str] = expanduser('~/.cache/toggle-inhibit-key')
 
 
-def toggle_inhibit() -> Optional[int]:
+def toggle_inhibit() -> int | None:
     bus = SessionBus()
-    notifications = bus.get('org.freedesktop.Notifications',
-                            '/org/freedesktop/Notifications')
+    notifications = bus.get('org.freedesktop.Notifications', '/org/freedesktop/Notifications')
     if notifications.Inhibited:
         print('Enabling notifications', file=sys.stderr)
         with open(KEY_FILE) as fp:
-            return cast(Optional[int],
-                        notifications.UnInhibit(int(fp.read().strip())))
+            return notifications.UnInhibit(int(fp.read().strip()))
     with open(KEY_FILE, 'w+') as fp:
         print(f'Saving key to {fp.name}', file=sys.stderr)
-        key = cast(Optional[int], notifications.Inhibit('*', 'None', {}))
+        key = notifications.Inhibit('*', 'None', {})
         fp.write(f'{key}\n')
         time.sleep(10)
         return key

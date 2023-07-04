@@ -6,11 +6,7 @@ import re
 import sys
 
 from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 ENGLISH_MODE: Final[int] = 1
 JAPANESE_MODE: Final[int] = 1 << 1
@@ -60,18 +56,15 @@ STOP_WORDS: Final[Sequence[str]] = (
 # English abbreviations for period removal
 ENGLISH_ABBREV: Final[Sequence[str]] = ('feat', 'mr', 'mrs', 'ms', 'vs')
 # Only really common ones
-JAPANESE_PARTICLES: Final[Sequence[str]] = ('de', 'e', 'ga', 'ha', 'ka',
-                                            'kana', 'ne', 'ni', 'no', 'to',
-                                            'wa', 'wo')
+JAPANESE_PARTICLES: Final[Sequence[str]] = ('de', 'e', 'ga', 'ha', 'ka', 'kana', 'ne', 'ni', 'no',
+                                            'to', 'wa', 'wo')
 CHINESE_PARTICLES: Final[Sequence[str]] = ('de', 'ge', 'he', 'le', 'ma')
 # NOTE This list is not yet complete
-ARABIC_STOPS: Final[Sequence[str]] = ('al', 'ala', 'alayhi', 'alayka',
-                                      'alayya', 'an', 'anhu', 'anka', 'anni',
-                                      'bi', 'biha', 'bihi', 'bika', 'fi',
-                                      'fihi', 'fika', 'fiya', 'ila', 'ilayhi',
-                                      'ilayka', 'ilayya', 'lahu', 'laka', 'li',
-                                      'maa', 'maahu', 'maaka', 'mai', 'min',
-                                      'minhu', 'minka', 'minni', 'wa')
+ARABIC_STOPS: Final[Sequence[str]] = ('al', 'ala', 'alayhi', 'alayka', 'alayya', 'an', 'anhu',
+                                      'anka', 'anni', 'bi', 'biha', 'bihi', 'bika', 'fi', 'fihi',
+                                      'fika', 'fiya', 'ila', 'ilayhi', 'ilayka', 'ilayya', 'lahu',
+                                      'laka', 'li', 'maa', 'maahu', 'maaka', 'mai', 'min', 'minhu',
+                                      'minka', 'minni', 'wa')
 NAMES: Final[Mapping[str, str]] = {
     "mcdonald's": "McDonald's",
     'Arkit': 'ARKit',
@@ -112,17 +105,15 @@ def is_roman_numeral(string: str) -> bool:
     if not string:
         return False
     # https://l.tat.sh/2HXEIyx
-    return re.match(
-        r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
-        re.I) is not None
+    return re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
+                    re.I) is not None
 
 
 def fix_apostrophes(word: str) -> str:
     if "'" not in word:
         return word
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(),
-                  word)
+                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), word)
 
 
 def lower_stop(words: str,
@@ -180,8 +171,7 @@ def lower_stop(words: str,
                 word = word[1:]
 
             if re.match(r'\w+\W$', word):
-                end = cast(Match[str], re.match(r'\w+(\W+)$',
-                                                word)).groups()[0]
+                end = cast(Match[str], re.match(r'\w+(\W+)$', word)).groups()[0]
                 word = word[0:-1]
 
             if word.lower() in to_lower_case_array:
@@ -200,8 +190,7 @@ def lower_stop(words: str,
 
             ordinal_match = re.match(ENGLISH_ORDINAL_RE, word, flags=re.I)
             if mode == ENGLISH_MODE and ordinal_match is not None:
-                word = (ordinal_match.group(1) +
-                        ordinal_match.group(2).lower())
+                word = (ordinal_match.group(1) + ordinal_match.group(2).lower())
 
             word = f'{begin}{word}{end}'
 
@@ -266,8 +255,7 @@ def main() -> int:
                         action='store_true',
                         help='Replace " and " with " & "',
                         default=False)
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     for title in args.titles:
         print(

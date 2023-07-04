@@ -1,4 +1,5 @@
 from typing import Any, Dict
+
 # The default ``config.py``
 # flake8: noqa
 

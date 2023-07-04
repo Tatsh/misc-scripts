@@ -6,18 +6,14 @@ import os
 import re
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('-y', '--dry-run', action='store_true')
     parser.add_argument('files', nargs='*')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     arg: str
     for arg in args.files:
@@ -25,8 +21,7 @@ def main() -> int:
         if ext in ('.bz2', '.gpg', '.gz'):
             name, ext2 = splitext(name)
             ext = f'{ext2}{ext}'
-        name = re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '',
-                                              basename(name))).strip().lower()
+        name = re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', basename(name))).strip().lower()
         name += ext.lower()
         name = path_join(dirname(arg), name)
         if args.dry_run:

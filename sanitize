@@ -13,8 +13,7 @@ def main(s: str) -> int:
     if not (r := r.strip()):
         return 1
     print(
-        re.sub(r'([a-z0-9])\-s\-', r'\1s-',
-               re.sub(r'\.-', '-', re.sub(r'[_\-]+', '-', r.lower()))))
+        re.sub(r'([a-z0-9])\-s\-', r'\1s-', re.sub(r'\.-', '-', re.sub(r'[_\-]+', '-', r.lower()))))
     return 0
 
 

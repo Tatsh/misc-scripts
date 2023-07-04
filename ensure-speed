@@ -10,15 +10,8 @@ import signal
 import subprocess as sp
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
-
-try:
-    import yaml
-except ImportError:
-    yaml = None
+import argcomplete
+import yaml
 
 LOG_FORMATTER: Final[logging.Formatter] = logging.Formatter('%(message)s')
 log_handle: Optional[TextIO] = None
@@ -32,11 +25,7 @@ def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess[str]:
     kwargs['check'] = True
     kwargs['stdout'] = sp.PIPE
     kwargs['encoding'] = 'utf-8'
-    return sp.run(('speedtest',) + args,
-                  check=True,
-                  stdout=sp.PIPE,
-                  text=True,
-                  **kwargs)
+    return sp.run(('speedtest',) + args, check=True, stdout=sp.PIPE, text=True, **kwargs)
 
 
 def ctrl_c(signum: int, frame: Any) -> NoReturn:
@@ -47,10 +36,7 @@ def maybe_log_yaml(handle: Optional[TextIO], **kwargs: Any) -> None:
     if handle:
         kwargs['time'] = str(datetime.today())
         assert yaml is not None
-        handle.write(
-            yaml.safe_dump([kwargs],
-                           default_flow_style=False,
-                           allow_unicode=True))
+        handle.write(yaml.safe_dump([kwargs], default_flow_style=False, allow_unicode=True))
 
 
 def get_line_value(s: str) -> str:
@@ -77,8 +63,7 @@ def main() -> int:
     parser.add_argument('-s', '--syslog', action='store_true')
     parser.add_argument('-l', '--log-file', help='Debug log')
     parser.add_argument('-v', '--verbose', action='store_true')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Args, parser.parse_args())
     ping = dl = ul = share = None
     log_yaml_handle: Optional[TextIO] = None
@@ -87,8 +72,7 @@ def main() -> int:
         args.log_file = realpath(args.log_file)
         log_fh = open(args.log_file, 'a+')
         assert log_fh is not None
-        if yaml:
-            log_yaml_handle = open(args.log_file + '.yml', 'a+')
+        log_yaml_handle = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)
@@ -100,7 +84,7 @@ def main() -> int:
         syslog_h.setLevel(logging.INFO)
         logger.addHandler(syslog_h)
     if args.verbose:
-        channel = logging.StreamHandler(sys.stdout)
+        channel = logging.StreamHandler(sys.stdout)  # type: ignore[arg-type]
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.INFO)
         logger.addHandler(channel)
@@ -122,9 +106,8 @@ def main() -> int:
         return 1
     assert ping is not None
     if ping > args.ping_threshold:
-        logger.error(
-            'Ping threshold higher than threshold. Got %0.03f, '
-            'wanted at most %.03f.', ping, args.ping_threshold)
+        logger.error('Ping threshold higher than threshold. Got %0.03f, '
+                     'wanted at most %.03f.', ping, args.ping_threshold)
         failed = True
     assert dl is not None
     if dl < args.download_threshold:
@@ -142,11 +125,7 @@ def main() -> int:
     logger.info('Download speed: %0.02f Mb/s', dl)
     logger.info('Upload speed: %0.02f Mb/s', ul)
     logger.info('Share URI: %s', share)
-    maybe_log_yaml(log_yaml_handle,
-                   ping=ping,
-                   download=dl,
-                   upload=ul,
-                   share_uri=share)
+    maybe_log_yaml(log_yaml_handle, ping=ping, download=dl, upload=ul, share_uri=share)
     if True in (not x for x in (ping, dl, ul, share)):
         logger.error('Output not as expected (other error)')
         return 1

@@ -4,16 +4,11 @@ from html import escape
 from itertools import chain
 from os import DirEntry, chdir, scandir
 from os.path import basename, realpath
-from typing import Any, Iterator, Sequence, cast
+from typing import Any, Final, Iterator, Sequence, cast
 import argparse
 import sys
 
-from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 CSS_URI: Final[str] = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
 
@@ -30,11 +25,9 @@ def recurse_cwd(path: str,
                 follow_symlinks: bool = False,
                 depth: int = 1,
                 _cur_depth: int = 0) -> Iterator[str]:
-    for entry in sorted(
-            sorted(scandir_ignore(path), key=lambda x: x.name),
-            key=lambda x: not x.is_dir(follow_symlinks=follow_symlinks)):
-        if (entry.is_dir(follow_symlinks=follow_symlinks)
-                and _cur_depth < depth):
+    for entry in sorted(sorted(scandir_ignore(path), key=lambda x: x.name),
+                        key=lambda x: not x.is_dir(follow_symlinks=follow_symlinks)):
+        if (entry.is_dir(follow_symlinks=follow_symlinks) and _cur_depth < depth):
             yield ('<li class="dir"><details><summary>'
                    f'<code>{escape(entry.name)}/</code></summary><ul>')
             yield from recurse_cwd(entry.path,
@@ -57,20 +50,16 @@ class Namespace(argparse.Namespace):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        basename(sys.argv[0]),
-        description='Generate a directory listing in HTML 5.')
+    parser = argparse.ArgumentParser(basename(sys.argv[0]),
+                                     description='Generate a directory listing in HTML 5.')
     parser.add_argument('dir', nargs=1)
     parser.add_argument('-s', '--follow-symlinks', action='store_true')
     parser.add_argument('-d', '--depth', default=1, type=int)
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     chdir(args.dir[0])
     title = basename(realpath(args.dir[0]))
-    files = ''.join(
-        chain.from_iterable(
-            recurse_cwd(args.dir[0], args.follow_symlinks, args.depth)))
+    files = ''.join(chain.from_iterable(recurse_cwd(args.dir[0], args.follow_symlinks, args.depth)))
     print(f'''<!DOCTYPE html>
 <html lang="en">
 <head>

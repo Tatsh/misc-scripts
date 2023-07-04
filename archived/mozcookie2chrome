@@ -23,8 +23,7 @@ class CookieDict(TypedDict):
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -63,11 +62,9 @@ def main() -> int:
     assert active_profile is not None
     mozilla_db_file = path_join(active_profile, 'cookies.sqlite')
     if not is_full_path:
-        mozilla_db_file = path_join(expanduser('~/.mozilla/firefox'),
-                                    mozilla_db_file)
+        mozilla_db_file = path_join(expanduser('~/.mozilla/firefox'), mozilla_db_file)
 
-    conn = sqlite3.connect(mozilla_db_file,
-                           detect_types=sqlite3.PARSE_COLNAMES)
+    conn = sqlite3.connect(mozilla_db_file, detect_types=sqlite3.PARSE_COLNAMES)
     c = conn.cursor()
     sql = ('SELECT name, value, host, path, expiry, isSecure, isHttpOnly FROM '
            'moz_cookies WHERE baseDomain like ?')
@@ -85,15 +82,12 @@ def main() -> int:
         })
     conn.close()
 
-    conn = sqlite3.connect(chrome_sqlite_file,
-                           detect_types=sqlite3.PARSE_COLNAMES)
+    conn = sqlite3.connect(chrome_sqlite_file, detect_types=sqlite3.PARSE_COLNAMES)
     c = conn.cursor()
     i = 0
-    creation_utc = int(
-        (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
-    columns = ('creation_utc', 'host_key', 'name', 'value', 'path',
-               'expires_utc', 'secure', 'httponly', 'has_expires',
-               'persistent', 'last_access_utc')
+    creation_utc = int((datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
+    columns = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc', 'secure',
+               'httponly', 'has_expires', 'persistent', 'last_access_utc')
     cols = ','.join(columns)
     question_marks = ('?,' * len(columns))[:-1]
     delete_query = ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
@@ -112,11 +106,9 @@ def main() -> int:
                 dic['name'],
                 dic['path'],
             ))
-            c.execute(
-                insert_query,
-                (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
-                 dic['path'], dic['expires_utc'], dic['secure'],
-                 dic['httponly'], has_expires, persistent, creation_utc))
+            c.execute(insert_query, (creation_utc + i, dic['host_key'], dic['name'], dic['value'],
+                                     dic['path'], dic['expires_utc'], dic['secure'],
+                                     dic['httponly'], has_expires, persistent, creation_utc))
             i += 1
         conn.commit()
     finally:

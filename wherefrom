@@ -12,19 +12,14 @@ import subprocess as sp
 import sys
 
 from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 KEY_ORIGIN_URL: Final[str] = 'user.xdg.origin.url'
 KEY_WHEREFROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -36,9 +31,9 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def hexstr2bytes(s: str) -> bytes:
-    def chunks(l: str, n: int) -> Iterator[str]:
-        for i in range(0, len(l), n):
-            yield l[i:i + n]
+    def chunks(seq: str, n: int) -> Iterator[str]:
+        for i in range(0, len(seq), n):
+            yield seq[i:i + n]
 
     def hexstr2bytes_generator(s: str) -> Iterator[int]:
         for hex_num in chunks(s, 2):
@@ -50,10 +45,7 @@ def hexstr2bytes(s: str) -> bytes:
 def xattr_mac(key: str, filename: str) -> str:
     return re.sub(
         r'\s+', '',
-        sp.run(('xattr', '-p', key, filename),
-               text=True,
-               stdout=sp.PIPE,
-               check=True).stdout)
+        sp.run(('xattr', '-p', key, filename), text=True, stdout=sp.PIPE, check=True).stdout)
 
 
 def xattr_linux(key: str, filename: str) -> Optional[str]:
@@ -70,18 +62,10 @@ class Namespace(argparse.Namespace):
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description='Determine where downloaded files came from.')
-    parser.add_argument('files',
-                        metavar='FILE',
-                        nargs='+',
-                        help='Files to process.')
-    parser.add_argument('-w',
-                        '--webpage',
-                        action='store_true',
-                        help='Print the webpage URL')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    parser = argparse.ArgumentParser(description='Determine where downloaded files came from.')
+    parser.add_argument('files', metavar='FILE', nargs='+', help='Files to process.')
+    parser.add_argument('-w', '--webpage', action='store_true', help='Print the webpage URL')
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     has_multiple = len(args.files) > 1
     index = 1 if args.webpage else 0
@@ -91,10 +75,8 @@ def main() -> int:
             if platform.uname().system == 'Linux':
                 val = xattr_linux(KEY_ORIGIN_URL, arg)
             else:
-                val = cast(
-                    Sequence[str],
-                    plistlib.loads(hexstr2bytes(xattr_mac(KEY_WHEREFROMS,
-                                                          arg))))[index]
+                val = cast(Sequence[str],
+                           plistlib.loads(hexstr2bytes(xattr_mac(KEY_WHEREFROMS, arg))))[index]
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')

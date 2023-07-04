@@ -2,7 +2,6 @@
 from argparse import Namespace
 from copy import deepcopy
 from os.path import expanduser
-from pprint import pprint
 from time import sleep
 from typing import Sequence, TypedDict, cast
 import argparse

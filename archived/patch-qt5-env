@@ -14,8 +14,7 @@ QT_QPA_PLATFORMTHEME: Final = 'QT_QPA_PLATFORMTHEME'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)

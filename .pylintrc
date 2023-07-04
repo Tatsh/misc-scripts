@@ -15,7 +15,7 @@ disable=missing-class-docstring,
 max-nested-blocks=6
 
 [LOGGING]
-logging-format-style=new
+logging-format-style=old
 logging-modules=logging,
                 loguru
 

@@ -9,15 +9,11 @@ import logging
 import subprocess as sp
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -54,8 +50,7 @@ def main() -> int:
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
         tag_requested = invoked_as.split('-')[1]
         possible: Tuple[str,
-                        ...] = (tag_requested.title(), tag_requested.upper(),
-                                tag_requested.lower())
+                        ...] = (tag_requested.title(), tag_requested.upper(), tag_requested.lower())
         if tag_requested.lower() == 'year':
             possible += ('Date', 'DATE', 'date')
         unfiltered_files = sys.argv[1:]
@@ -99,8 +94,7 @@ def main() -> int:
     parser.add_argument('-p', '--picture')
     parser.add_argument('-D', '--delete-all-before', action='store_true')
     parser.add_argument('files', metavar='FILES', nargs='+')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
     cleanup_args = copy(metaflac_args)
@@ -108,25 +102,24 @@ def main() -> int:
     cleanup_args.append('--remove-all-tags')
     cleanup_args.extend(args.files)
     for key in ('title', 'artist', 'album', 'year', 'track', 'genre'):
-        val = getattr(args, key, None)
-        if not val:
+        value = getattr(args, key, None)
+        if not value:
             continue
-        val = val.strip()
+        value = value.strip()
         if key == 'year':
             flac_tag = 'Date'
         elif key == 'track':
             flac_tag = 'Tracknumber'
         else:
             flac_tag = f'{key[0].upper()}{key[1:]}'
-        metaflac_args.append(f'--set-tag={flac_tag}={val}')
+        metaflac_args.append(f'--set-tag={flac_tag}={value}')
     if args.picture:
         try:
             with open(args.picture, 'rb'):
                 metaflac_args.append(f'--import-picture-from={args.picture}')
         except IOError:
-            log.error(
-                'Cannot add file "%s". Specified argument is not '
-                'supported', args.picture)
+            log.error('Cannot add file "%s". Specified argument is not '
+                      'supported', args.picture)
             return 1
     if len(metaflac_args) == 2:
         log.error('Not doing anything')

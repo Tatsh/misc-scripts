@@ -2,16 +2,11 @@
 # PYTHON_ARGCOMPLETE_OK
 # This is based on calcbpp which comes with mplayer tools
 from math import floor
-from typing import List, Union, cast
+from typing import Final, cast
 import argparse
 import sys
 
-from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
 class Namespace(argparse.Namespace):
@@ -27,33 +22,25 @@ def main() -> int:
     parser.add_argument('unscaled_resolution',
                         metavar='UNSCALED_RES',
                         help='Unscaled resolution in X:Y format')
-    parser.add_argument('aspect_ratio',
-                        metavar='AR',
-                        help='Aspect ratio in X:Y format')
-    parser.add_argument('video_bitrate',
-                        metavar='VIDEO_BITRATE',
-                        help='Video bitrate in bps')
+    parser.add_argument('aspect_ratio', metavar='AR', help='Aspect ratio in X:Y format')
+    parser.add_argument('video_bitrate', metavar='VIDEO_BITRATE', help='Video bitrate in bps')
     parser.add_argument('fps', metavar='FPS', help='Frames per second')
     parser.add_argument('-r',
                         '--raw-ar',
                         metavar='RAW_AR',
                         default='720:480',
                         help='Raw aspect ratio in X:Y format')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     unscaled_width, unscaled_height = args.unscaled_resolution.split(':')
-    raw_aspect_width, raw_aspect_height = [
-        int(x) for x in args.raw_ar.split(':')
-    ]
+    raw_aspect_width, raw_aspect_height = [int(x) for x in args.raw_ar.split(':')]
     bps, fps = (args.video_bitrate, args.fps)
     raw_aspect: Final[float] = raw_aspect_width / raw_aspect_height
-    encoded_at: Union[List[int], float, str] = args.aspect_ratio
+    encoded_at: list[int] | float | str = args.aspect_ratio
     if isinstance(encoded_at, str) and ':' in encoded_at:
         encoded_at = [int(x) for x in encoded_at.split(':')]
         encoded_at = encoded_at[0] / encoded_at[1]
-    scaled_width = float(unscaled_width) * (cast(float, encoded_at) /
-                                            raw_aspect)
+    scaled_width = float(unscaled_width) * (cast(float, encoded_at) / raw_aspect)
     scaled_height = unscaled_height
     picture_ar = float(scaled_width) / float(scaled_height)
     print(f'Prescaled picture: {int(scaled_width):d}x{int(scaled_height):d}, '

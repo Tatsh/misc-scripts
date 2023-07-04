@@ -7,8 +7,7 @@ from os import close, listdir, stat, unlink, write
 from os.path import basename, expanduser, isdir, join as path_join, realpath
 from shlex import quote
 from tempfile import mkstemp
-from typing import (Any, Callable, List, Optional, Sequence, Tuple, TypeVar,
-                    Union, cast)
+from typing import Any, Callable, List, Optional, Sequence, Tuple, TypeVar, Union, cast
 import argparse
 import json
 import logging
@@ -38,8 +37,7 @@ AnyCallableAnyReturn = Callable[..., Any]
 T = TypeVar('T')
 
 
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -54,9 +52,7 @@ def t() -> Literal[True]:
     return True
 
 
-def cond(
-    l: Sequence[Tuple[CondPredicate, AnyCallableAnyReturn]]
-) -> AnyCallableAnyReturn:
+def cond(l: Sequence[Tuple[CondPredicate, AnyCallableAnyReturn]]) -> AnyCallableAnyReturn:
     def ret(*args: Any) -> Any:
         for pred, app in l:
             if pred(*args):
@@ -76,8 +72,7 @@ def starts_with(val: str, x: str) -> bool:
     return str.startswith(x, val)
 
 
-def partial_right(func: AnyCallableAnyReturn,
-                  wrapped_args: Sequence[Any]) -> AnyCallableAnyReturn:
+def partial_right(func: AnyCallableAnyReturn, wrapped_args: Sequence[Any]) -> AnyCallableAnyReturn:
     def ret(*args: Any, **kwargs: Any) -> Any:
         args = tuple(list(args) + list(wrapped_args))
         return func(*args, **kwargs)
@@ -122,8 +117,7 @@ def ends_with_lower(ending: str, x: str) -> bool:
 
 def get_roboto_font() -> str:
     for path in (expanduser('~/Library/Fonts/Roboto-Regular.ttf'),
-                 '/Library/Fonts/Roboto-Regular.ttf',
-                 '/usr/share/fonts/roboto/Roboto-Regular.ttf'):
+                 '/Library/Fonts/Roboto-Regular.ttf', '/usr/share/fonts/roboto/Roboto-Regular.ttf'):
         if isfile(path):
             return path
     raise RuntimeError('Cannot find Roboto-Regular.ttf')
@@ -156,8 +150,7 @@ def encode_concat(fn: str,
     if corrected_date:
         log.debug('Adding text: %s', corrected_date)
         filters.append(make_drawtext_filter(text=corrected_date))
-    filters.append(
-        make_drawtext_filter(text=r'%{metadata\:url}', y=920, fontsize=14))
+    filters.append(make_drawtext_filter(text=r'%{metadata\:url}', y=920, fontsize=14))
     codec_args: Tuple[str, ...] = (
         '-vcodec',
         'libx264',
@@ -185,8 +178,7 @@ def encode_concat(fn: str,
                 has_nvenc = True
                 break
         if has_vt:
-            read_codec = ('-hwaccel', 'videotoolbox', '-hwaccel_output_format',
-                          'nv12')
+            read_codec = ('-hwaccel', 'videotoolbox', '-hwaccel_output_format', 'nv12')
             codec_args = (
                 '-vcodec',
                 'h264_videotoolbox',
@@ -259,17 +251,17 @@ def encode_concat(fn: str,
     ) + read_codec + (
         '-i',
         fn,
-    ) + codec_args + ('-filter:v', ','.join(filters), '-colorspace', 'bt470bg',
-                      '-color_trc', 'gamma28', '-color_primaries', 'bt470bg',
-                      '-color_range', 'pc', '-an', outfile) + metadata_args
+    ) + codec_args + ('-filter:v', ','.join(filters), '-colorspace', 'bt470bg', '-color_trc',
+                      'gamma28', '-color_primaries', 'bt470bg', '-color_range', 'pc', '-an',
+                      outfile) + metadata_args
     log.info('Executing: %s', ' '.join(map(quote, cmd)))
     if not dry_run:
         setname('ffmpeg')
         start = datetime.now()
         sp.check_call(cmd)
         after = datetime.now()
-        log.info('Started at: %s, ended at: %s, delta: %f seconds', start,
-                 after, (after - start).total_seconds())
+        log.info('Started at: %s, ended at: %s, delta: %f seconds', start, after,
+                 (after - start).total_seconds())
 
 
 def min_date(fn: str) -> float:
@@ -323,35 +315,27 @@ def main() -> int:
     cleanup_funcs: List[Callable[[], None]] = []
     for arg in args.in_dir:
         arg = realpath(arg)
-        files_ = filterfalse(lambda x: isdir(head(x)),
-                             map(name_d(arg), sorted(listdir(arg))))
+        files_ = filterfalse(lambda x: isdir(head(x)), map(name_d(arg), sorted(listdir(arg))))
         i = 0
         for name, d in files_:
             try:
                 fixed_date = args.dates[i]
             except (IndexError, TypeError):
                 fixed_date = None
-            tmp_fd, tempfile = mkstemp(prefix=f'encode-list-{name}-',
-                                       suffix='.txt',
-                                       text=True)
-            chapter_fd, chapter_file = mkstemp(prefix=f'chapters-{name}-',
-                                               suffix='.txt',
-                                               text=True)
+            tmp_fd, tempfile = mkstemp(prefix=f'encode-list-{name}-', suffix='.txt', text=True)
+            chapter_fd, chapter_file = mkstemp(prefix=f'chapters-{name}-', suffix='.txt', text=True)
             write_tmp_fd = partial(write, tmp_fd)
             write_chapter_file = partial(write, chapter_fd)
             write_chapter_file(f';FFMETADATA1\ntitle={name}\n'.encode())
             try:
-                things = map(
-                    partial(path_join, d),
-                    filter(ends_with_avi,
-                           (x for x in listdir(d) if x[0] != '.')))
+                things = map(partial(path_join, d),
+                             filter(ends_with_avi, (x for x in listdir(d) if x[0] != '.')))
             except NotADirectoryError:
                 log.info('Not a directory: %s', d)
                 continue
             i += 1
             start = end = 0
-            for l in (file_line(y)
-                      for y in (realpath(x) for x in sorted(things))):
+            for l in (file_line(y) for y in (realpath(x) for x in sorted(things))):
                 fn: str = l.decode()[6:].replace("'", '').strip()
                 url = basename(fn).replace('.AVI', '')
                 metadata = f'file_packet_metadata url={url}\n'.encode()
@@ -359,13 +343,11 @@ def main() -> int:
                 write_tmp_fd(metadata)
                 start = start if start == 0 else end + 1
                 exif_json = json.loads(
-                    sp.check_output(
-                        ('exiftool', '-VideoFrameCount', '-json', fn)))
+                    sp.check_output(('exiftool', '-VideoFrameCount', '-json', fn)))
                 try:
                     end = exif_json[0]['VideoFrameCount'] / 4
                 except (IndexError, KeyError) as e:
-                    raise KeyError(
-                        f'Key or index error: {e}, JSON: {exif_json}') from e
+                    raise KeyError(f'Key or index error: {e}, JSON: {exif_json}') from e
                 end += start
                 start = floor(start)
                 end = floor(end)

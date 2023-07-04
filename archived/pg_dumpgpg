@@ -16,12 +16,8 @@ import subprocess as sp
 import sys
 import tarfile
 
+import argcomplete
 import gnupg
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
 
 LOCK_WAIT_TIMEOUT: Final[int] = 10
 PG_HOST: Final[str] = 'localhost'
@@ -30,8 +26,7 @@ PG_USER: Final[str] = 'postgres'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -54,41 +49,24 @@ def rm_if_exists(fn: str) -> bool:
 
 
 def psql(*args: str) -> str:
-    return sp.run(('psql',) + args,
-                  check=True,
-                  stdout=sp.PIPE,
-                  encoding='utf-8').stdout
+    return sp.run(('psql',) + args, check=True, stdout=sp.PIPE, encoding='utf-8').stdout
 
 
 def pg_dump(*args: str) -> str:
-    return sp.run(('pg_dump',) + args,
-                  check=True,
-                  stdout=sp.PIPE,
-                  encoding='utf-8').stdout
+    return sp.run(('pg_dump',) + args, check=True, stdout=sp.PIPE, encoding='utf-8').stdout
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument('--target',
-                        '-t',
-                        help='Target directory to store in',
-                        required=True)
+    parser.add_argument('--target', '-t', help='Target directory to store in', required=True)
     parser.add_argument('--dry-run', default=False, action='store_true')
     parser.add_argument('--gpg-home', default=path_join(env['HOME'], '.gnupg'))
-    parser.add_argument('--user',
-                        '-U',
-                        help='PostgreSQL user',
-                        default=PG_USER)
+    parser.add_argument('--user', '-U', help='PostgreSQL user', default=PG_USER)
     parser.add_argument('--host', help='PostgreSQL host', default=PG_HOST)
-    parser.add_argument('--jobs',
-                        '-j',
-                        help='Parallel jobs',
-                        default=PG_JOBS,
-                        type=int)
+    parser.add_argument('--jobs', '-j', help='Parallel jobs', default=PG_JOBS, type=int)
     parser.add_argument('--verbose', '-v', action='store_true')
     parser.add_argument('gpg_recipients', metavar='GPG_RECIPIENTS', nargs='+')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     log = setup_logging_stdout(verbose=args.verbose)
     target_dir = realpath(args.target)
@@ -101,8 +79,7 @@ def main() -> int:
     gpg.encoding = 'utf-8'
 
     for i, db_name in enumerate(
-            psql('-X', '-w', '-U', args.user, '-h', args.host,
-                 '-l').splitlines()):
+            psql('-X', '-w', '-U', args.user, '-h', args.host, '-l').splitlines()):
         if i < 3:  # Skip bad lines
             continue
 
@@ -111,20 +88,18 @@ def main() -> int:
 
         # Cannot dump template0
         # Also skip the '(x rows)' line at the end
-        if (not name or name == 'template0'
-                or re.match(r'^\(\d+ rows\)$', name)):
+        if (not name or name == 'template0' or re.match(r'^\(\d+ rows\)$', name)):
             continue
 
         log.info('Dumping "%s" to "%s"...', name, fn)
-        pg_dump_args = ('-w', '-C', '--column-inserts', '-c', '-U', args.user,
-                        '-h', args.host, '-d', name, '-f', fn, '-Fd', '-j',
-                        str(args.jobs), '-Z', '9',
-                        f'--lock-wait-timeout={LOCK_WAIT_TIMEOUT:d}')
+        pg_dump_args = ('-w', '-C', '--column-inserts', '-c', '-U', args.user, '-h', args.host,
+                        '-d', name, '-f', fn, '-Fd', '-j', str(
+                            args.jobs), '-Z', '9', f'--lock-wait-timeout={LOCK_WAIT_TIMEOUT:d}')
 
         if dry_run:
             log.info('pg_dump %s', ' '.join(pg_dump_args))
-            log.info('pushd %s && tar cf %s.tar %s && popd', dirname(fn),
-                     basename(fn), basename(fn))
+            log.info('pushd %s && tar cf %s.tar %s && popd', dirname(fn), basename(fn),
+                     basename(fn))
             log.info(
                 'gpg --status-fd-2 --no-tty --homedir %s --use-agent'
                 '--encrypt %s --armor --output %s.tar.gpg', gpg_home,
@@ -174,8 +149,7 @@ def main() -> int:
             return 1
 
         output_fn = f'{tar_fn}.gpg'
-        log.info('Encrypting "%s" to "%s"', basename(tar_fn),
-                 basename(output_fn))
+        log.info('Encrypting "%s" to "%s"', basename(tar_fn), basename(output_fn))
         with open(tar_fn, 'rb') as fp:
             try:
                 gpg.encrypt_file(fp, recipients, output=output_fn)

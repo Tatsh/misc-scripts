@@ -11,15 +11,11 @@ import re
 import subprocess as sp
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -31,8 +27,7 @@ def setup_logging_stdout(name: Optional[str] = None,
 
 
 def extract_rar_from_zip(zip_file: ZipFile) -> Iterator[str]:
-    for x in (x for x in zip_file.namelist()
-              if re.search(r'\.r(?:ar|\d{2})$', x)):
+    for x in (x for x in zip_file.namelist() if re.search(r'\.r(?:ar|\d{2})$', x)):
         zip_file.extract(x)
         yield x
 
@@ -49,8 +44,7 @@ def main() -> int:
     log = setup_logging_stdout()
     parser = argparse.ArgumentParser()
     parser.add_argument('directories', nargs='+')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     for _dir in args.directories:
         if not isdir(_dir):
@@ -59,8 +53,7 @@ def main() -> int:
     for _dir in args.directories:
         last = getcwd()
         chdir(_dir)
-        zip_listing = frozenset(
-            ZipFile(x) for x in listdir('.') if x.endswith('.zip'))
+        zip_listing = frozenset(ZipFile(x) for x in listdir('.') if x.endswith('.zip'))
         if len(zip_listing) == 0:
             log.warning('No zip files found. Skipping directory %s', _dir)
             continue
@@ -81,9 +74,8 @@ def main() -> int:
                 continue
             with open(pdf[0], 'rb') as f:
                 if f.read(4) != b'%PDF':
-                    log.warning(
-                        'PDF file extracted but is not a PDF. Skipping '
-                        'directory %s', _dir)
+                    log.warning('PDF file extracted but is not a PDF. Skipping '
+                                'directory %s', _dir)
                     continue
             pdf_name = basename(dirname(realpath(pdf[0])))
         elif epub:

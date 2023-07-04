@@ -350,6 +350,7 @@ tvos
 txxx
 ucwords
 udfdvd
+udvare
 uids
 uint
 ukpabmc
@@ -398,6 +399,7 @@ xdev
 xdpyinfo
 xinerama
 xsession
+yapf
 yday
 zehm
 zipfile

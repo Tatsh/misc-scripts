@@ -15,18 +15,15 @@ MODULES_RECOMMENDED_TO_KEEP: Final[Tuple[str, ...]] = (
 
 def main() -> None:
     if os.geteuid() == 0:
-        print('It is actually preferable to run this as non-root user',
-              file=sys.stderr)
+        print('It is actually preferable to run this as non-root user', file=sys.stderr)
     parser: Final[argparse.ArgumentParser] = argparse.ArgumentParser()
     parser.add_argument('-i', '--ignore-modules', nargs='*')
     parser.add_argument('--no-recommended', action='store_true')
     args: Final[argparse.Namespace] = parser.parse_args()
-    recommended = (MODULES_RECOMMENDED_TO_KEEP
-                   if not args.no_recommended else [])
+    recommended = (MODULES_RECOMMENDED_TO_KEEP if not args.no_recommended else [])
     ignored_modules: Optional[List[str]] = args.ignore_modules
-    all_ignored_modules: Final[Sequence[str]] = (
-        (ignored_modules +
-         list(recommended)) if ignored_modules else recommended)
+    all_ignored_modules: Final[Sequence[str]] = ((ignored_modules + list(recommended))
+                                                 if ignored_modules else recommended)
     items_dict: Dict[str, List[str]] = {}
     with sp.Popen(('hwinfo',), stdout=sp.PIPE, text=True) as p:
         enabled = False
@@ -44,8 +41,7 @@ def main() -> None:
                     except KeyError:
                         items_dict[k] = [v]
     for item in sorted(k for k, v in items_dict.items()
-                       if len(v) == 1 and 'module =' in v[0]
-                       and k not in all_ignored_modules):
+                       if len(v) == 1 and 'module =' in v[0] and k not in all_ignored_modules):
         print(item)
 
 

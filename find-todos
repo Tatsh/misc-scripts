@@ -12,17 +12,12 @@ import logging
 import re
 import sys
 
+import argcomplete
 import magic
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -46,8 +41,8 @@ def get_all_excludes(patterns: Iterable[str]) -> Set[str]:
 
 async def _get_listing(newdir: str) -> AsyncIterable[str]:
     for x in sorted(
-            realpath(path_join(newdir, x)) for x in listdir(newdir) if
-            not x.endswith('~') and not x.endswith('.svn-base') and x not in (
+            realpath(path_join(newdir, x)) for x in listdir(newdir)
+            if not x.endswith('~') and not x.endswith('.svn-base') and x not in (
                 '.git',
                 '.svn',
                 '.hg',
@@ -67,8 +62,8 @@ async def _handle_listing(listing: AsyncIterable[str],
                           verbose: bool = False) -> None:
     log = setup_logging_stdout(verbose=verbose)
     async for entry in listing:
-        if (entry.startswith(outdir) or entry in exclusions
-                or entry == sys.argv[0] or basename(entry) in exclusions):
+        if (entry.startswith(outdir) or entry in exclusions or entry == sys.argv[0]
+                or basename(entry) in exclusions):
             continue
         if isdir(entry):
             await _handle_listing(_get_listing(entry), outdir, top, exclusions)
@@ -80,8 +75,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                 continue
             log.debug('From magic: %s', file_info)
             if (file_info == 'application/octet-stream'
-                    or (not file_info.startswith('text/')
-                        and not file_info.endswith('+xml'))):
+                    or (not file_info.startswith('text/') and not file_info.endswith('+xml'))):
                 continue
             unix_ts = floor(stat(entry).st_mtime)
             with open(entry, 'r') as f:
@@ -92,8 +86,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                         pass
                     dummy_unix_ts = floor(stat(dummy_log_fn).st_mtime)
                     if dummy_unix_ts == unix_ts:
-                        log.debug('Dummy file %s found with same date',
-                                  dummy_log_fn)
+                        log.debug('Dummy file %s found with same date', dummy_log_fn)
                         continue
                 except FileNotFoundError:
                     log.debug('Dummy file not found')
@@ -128,9 +121,8 @@ async def _handle_listing(listing: AsyncIterable[str],
                             log.info('Writing to %s', found.name)
                         found.write(f'{entry:s}:{i:d}\n')
                         found.write(f'{line:s}\n')
-                        found.write('{space:s}{caret:s}\n'.format(
-                            space=' ' * m.start(),
-                            caret='^' * len(m.group(0))))
+                        found.write('{space:s}{caret:s}\n'.format(space=' ' * m.start(),
+                                                                  caret='^' * len(m.group(0))))
                         ctx_count = 5
                 if found:
                     filename = found.name
@@ -165,22 +157,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-d', '--debug', action='store_true')
-    parser.add_argument('-e',
-                        '--exclude',
-                        action='append',
-                        nargs='?',
-                        metavar='EXCLUDE_PATTERN')
+    parser.add_argument('-e', '--exclude', action='append', nargs='?', metavar='EXCLUDE_PATTERN')
     parser.add_argument('start', metavar='START_DIR')
     parser.add_argument('target', metavar='TARGET')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
-    asyncio.run(_handle_listing(
-        _get_listing(args.start),
-        realpath(args.target),
-        realpath(args.start),
-        get_all_excludes(args.exclude) if args.exclude else set(),
-        verbose=args.verbose or args.debug),
+    asyncio.run(_handle_listing(_get_listing(args.start),
+                                realpath(args.target),
+                                realpath(args.start),
+                                get_all_excludes(args.exclude) if args.exclude else set(),
+                                verbose=args.verbose or args.debug),
                 debug=args.debug)
     return 0
 

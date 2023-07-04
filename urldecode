@@ -5,18 +5,13 @@ from urllib.parse import unquote_plus, urlparse
 import argparse
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
-def parse(
-    values: Iterable[str],
-    is_netloc: bool = False,
-    encoding: str = 'utf-8',
-    errors: Literal['strict', 'replace',
-                    'ignore'] = 'replace') -> Iterator[str]:
+def parse(values: Iterable[str],
+          is_netloc: bool = False,
+          encoding: str = 'utf-8',
+          errors: Literal['strict', 'replace', 'ignore'] = 'replace') -> Iterator[str]:
     for x in values:
         val = unquote_plus(x, encoding=encoding, errors=errors)
         if is_netloc:
@@ -38,14 +33,10 @@ def main() -> int:
     is_atty = sys.stdin.isatty()
     if is_atty:
         parser.add_argument('string', nargs='*')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     arg = args.string if is_atty else sys.stdin.readlines()
-    for x in parse(arg,
-                   is_netloc=is_netloc,
-                   encoding=args.encoding,
-                   errors=args.errors):
+    for x in parse(arg, is_netloc=is_netloc, encoding=args.encoding, errors=args.errors):
         print(x)
     return 0
 

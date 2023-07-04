@@ -9,11 +9,7 @@ import subprocess as sp
 import sys
 
 from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     ('　', ' '),
@@ -125,8 +121,7 @@ TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -176,8 +171,7 @@ def main() -> int:
     parser.add_argument('-t', '--target-directory')
     parser.add_argument('-T', '--no-target-directory', action='store_true')
     parser.add_argument('file', metavar='SOURCE', nargs=1, help='Source')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     log = setup_logging_stdout(verbose=args.verbose)
     special_values = (
@@ -206,17 +200,13 @@ def main() -> int:
     command = ['mv'] + mv_args + [args.file[0], make_target(args.file[0])]
     log.info('Command: %s', ' '.join(command))
     try:
-        p = sp.run(command,
-                   stdout=sp.PIPE,
-                   stderr=sp.PIPE,
-                   encoding='utf-8',
-                   check=True)
+        proc = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf-8', check=True)
     except sp.CalledProcessError as e:
         log.error('STDOUT: %s', e.output)
         log.error('STDERR: %s', e.stderr)
         return e.returncode
     if '-v' in mv_args or '--verbose' in mv_args:
-        log.info('%s', p.stdout)
+        log.info('%s', proc.stdout)
     return 0
 
 

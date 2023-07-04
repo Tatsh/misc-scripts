@@ -9,9 +9,8 @@ import sys
 import requests
 
 URL_PREFIX = 'https://packages.microsoft.com/repos/vscode'
-DESKTOP_FILES = (
-    expanduser('~/.local/share/applications/code.desktop'),
-    expanduser('~/.local/share/applications/code-url-handler.desktop'))
+DESKTOP_FILES = (expanduser('~/.local/share/applications/code.desktop'),
+                 expanduser('~/.local/share/applications/code-url-handler.desktop'))
 
 
 def main() -> int:
@@ -20,9 +19,8 @@ def main() -> int:
         return 1
     print('Determining deb filename', file=sys.stderr)
     pool_path = [
-        l for l in requests.get(
-            f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages').text.
-        split('\n') if l.startswith('Filename: ')
+        l for l in requests.get(f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages').text.split(
+            '\n') if l.startswith('Filename: ')
     ][0].split(' ')[1]
     deb_file = basename(pool_path)
     try:
@@ -32,9 +30,8 @@ def main() -> int:
         print('Downloading deb file ...', file=sys.stderr)
         with open(deb_file, 'wb+') as f:
             chunk: bytes
-            for chunk in requests.get(
-                    f'{URL_PREFIX}/{pool_path}',
-                    stream=True).iter_content(chunk_size=1024):
+            for chunk in requests.get(f'{URL_PREFIX}/{pool_path}',
+                                      stream=True).iter_content(chunk_size=1024):
                 f.write(chunk)
     with TemporaryDirectory(prefix='install-vscode-') as path_tempdir:
         sp.run(('dpkg-deb', '-x', deb_file, path_tempdir), check=True)
@@ -51,17 +48,13 @@ def main() -> int:
             with open(desktop_file) as f:
                 for line in f.readlines():
                     if '/usr/share' in line:
-                        lines.append(
-                            line.replace('/usr/share',
-                                         expanduser('~/.local/share')))
+                        lines.append(line.replace('/usr/share', expanduser('~/.local/share')))
                     else:
                         lines.append(line)
             with open(desktop_file, 'w') as f:
                 for line in lines:
                     f.write(line)
-        sp.run(('update-desktop-database',
-                expanduser('~/.local/share/applications/')),
-               check=True)
+        sp.run(('update-desktop-database', expanduser('~/.local/share/applications/')), check=True)
     return 0
 
 

@@ -2,3 +2,4 @@
 .directory
 /.vscode/.ropeproject/objectdb
 /.vscode/tags
+/node_modules/

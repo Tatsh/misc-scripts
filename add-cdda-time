@@ -4,10 +4,7 @@ from typing import Iterable, Optional, cast
 import argparse
 import sys
 
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 
 def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
@@ -18,11 +15,10 @@ def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
         minutes = int(time[0:2])
         seconds = int(time[3:5])
         frames = int(time[6:8])
-        if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99
-                or seconds > 59 or frames > 75):
+        if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99 or seconds > 59
+                or frames > 75):
             return None
-        total_ms += (minutes * 60 * 1000) + (seconds * 1000) + int(
-            (frames * 1000) / 75)
+        total_ms += (minutes * 60 * 1000) + (seconds * 1000) + int((frames * 1000) / 75)
     minutes = int(total_ms / 60000)
     remainder_ms = int(total_ms % 60000)
     seconds = int(remainder_ms / 1000)
@@ -34,15 +30,12 @@ def add_times(times: Optional[Iterable[str]]) -> Optional[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(
-        description='Calculate total CDDA time for use in a CUE sheet')
-    parser.add_argument(
-        'times',
-        metavar='TIMES',
-        nargs='+',
-        help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    parser = argparse.ArgumentParser(description='Calculate total CDDA time for use in a CUE sheet')
+    parser.add_argument('times',
+                        metavar='TIMES',
+                        nargs='+',
+                        help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
+    argcomplete.autocomplete(parser)
     args = parser.parse_args()
     times = add_times(cast(Optional[Iterable[str]], args.times))
     if not times:

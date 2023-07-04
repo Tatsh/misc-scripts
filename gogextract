@@ -17,8 +17,7 @@ OFFSET_RE: Final[re.Pattern] = re.compile(r'offset=`head -n (\d+?) "\$0"')
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -38,8 +37,7 @@ def main() -> int:
         input_path = sys.argv[1]
         output_path = sys.argv[2]
     else:
-        print(f'Usage: {sys.argv[0]} <input file> <output dir>',
-              file=sys.stderr)
+        print(f'Usage: {sys.argv[0]} <input file> <output dir>', file=sys.stderr)
         return 1
     game_bin = open(input_path, 'rb')
     os.makedirs(output_path, exist_ok=True)
@@ -47,7 +45,7 @@ def main() -> int:
     beginning = game_bin.read(10240).decode('utf-8', errors='ignore')
     offset_match = OFFSET_RE.search(beginning)
     if not offset_match:
-        log.error('Failed to find offset', file=sys.stderr)
+        log.error('Failed to find offset')
         return 1
     script_lines = int(offset_match.group(1))
     # Read the number of lines to determine the script size

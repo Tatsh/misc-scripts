@@ -17,11 +17,7 @@ import subprocess as sp
 import sys
 
 from typing_extensions import Final
-
-try:
-    import argcomplete
-except ImportError:
-    argcomplete = None
+import argcomplete
 
 # NOTE For anything not here, use unidecode
 JIS_ASCII_MAP: Final[Tuple[Tuple[str, str], ...]] = (
@@ -44,8 +40,7 @@ KAKASI_HELP_LOOK_FOR: Final[str] = ('KAKASI - Kanji Kana Simple '
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -56,9 +51,7 @@ def setup_logging_stdout(name: Optional[str] = None,
     return log
 
 
-def find_bin(name: str,
-             look_for: str,
-             help_cmd: str = '--help') -> Optional[str]:
+def find_bin(name: str, look_for: str, help_cmd: str = '--help') -> Optional[str]:
     for path in env['PATH'].split(os.pathsep):
         candidate = path_join(path, name)
         try:
@@ -73,8 +66,7 @@ def find_bin(name: str,
                     out = r.stdout
                     assert err is not None
                     assert out is not None
-                    for line in (err.read().splitlines() +
-                                 out.read().splitlines()):
+                    for line in (err.read().splitlines() + out.read().splitlines()):
                         line_ = line.strip()
                         if look_for in line_:
                             return candidate
@@ -112,31 +104,15 @@ def main() -> int:
 
     parser = argparse.ArgumentParser()
     parser.add_argument('words', nargs='*')
-    parser.add_argument('-k',
-                        '--keep-long',
-                        action='store_true',
-                        default=False)
-    parser.add_argument('--allow-non-ascii',
-                        action='store_true',
-                        default=False)
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    parser.add_argument('-k', '--keep-long', action='store_true', default=False)
+    parser.add_argument('--allow-non-ascii', action='store_true', default=False)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     words = args.words
-    iconv_to_args = [
-        iconv,
-        '-t',
-        'SJIS',
-    ]
+    iconv_to_args = [iconv, '-t', 'SJIS']
     iconv_from_args = copy(iconv_to_args)
     iconv_from_args[1] = '-f'
-    kakasi_args = (
-        kakasi_bin,
-        '-s',
-        '-Ja',
-        '-Ha',
-        '-Ka',
-    )
+    kakasi_args = (kakasi_bin, '-s', '-Ja', '-Ha', '-Ka')
     words = [x.strip() for x in words]
     words = [x for x in words if len(x) > 0]
     # stdin
@@ -145,32 +121,21 @@ def main() -> int:
     words += stdin_words
 
     for word_s, word in ((x, x.encode('utf-8')) for x in words):
-        iconv_to_sjis = sp.Popen(iconv_to_args,
-                                 stdin=sp.PIPE,
-                                 stdout=sp.PIPE,
-                                 stderr=sp.PIPE)
+        iconv_to_sjis = sp.Popen(iconv_to_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         out, err = iconv_to_sjis.communicate(word)
         err_s = err.decode('utf-8').strip()
         if err_s:
-            log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s,
-                      err_s)
+            log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s, err_s)
             continue
 
-        kakasi = sp.Popen(kakasi_args,
-                          stdin=sp.PIPE,
-                          stdout=sp.PIPE,
-                          stderr=sp.PIPE)
+        kakasi = sp.Popen(kakasi_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         out, err = kakasi.communicate(out)
 
-        iconv_from_sjis = sp.Popen(iconv_from_args,
-                                   stdin=sp.PIPE,
-                                   stdout=sp.PIPE,
-                                   stderr=sp.PIPE)
+        iconv_from_sjis = sp.Popen(iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
         final, err = iconv_from_sjis.communicate(out)
         err_s = err.decode('utf-8').strip()
         if err_s:
-            log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)",
-                      word_s, err_s)
+            log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)", word_s, err_s)
             continue
 
         final_s = final.decode('utf-8')

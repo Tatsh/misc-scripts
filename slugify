@@ -4,9 +4,7 @@ import sys
 
 
 def main() -> int:
-    print(
-        re.sub(r'[-\s_]+', '-',
-               re.sub(r'[^\w\s-]', '', sys.argv[1]).strip().lower()))
+    print(re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', sys.argv[1]).strip().lower()))
     return 0
 
 

@@ -13,17 +13,15 @@ from typing_extensions import Final
 CREATION_UTC: Final[int] = int(
     (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
 COLUMNS: Final[Tuple[str,
-                     ...]] = ('creation_utc', 'host_key', 'name', 'value',
-                              'path', 'expires_utc', 'secure', 'httponly',
-                              'has_expires', 'persistent', 'last_access_utc')
+                     ...]] = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
+                              'secure', 'httponly', 'has_expires', 'persistent', 'last_access_utc')
 LEN_COLUMNS: Final[int] = len(COLUMNS)
-DB_PATHS: Final[Tuple[str, ...]] = (
-    expanduser('~/.config/chromium/Default/Cookies'),
-    expanduser('~/Library/Application Support/Google/Chrome/Cookies'))
-REGEX: Final[str] = (
-    r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
-    r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
-    r'\t(?P<name>.*)\t(?P<value>.*)\n?')
+DB_PATHS: Final[Tuple[str,
+                      ...]] = (expanduser('~/.config/chromium/Default/Cookies'),
+                               expanduser('~/Library/Application Support/Google/Chrome/Cookies'))
+REGEX: Final[str] = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
+                     r'\t(?P<secure>TRUE|FALSE)\t(?P<expires_utc>\d+(\.\d+)?)' +
+                     r'\t(?P<name>.*)\t(?P<value>.*)\n?')
 
 
 class MatchDict(TypedDict):
@@ -76,24 +74,20 @@ def main() -> int:
                     persistent = 0
                 httponly = 1 if dic['httponly'] == 'TRUE' else 0
                 secure = 1 if dic['secure'] == 'TRUE' else 0
-                c.execute(
-                    ('DELETE FROM cookies WHERE host_key = ? AND name = ? '
-                     'AND path = ?'), (
-                         dic['host_key'],
-                         dic['name'],
-                         dic['path'],
-                     ))
+                c.execute(('DELETE FROM cookies WHERE host_key = ? AND name = ? '
+                           'AND path = ?'), (
+                               dic['host_key'],
+                               dic['name'],
+                               dic['path'],
+                           ))
                 cols = ','.join(COLUMNS)
                 col_args = ('?,' * LEN_COLUMNS)[:-1]
-                t = (CREATION_UTC + i, dic['host_key'], dic['name'],
-                     dic['value'], dic['path'], expires_utc, secure, httponly,
-                     has_expires, persistent, CREATION_UTC)
-                c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})',
-                          t)
+                t = (CREATION_UTC + i, dic['host_key'], dic['name'], dic['value'], dic['path'],
+                     expires_utc, secure, httponly, has_expires, persistent, CREATION_UTC)
+                c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})', t)
                 i += 1
     except FileNotFoundError:
-        print(f'Cookies file {cookies_txt} specified does not exist',
-              file=sys.stderr)
+        print(f'Cookies file {cookies_txt} specified does not exist', file=sys.stderr)
     finally:
         conn.commit()
         conn.close()

@@ -7,8 +7,8 @@ import asyncio
 import re
 import sys
 
-IGNORED_FILES = set(('.DS_Store', '.DS_Store?', '.Spotlight-V100', '.Trashes',
-                     '.directory', '.localized', 'Thumbs.db', 'ehthumbs.db'))
+IGNORED_FILES = set(('.DS_Store', '.DS_Store?', '.Spotlight-V100', '.Trashes', '.directory',
+                     '.localized', 'Thumbs.db', 'ehthumbs.db'))
 IGNORE_RE = re.compile(r'(?:/\.(?:[Tt]rash|git|npm/_git-remotes))/?')
 
 
@@ -27,12 +27,10 @@ def ignore_dir(name: bytes) -> Tuple[str, bool]:
         contents = listdir(path)
     except PermissionError:
         return path, True
-    return path, bool(re.search(
-        IGNORE_RE, path)) or len(set(contents) - IGNORED_FILES) != 0
+    return path, bool(re.search(IGNORE_RE, path)) or len(set(contents) - IGNORED_FILES) != 0
 
 
-async def iter_lines(loop: AbstractEventLoop,
-                     proc: sp.Process) -> AsyncIterator[str]:
+async def iter_lines(loop: AbstractEventLoop, proc: sp.Process) -> AsyncIterator[str]:
     assert proc.stdout
     while line := await proc.stdout.readline():
         path, ignore = await loop.run_in_executor(None, ignore_dir, line)
@@ -44,8 +42,7 @@ async def a_main(loop: AbstractEventLoop) -> None:
     async for path in iter_lines(
             loop, await sp.create_subprocess_exec('find',
                                                   await loop.run_in_executor(
-                                                      None, env_no_case,
-                                                      'home'),
+                                                      None, env_no_case, 'home'),
                                                   '-xdev',
                                                   '-type',
                                                   'd',

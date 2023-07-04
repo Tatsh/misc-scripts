@@ -17,8 +17,7 @@ QT_QPA_PLATFORMTHEME_VALUE: Final = 'kde'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None,
-                         verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -40,10 +39,8 @@ def main() -> int:
             data: Dict[str, Any] = plistlib.load(f)
             if ENVIRONMENT_VARS_KEY not in data:
                 data[ENVIRONMENT_VARS_KEY] = {}
-            data[ENVIRONMENT_VARS_KEY][
-                QT_QPA_PLATFORMTHEME] = QT_QPA_PLATFORMTHEME_VALUE
-            data[ENVIRONMENT_VARS_KEY][
-                KDE_SESSION_VERSION] = KDE_SESSION_VERSION_VALUE
+            data[ENVIRONMENT_VARS_KEY][QT_QPA_PLATFORMTHEME] = QT_QPA_PLATFORMTHEME_VALUE
+            data[ENVIRONMENT_VARS_KEY][KDE_SESSION_VERSION] = KDE_SESSION_VERSION_VALUE
         with p.open('wb') as f:
             plistlib.dump(data, f, sort_keys=False)
         Path(fin).touch()
