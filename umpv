@@ -32,7 +32,6 @@ from functools import lru_cache
 from logging.handlers import SysLogHandler
 from os.path import basename, expanduser, realpath
 from shlex import split
-from typing import Optional
 import errno
 import logging
 import os
@@ -47,7 +46,7 @@ SOCK = expanduser('~/.cache/umpv-socket')
 
 
 @lru_cache()
-def setup_syslog(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_syslog(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)

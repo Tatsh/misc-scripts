@@ -3,7 +3,7 @@
 from datetime import datetime
 from logging.handlers import SysLogHandler
 from os.path import realpath
-from typing import Any, Final, NoReturn, Optional, TextIO, cast
+from typing import Any, Final, NoReturn, TextIO, cast
 import argparse
 import logging
 import signal
@@ -14,8 +14,8 @@ import argcomplete
 import yaml
 
 LOG_FORMATTER: Final[logging.Formatter] = logging.Formatter('%(message)s')
-log_handle: Optional[TextIO] = None
-syslog_handle: Optional[SysLogHandler] = None
+log_handle: TextIO | None = None
+syslog_handle: SysLogHandler | None = None
 
 
 def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess[str]:
@@ -32,7 +32,7 @@ def ctrl_c(signum: int, frame: Any) -> NoReturn:
     raise SystemExit('Signal raised')
 
 
-def maybe_log_yaml(handle: Optional[TextIO], **kwargs: Any) -> None:
+def maybe_log_yaml(handle: TextIO | None, **kwargs: Any) -> None:
     if handle:
         kwargs['time'] = str(datetime.today())
         assert yaml is not None
@@ -48,7 +48,7 @@ class Args(argparse.Namespace):
     upload_threshold: float
     ping_threshold: float
     syslog: bool
-    log_file: Optional[str]
+    log_file: str | None
     verbose: bool
 
 
@@ -66,13 +66,13 @@ def main() -> int:
     argcomplete.autocomplete(parser)
     args = cast(Args, parser.parse_args())
     ping = dl = ul = share = None
-    log_yaml_handle: Optional[TextIO] = None
+    log_yaml_handle: TextIO | None = None
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
-        log_fh = open(args.log_file, 'a+')
+        log_fh = open(args.log_file, 'a+')  # pylint: disable=consider-using-with
         assert log_fh is not None
-        log_yaml_handle = open(args.log_file + '.yml', 'a+')
+        log_yaml_handle = open(args.log_file + '.yml', 'a+')  # pylint: disable=consider-using-with
         channel = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)

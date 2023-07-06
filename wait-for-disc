@@ -25,12 +25,12 @@ def main() -> int:
         print(f'open {sys.argv[1]}', file=sys.stderr)
         return 1
     try:
-        pt = float(sys.argv[2])
+        sleep_time = float(sys.argv[2])
     except ValueError as e:
         print(e.args[0], file=sys.stderr)
         return 1
     except IndexError:
-        pt = 1
+        sleep_time = 1
     s = -1
     try:
         while s != CDStatus.DISC_OK:
@@ -39,7 +39,7 @@ def main() -> int:
                 print('ioctl(CDROM_DRIVE_STATUS)', file=sys.stderr)
                 return 1
             if s != CDStatus.DISC_OK:
-                sleep(pt)
+                sleep(sleep_time)
     except KeyboardInterrupt:
         pass
     os.close(f)

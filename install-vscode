@@ -19,8 +19,8 @@ def main() -> int:
         return 1
     print('Determining deb filename', file=sys.stderr)
     pool_path = [
-        l for l in requests.get(f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages').text.split(
-            '\n') if l.startswith('Filename: ')
+        link for link in requests.get(f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages',
+                                      timeout=30).text.split('\n') if link.startswith('Filename: ')
     ][0].split(' ')[1]
     deb_file = basename(pool_path)
     try:
@@ -30,8 +30,8 @@ def main() -> int:
         print('Downloading deb file ...', file=sys.stderr)
         with open(deb_file, 'wb+') as f:
             chunk: bytes
-            for chunk in requests.get(f'{URL_PREFIX}/{pool_path}',
-                                      stream=True).iter_content(chunk_size=1024):
+            for chunk in requests.get(f'{URL_PREFIX}/{pool_path}', stream=True,
+                                      timeout=30).iter_content(chunk_size=1024):
                 f.write(chunk)
     with TemporaryDirectory(prefix='install-vscode-') as path_tempdir:
         sp.run(('dpkg-deb', '-x', deb_file, path_tempdir), check=True)

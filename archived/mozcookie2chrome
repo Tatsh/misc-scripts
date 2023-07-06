@@ -2,18 +2,16 @@
 from datetime import datetime
 from functools import lru_cache
 from os.path import basename, expanduser, join as path_join
-from typing import List, Optional, Union
+from typing import Final, TypedDict
 import configparser
 import logging
 import os
 import sqlite3
 import sys
 
-from typing_extensions import Final, TypedDict
-
 
 class CookieDict(TypedDict):
-    expires_utc: Union[int, str]
+    expires_utc: int | str
     host_key: str
     name: str
     path: str
@@ -23,7 +21,7 @@ class CookieDict(TypedDict):
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -69,7 +67,7 @@ def main() -> int:
     sql = ('SELECT name, value, host, path, expiry, isSecure, isHttpOnly FROM '
            'moz_cookies WHERE baseDomain like ?')
     c.execute(sql, (f'%{base_domain}%',))
-    cookies: Final[List[CookieDict]] = []
+    cookies: Final[list[CookieDict]] = []
     for row in c:
         cookies.append({
             'name': row[0],

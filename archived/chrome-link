@@ -5,8 +5,9 @@ from glob import glob
 from os import chmod, close, environ, makedirs, unlink, write
 from os.path import basename, expanduser, join as path_join, splitext
 from pathlib import Path
+from shlex import quote
 from tempfile import mkdtemp, mkstemp
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Final, TypedDict, cast
 from urllib.parse import unquote_plus, urljoin, urlparse
 import argparse
 import logging
@@ -18,14 +19,13 @@ import subprocess
 import sys
 
 from bs4 import BeautifulSoup, Tag
-from typing_extensions import Final, TypedDict
 from urllib3.exceptions import InsecureRequestWarning
 import argcomplete
 import requests
 import urllib3
 
 IS_MSYS: Final[bool] = len(environ.get('MSYSTEM_CHOST', '')) != 0
-IS_WINDOWS: Final[bool] = IS_MSYS or os.name == "nt"
+IS_WINDOWS: Final[bool] = IS_MSYS or os.name == 'nt'
 IS_MAC: Final[bool] = bool(platform.mac_ver()[0])
 IS_LINUX: Final[bool] = not IS_MAC and not IS_WINDOWS
 USER_AGENT: Final[str] = (
@@ -34,7 +34,7 @@ USER_AGENT: Final[str] = (
 
 
 @lru_cache()
-def _setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def _setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     ret = logging.getLogger(name)
     ret.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -50,10 +50,10 @@ def _fix_msys_arg(s: str) -> str:
 
 
 class MainArgs(argparse.Namespace):
-    chrome_command: Optional[str]
-    comment: Optional[str]
-    hotkey: Optional[str]
-    icon: Optional[str]
+    chrome_command: str | None
+    comment: str | None
+    hotkey: str | None
+    icon: str | None
     insecure: bool
     name: str
     profile_name: str
@@ -64,7 +64,7 @@ class MainArgs(argparse.Namespace):
 
 class ChromeCommandKwArgs(TypedDict):
     required: bool
-    default: Optional[str]
+    default: str | None
 
 
 def _chrome_command_kwargs() -> ChromeCommandKwArgs:
@@ -98,24 +98,23 @@ def _parse_args() -> MainArgs:
         parser.add_argument('--hotkey', help='Hotkey')
     parser.add_argument('name', help='Name for the icon')
     parser.add_argument('url', help='URL of the app')
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     return cast(MainArgs, parser.parse_args())
 
 
-def _get_icon_from_site(args: MainArgs, session: requests.Session) -> Optional[str]:
+def _get_icon_from_site(args: MainArgs, session: requests.Session) -> str | None:
     log = _setup_logging_stdout(name='_get_icon_from_site', verbose=args.verbose)
     if args.icon:
         return args.icon
-    r = session.get(args.url)
-    s = BeautifulSoup(r.content, 'lxml')
+    req = session.get(args.url)
+    s = BeautifulSoup(req.content, 'lxml')
     options = ('link[rel="apple-touch-icon"]', 'link[rel="shortcut icon"]', 'link[rel="icon"]',
                'meta[name="msapplication-TileImage"]')
-    tags: Final[List[Tag]] = s.select(','.join(options))
-    sizes = cast(List[Tuple[int, str]], [(0, urljoin(args.url, '/favicon.ico'))])
+    tags: Final[list[Tag]] = s.select(','.join(options))
+    sizes = cast(list[tuple[int, str]], [(0, urljoin(args.url, '/favicon.ico'))])
     log.debug('Guessed favicon URI: %s', sizes[0][1])
     for tag in tags:
-        uri: Optional[str] = tag.attrs.get('href', tag.attrs.get('content'))
+        uri: str | None = tag.attrs.get('href', tag.attrs.get('content'))
         if uri:
             if 'sizes' in tag.attrs:
                 if (size_str := tag['sizes']) and isinstance(size_str, str):
@@ -135,7 +134,7 @@ def _get_icon_from_site(args: MainArgs, session: requests.Session) -> Optional[s
     return icon
 
 
-def _ico_index(tmp_name: str, verbose: Optional[bool] = False) -> str:
+def _ico_index(tmp_name: str, verbose: bool | None = False) -> str:
     log = _setup_logging_stdout(name='_ico_index', verbose=verbose)
     id_out = subprocess.check_output(('identify', '-format', '%w\n', tmp_name),
                                      encoding='utf-8').strip().splitlines()
@@ -145,15 +144,15 @@ def _ico_index(tmp_name: str, verbose: Optional[bool] = False) -> str:
 
 
 def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statements
-        icon: Optional[str],
+        icon: str | None,
         short_name: str,
         session: requests.Session,
-        verbose: Optional[bool] = False) -> Optional[str]:
+        verbose: bool | None = False) -> str | None:
     log = _setup_logging_stdout(name='_fetch_convert_icon', verbose=verbose)
     if not re.match(r'^https?\://', icon or ''):
         return icon
     assert icon is not None
-    r = session.get(icon, stream=True)
+    req = session.get(icon, stream=True)
     icon_prefix, icon_ext = splitext(urlparse(icon).path)
     icon_ext = icon_ext.lower()
     if IS_LINUX:
@@ -161,21 +160,21 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             log.debug('Using PNG or XPM icon')
             icon = expanduser(f'~/.local/share/pixmaps/{short_name}{icon_ext}')
             with open(icon, 'wb+') as f:
-                for chunk in r.iter_content(chunk_size=128):
+                for chunk in req.iter_content(chunk_size=128):
                     f.write(chunk)
         elif icon_ext == '.svg':
             log.debug('Using SVG icon')
             icon = expanduser('~/.local/share/icons/hicolor/scalable/'
                               f'apps/{short_name}{icon_ext}')
             with open(icon, 'wb+') as f:
-                for chunk in r.iter_content(chunk_size=128):
+                for chunk in req.iter_content(chunk_size=128):
                     f.write(chunk)
         else:
             log.debug('Converting icon from %s to PNG', icon_ext[1:].upper())
             fd, tmp_name = mkstemp(suffix=icon_ext)
             icon = expanduser('~/.local/share/pixmaps/'
                               f'{short_name}.png')
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in req.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
             index = ''
@@ -195,7 +194,7 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             fd, tmp_name = mkstemp(suffix=icon_ext)
             fd2, icon = mkstemp(suffix='.png')
             close(fd2)
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in req.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
             index = ''
@@ -214,7 +213,7 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             os.unlink(tmp_name)
         else:
             fd, icon = mkstemp(suffix='.png')
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in req.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
     else:  # Windows
@@ -227,10 +226,10 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             if Path(icon).exists():
                 fd2, icon = mkstemp(prefix=prefix, suffix='.ico', dir=roaming)
                 close(fd2)
-            for chunk in r.iter_content(chunk_size=128):
+            for chunk in req.iter_content(chunk_size=128):
                 write(fd, chunk)
             close(fd)
-            kwargs: Final[Dict[str, Any]] = {}
+            kwargs: Final[dict[str, Any]] = {}
             if IS_MSYS:
                 path = environ['PATH']
                 kwargs['env'] = {**environ, **dict(PATH=f'/mingw64/bin:{path}')}
@@ -243,12 +242,12 @@ def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statement
             icon = path_join(roaming, f'{prefix}.ico')
             if Path(icon).exists():
                 fd, icon = mkstemp(suffix='.ico', prefix=prefix, dir=roaming)
-                for chunk in r.iter_content(chunk_size=128):
+                for chunk in req.iter_content(chunk_size=128):
                     write(fd, chunk)
                 close(fd)
             else:
                 with open(icon, 'wb+') as f:
-                    for chunk in r.iter_content(chunk_size=128):
+                    for chunk in req.iter_content(chunk_size=128):
                         f.write(chunk)
     return icon
 
@@ -332,9 +331,10 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     script = path_join(macos_dir, 'app_mode_loader')
     with open(script, 'w+') as f:
         f.write('#!/usr/bin/env bash\n')
-        f.write(f"open -n '{args.chrome_command}' --args "
-                f"'--app={args.url}' "
-                f'--user-data-directory={args.profile_name}\n')
+        chrome_command = quote(cast(str, args.chrome_command))
+        app_arg = quote(f'--app={args.url}')
+        udd_arg = quote(f'--user-data-directory={args.profile_name}')
+        f.write(f'open -n {chrome_command} --args {app_arg} {udd_arg}\n')
     chmod(script, 0o755)
     with open(path_join(contents_dir, 'Info.plist'), 'wb+') as info_plist_f:
         plistlib.dump(info_plist_data, info_plist_f)
@@ -369,8 +369,8 @@ link.WorkingDirectory=desktop;\n''')
             props['Hotkey'] = args.hotkey
         for prop, val in props.items():
             if isinstance(val, str):
-                val = f"'{val}'"
-            f.write(f"link.{prop} = {val};\n")
+                val = f"'{val}'"  # pylint: disable=invalid-string-quote
+            f.write(f'link.{prop} = {val};\n')
         f.write('link.Save();\n')
     cscript_cmd = ('cscript', '//Nologo', script_js)
     log.debug('Executing %s', ' '.join(cscript_cmd))

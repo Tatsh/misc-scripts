@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# This file is intentionally without +x permissions.
+while IFS=$'\n' read -r name; do
+    echo "$name"
+    shellcheck "$name" || exit 1
+done < <(file -i ./* archived/* | grep -F text/x-shellscript | cut -d: -f1 | sort -u)

@@ -3,7 +3,7 @@
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
-from typing import Iterator, Optional, Sequence, cast
+from typing import Iterator, Sequence, cast
 from zipfile import ZipFile
 import argparse
 import logging
@@ -15,7 +15,7 @@ import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -53,6 +53,7 @@ def main() -> int:
     for _dir in args.directories:
         last = getcwd()
         chdir(_dir)
+        # pylint: disable=consider-using-with
         zip_listing = frozenset(ZipFile(x) for x in listdir('.') if x.endswith('.zip'))
         if len(zip_listing) == 0:
             log.warning('No zip files found. Skipping directory %s', _dir)
@@ -90,6 +91,8 @@ def main() -> int:
         assert pdf_name is not None
         target_name = f'../{pdf_name}.{ext}'
         rename(pdf[0], target_name)
+        for zip_file in zip_listing:
+            zip_file.close()
         for x in extracted:
             rm(x)
         chdir(last)

@@ -2,18 +2,16 @@
 from functools import lru_cache
 from os.path import basename
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Final
 import logging
 import plistlib
 import sys
-
-from typing_extensions import Final
 
 HIGH_RES_KEY: Final[str] = 'NSHighResolutionCapable'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -27,15 +25,15 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
 def main() -> int:
     log = setup_logging_stdout()
     for fin in sys.argv[1:]:
-        p = Path(fin).joinpath('Contents', 'Info.plist')
-        if not p.exists():
+        path = Path(fin).joinpath('Contents', 'Info.plist')
+        if not path.exists():
             log.warning('Skipping %s (Info.plist not found)', fin)
             continue
-        with p.open('rb') as f:
-            data: Dict[str, bool] = plistlib.load(f)
+        with path.open('rb') as fp:
+            data: dict[str, bool] = plistlib.load(fp)
             data[HIGH_RES_KEY] = True
-        with p.open('wb') as f:
-            plistlib.dump(data, f, sort_keys=False)
+        with path.open('wb') as fp:
+            plistlib.dump(data, fp, sort_keys=False)
         log.info('Rewrote Info.plist for %s', fin)
         log.debug('Running `touch "%s"`', fin)
         Path(fin).touch()

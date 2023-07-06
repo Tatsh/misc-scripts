@@ -3,7 +3,6 @@
 from functools import lru_cache
 from os import stat, unlink, utime
 from os.path import basename, isdir, isfile, join as path_join, realpath, splitext
-from typing import Optional
 import argparse
 import logging
 import sys
@@ -12,7 +11,7 @@ import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -28,8 +27,8 @@ def safe_rename(fn: str, target: str, preserve: bool) -> bool:
     if not isfile(target) and not isdir(target):
         log.info('copy %s -> %s', fn, target)
         with open(target, 'wb+') as f:
-            with open(fn, 'rb') as o:
-                f.write(o.read())
+            with open(fn, 'rb') as of:
+                f.write(of.read())
             if preserve:
                 s = stat(fn)
                 utime(target, (
@@ -69,7 +68,7 @@ def main() -> int:
     parser.add_argument('files', nargs='*')
     argcomplete.autocomplete(parser)
     args = parser.parse_args()
-    target: Optional[str] = args.target_dir
+    target: str | None = args.target_dir
     if target:
         target = realpath(target)
         if not isdir(target):

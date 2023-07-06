@@ -2,21 +2,19 @@
 from copy import deepcopy
 from datetime import datetime
 from os.path import expanduser
-from typing import Literal, Optional, Tuple, TypedDict, cast
+from typing import Final, Literal, TypedDict, cast
 from urllib.parse import unquote as urldecode
 import re
 import sqlite3
 import sys
 
-from typing_extensions import Final
-
 CREATION_UTC: Final[int] = int(
     (datetime.utcnow() - datetime(1970, 1, 1)).total_seconds() * (10 ** 7))
-COLUMNS: Final[Tuple[str,
+COLUMNS: Final[tuple[str,
                      ...]] = ('creation_utc', 'host_key', 'name', 'value', 'path', 'expires_utc',
                               'secure', 'httponly', 'has_expires', 'persistent', 'last_access_utc')
 LEN_COLUMNS: Final[int] = len(COLUMNS)
-DB_PATHS: Final[Tuple[str,
+DB_PATHS: Final[tuple[str,
                       ...]] = (expanduser('~/.config/chromium/Default/Cookies'),
                                expanduser('~/Library/Application Support/Google/Chrome/Cookies'))
 REGEX: Final[str] = (r'^(?P<host_key>.*)\t(?P<httponly>TRUE|FALSE)\t(?P<path>.*)' +
@@ -40,13 +38,13 @@ def main() -> int:
     except IndexError:
         print(f'Usage: {sys.argv[0]} COOKIES_TXT_FILE', file=sys.stderr)
         return 1
-    conn: Optional[sqlite3.Connection] = None
-    last_exc: Optional[Exception] = None
-    for p in DB_PATHS:
+    conn: sqlite3.Connection | None = None
+    last_exc: BaseException | None = None
+    for path in DB_PATHS:
         try:
-            with open(p, 'rb'):
+            with open(path, 'rb'):
                 pass
-            conn = sqlite3.connect(p, detect_types=sqlite3.PARSE_COLNAMES)
+            conn = sqlite3.connect(path, detect_types=sqlite3.PARSE_COLNAMES)
             break
         except (FileNotFoundError, sqlite3.OperationalError) as e:
             last_exc = e
@@ -82,9 +80,9 @@ def main() -> int:
                            ))
                 cols = ','.join(COLUMNS)
                 col_args = ('?,' * LEN_COLUMNS)[:-1]
-                t = (CREATION_UTC + i, dic['host_key'], dic['name'], dic['value'], dic['path'],
-                     expires_utc, secure, httponly, has_expires, persistent, CREATION_UTC)
-                c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})', t)
+                values = (CREATION_UTC + i, dic['host_key'], dic['name'], dic['value'], dic['path'],
+                          expires_utc, secure, httponly, has_expires, persistent, CREATION_UTC)
+                c.execute(f'INSERT INTO cookies ({cols}) VALUES({col_args})', values)
                 i += 1
     except FileNotFoundError:
         print(f'Cookies file {cookies_txt} specified does not exist', file=sys.stderr)

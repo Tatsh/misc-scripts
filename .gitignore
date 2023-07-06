@@ -1,5 +1,6 @@
 .*~
 .directory
+/.mypy_cache/
 /.vscode/.ropeproject/objectdb
 /.vscode/tags
 /node_modules/

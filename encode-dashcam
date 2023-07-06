@@ -7,7 +7,7 @@ from os import close, listdir, stat, unlink, write
 from os.path import basename, expanduser, isdir, join as path_join, realpath
 from shlex import quote
 from tempfile import mkstemp
-from typing import Any, Callable, List, Optional, Sequence, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Literal, Sequence, TypeVar, cast
 import argparse
 import json
 import logging
@@ -16,10 +16,12 @@ import string
 import subprocess as sp
 import sys
 
-from typing_extensions import Literal
-
 # https://stackoverflow.com/a/11175851/374110
-# ffmpeg -y -hwaccel auto -c:v hevc_cuvid -i back_norm/2021_10_13_155111_00_b.MP4 -i front_norm/2021_10_13_155111_01.MP4 -map 0:v:0 -map 1:v:0 -filter_complex "[0]crop=1916:890:4:140,scale=iw/1.5:ih/1.5 [pip]; [1][pip] overlay=main_w-overlay_w:main_h-overlay_h,setpts=0.25*PTS" -vcodec hevc_nvenc -an -preset p5 -tier high -level 5 -maxrate:v 25M -b:v 0k out.mkv
+# ffmpeg -y -hwaccel auto -c:v hevc_cuvid -i back_norm/2021_10_13_155111_00_b.MP4 -i \
+# front_norm/2021_10_13_155111_01.MP4 -map 0:v:0 -map 1:v:0 -filter_complex \
+# "[0]crop=1916:890:4:140,scale=iw/1.5:ih/1.5 [pip]; [1][pip] \
+# overlay=main_w-overlay_w:main_h-overlay_h,setpts=0.25*PTS" \
+# -vcodec hevc_nvenc -an -preset p5 -tier high -level 5 -maxrate:v 25M -b:v 0k out.mkv
 
 DRAWTEXT_TEMPLATE = string.Template('drawtext='
                                     'fontfile=${fontfile}:'
@@ -37,7 +39,7 @@ AnyCallableAnyReturn = Callable[..., Any]
 T = TypeVar('T')
 
 
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -52,11 +54,12 @@ def t() -> Literal[True]:
     return True
 
 
-def cond(l: Sequence[Tuple[CondPredicate, AnyCallableAnyReturn]]) -> AnyCallableAnyReturn:
+def cond(conditions: Sequence[tuple[CondPredicate, AnyCallableAnyReturn]]) -> AnyCallableAnyReturn:
     def ret(*args: Any) -> Any:
-        for pred, app in l:
+        for pred, app in conditions:
             if pred(*args):
                 return app(*args)
+        return None
 
     return ret
 
@@ -91,11 +94,11 @@ def _file_prefix(x: str) -> str:
     return f'file:{x}'
 
 
-def start_at(i: int, x: Union[str, bytes, Sequence[Any]]) -> Any:
+def start_at(i: int, x: str | bytes | Sequence[Any]) -> Any:
     return x[i:]
 
 
-def isfile(x: Union[str, int]) -> bool:
+def isfile(x: str | int) -> bool:
     try:
         with open(x, 'rb'):
             return True
@@ -140,10 +143,10 @@ def make_drawtext_filter(**kwargs: Any) -> str:
 def encode_concat(fn: str,
                   outfile: str,
                   log: logging.Logger,
-                  corrected_date: Optional[str] = None,
+                  corrected_date: str | None = None,
                   dry_run: bool = False,
                   hwaccel: bool = False,
-                  metadata_file: Optional[str] = None) -> None:
+                  metadata_file: str | None = None) -> None:
     fn = _maybe_file_prefix(fn)
     outfile = _maybe_file_prefix(outfile)
     filters = ['setpts=0.25*PTS']
@@ -151,7 +154,7 @@ def encode_concat(fn: str,
         log.debug('Adding text: %s', corrected_date)
         filters.append(make_drawtext_filter(text=corrected_date))
     filters.append(make_drawtext_filter(text=r'%{metadata\:url}', y=920, fontsize=14))
-    codec_args: Tuple[str, ...] = (
+    codec_args: tuple[str, ...] = (
         '-vcodec',
         'libx264',
         '-pix_fmt',
@@ -165,8 +168,7 @@ def encode_concat(fn: str,
         '-crf',
         '23',
     )
-    read_codec: Tuple[str, ...] = ()
-
+    read_codec: tuple[str, ...] = ()
     if hwaccel:
         out: str = sp.check_output(['ffmpeg', '-encoders'], encoding='utf-8')
         has_nvenc = has_vt = False
@@ -225,8 +227,7 @@ def encode_concat(fn: str,
             )
         else:
             log.info('No hardware encoders. Falling back to software')
-
-    metadata_args: Tuple[str, ...] = ()
+    metadata_args: tuple[str, ...] = ()
     if metadata_file:
         metadata_args = (
             '-i',
@@ -268,15 +269,15 @@ def min_date(fn: str) -> float:
     return cast(float, min(getattr(stat(fn), x) for x in TIME_KEYS))
 
 
-def name_d(arg: str) -> Callable[[str], Tuple[str, str]]:
-    def ret(x: str) -> Tuple[str, str]:
+def name_d(arg: str) -> Callable[[str], tuple[str, str]]:
+    def ret(x: str) -> tuple[str, str]:
         return x, path_join(arg, x)
 
     return ret
 
 
 def file_line(f: str) -> bytes:
-    return f"file '{f}'\n".encode()
+    return f"file '{f}'\n".encode()  # pylint: disable=invalid-string-quote
 
 
 def head(x: Sequence[T]) -> T:
@@ -312,12 +313,12 @@ def main() -> int:
     assert log is not None
     outdir: str = args.outdir[0]
     arg: str
-    cleanup_funcs: List[Callable[[], None]] = []
+    cleanup_funcs: list[Callable[[], None]] = []
     for arg in args.in_dir:
         arg = realpath(arg)
         files_ = filterfalse(lambda x: isdir(head(x)), map(name_d(arg), sorted(listdir(arg))))
         i = 0
-        for name, d in files_:
+        for name, dir_ in files_:
             try:
                 fixed_date = args.dates[i]
             except (IndexError, TypeError):
@@ -328,18 +329,18 @@ def main() -> int:
             write_chapter_file = partial(write, chapter_fd)
             write_chapter_file(f';FFMETADATA1\ntitle={name}\n'.encode())
             try:
-                things = map(partial(path_join, d),
-                             filter(ends_with_avi, (x for x in listdir(d) if x[0] != '.')))
+                things = map(partial(path_join, dir_),
+                             filter(ends_with_avi, (x for x in listdir(dir_) if x[0] != '.')))
             except NotADirectoryError:
-                log.info('Not a directory: %s', d)
+                log.info('Not a directory: %s', dir_)
                 continue
             i += 1
             start = end = 0
-            for l in (file_line(y) for y in (realpath(x) for x in sorted(things))):
-                fn: str = l.decode()[6:].replace("'", '').strip()
+            for line in (file_line(y) for y in (realpath(x) for x in sorted(things))):
+                fn: str = line.decode()[6:].replace("'", '').strip()  # pylint: disable=invalid-string-quote
                 url = basename(fn).replace('.AVI', '')
                 metadata = f'file_packet_metadata url={url}\n'.encode()
-                write_tmp_fd(l)
+                write_tmp_fd(line)
                 write_tmp_fd(metadata)
                 start = start if start == 0 else end + 1
                 exif_json = json.loads(
