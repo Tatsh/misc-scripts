@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
-# This file is intentionally  set without +x permissions.
+# This file is intentionally without +x permissions.
+cmd=mypy
+if command -v poetry > /dev/null; then
+    cmd='poetry run mypy'
+fi
 while IFS=$'\n' read -r name; do
-    mypy "$name"
+    $cmd "$name"
 done < <(file -i ./* archived/* | grep -F text/x-script.python | cut -d: -f1 | sort -u)
