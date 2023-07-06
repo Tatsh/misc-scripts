@@ -7,7 +7,7 @@ from functools import lru_cache
 from os import environ as env, remove as rm
 from os.path import basename, dirname, isdir, join as path_join, realpath
 from shutil import rmtree
-from typing import Final, Optional
+from typing import Final
 import argparse
 import logging
 import re
@@ -26,7 +26,7 @@ PG_USER: Final[str] = 'postgres'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -120,49 +120,48 @@ def main() -> int:
             log.warning(out)
 
         tar_fn = f'{fn}.tar'
-        log.info("Tar'ing to %s", tar_fn)
-        tar = tarfile.open(tar_fn, 'w')
-
-        tar.add(fn, arcname=basename(fn))
-        try:
-            tar.close()
-        except (KeyboardInterrupt, SystemExit):
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-            log.error('Caught interrupt. Removing "%s" and data', tar_fn)
-            rmtree(fn)
+        log.info('Creating tarball at %s', tar_fn)
+        with tarfile.open(tar_fn, 'w') as tar:
+            tar.add(fn, arcname=basename(fn))
             try:
-                with open(tar_fn, 'rb'):
-                    pass
-                rm(tar_fn)
-            except FileNotFoundError:
-                pass
-            return 1
-
-        log.info('Removing "%s"', fn)
-        try:
-            rmtree(fn)
-        except (KeyboardInterrupt, SystemExit):
-            signal.signal(signal.SIGINT, signal.SIG_IGN)
-            if isdir(fn):
+                tar.close()
+            except (KeyboardInterrupt, SystemExit):
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+                log.error('Caught interrupt. Removing "%s" and data', tar_fn)
                 rmtree(fn)
-            rm_if_exists(tar_fn)
-            return 1
+                try:
+                    with open(tar_fn, 'rb'):
+                        pass
+                    rm(tar_fn)
+                except FileNotFoundError:
+                    pass
+                return 1
 
-        output_fn = f'{tar_fn}.gpg'
-        log.info('Encrypting "%s" to "%s"', basename(tar_fn), basename(output_fn))
-        with open(tar_fn, 'rb') as fp:
+            log.info('Removing "%s"', fn)
             try:
-                gpg.encrypt_file(fp, recipients, output=output_fn)
+                rmtree(fn)
             except (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
                 if isdir(fn):
                     rmtree(fn)
-                rm_if_exists(output_fn)
                 rm_if_exists(tar_fn)
                 return 1
 
-        log.info('Removing "%s"', tar_fn)
-        rm(tar_fn)
+            output_fn = f'{tar_fn}.gpg'
+            log.info('Encrypting "%s" to "%s"', basename(tar_fn), basename(output_fn))
+            with open(tar_fn, 'rb') as fp:
+                try:
+                    gpg.encrypt_file(fp, recipients, output=output_fn)
+                except (KeyboardInterrupt, SystemExit):
+                    signal.signal(signal.SIGINT, signal.SIG_IGN)
+                    if isdir(fn):
+                        rmtree(fn)
+                    rm_if_exists(output_fn)
+                    rm_if_exists(tar_fn)
+                    return 1
+
+            log.info('Removing "%s"', tar_fn)
+            rm(tar_fn)
     return 0
 
 

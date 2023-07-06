@@ -2,8 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from datetime import date
 from itertools import chain
-from typing import (Any, Final, Iterable, Iterator, Literal, Optional, Sequence, TextIO, Tuple,
-                    TypedDict, Union, cast)
+from typing import Any, Final, Iterable, Iterator, Literal, Sequence, TextIO, TypedDict, cast
 import argparse
 import csv
 import json
@@ -12,7 +11,7 @@ import sys
 import argcomplete
 
 RootKey = Literal['bookmark_bar', 'other']  # pylint: disable=invalid-name
-StringTuple = Tuple[str, Optional[str], str, str]
+StringTuple = tuple[str, str | None, str, str]
 MICROSECONDS_PER_SECOND: Final[float] = 1e6
 # https://github.com/chromium/chromium/blob/670ff74372d149d0ee4d733e2254a4a3d6b0ec6d/base/time/time.h#L499
 TIME_TO_MICROSECOND_OFFSET: Final[int] = 11644473600000000
@@ -37,14 +36,14 @@ class URL(TypedDict):
     date_added: str
     guid: str
     id: str
-    meta_info: Optional[MetaInfo]
+    meta_info: MetaInfo | None
     name: str
     type: Literal['url']
     url: str
 
 
 class Folder(TypedDict):
-    children: Sequence[Union['URL', Any]]  # URL or Folder
+    children: Sequence[Any]  # URL or Folder
     date_added: str
     date_modified: str
     guid: str
@@ -80,10 +79,10 @@ def chrome_timestamp_to_date(timestamp: str) -> date:
         ((int(timestamp) - TIME_TO_MICROSECOND_OFFSET) / MICROSECONDS_PER_SECOND))
 
 
-def get_strings(children: Iterable[Union[URL, Folder]],
+def get_strings(children: Iterable[URL | Folder],
                 folder_names: bool = True,
                 ignore_empty_names: bool = False,
-                prefix: Optional[str] = None) -> Iterator[StringTuple]:
+                prefix: str | None = None) -> Iterator[StringTuple]:
     for x in children:
         if x['type'] == 'folder':
             name = x['name']
@@ -131,13 +130,12 @@ def main() -> int:
                         metavar='OUTPUT',
                         help='Output CSV file',
                         type=argparse.FileType('w'))
-    if argcomplete:
-        argcomplete.autocomplete(parser)
+    argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     try:
         data = cast(Bookmarks, json.load(args.input))
         for root in ('bookmark_bar', 'other'):
-            _ = data['roots'][cast(RootKey, root)]['children']
+            _ = data['roots'][root]['children']  # type: ignore[literal-required]
     except (json.decoder.JSONDecodeError, KeyError):
         args.output.close()
         print('Does not seem like a Bookmarks file', file=sys.stderr)
@@ -147,13 +145,14 @@ def main() -> int:
     csv.writer(args.output).writerows(
         [cast(StringTuple, ('Date added', 'Date last visited', 'Name', 'URL'))] + list(
             chain.from_iterable(
-                get_strings(data['roots'][cast(RootKey, root)]['children'],
-                            folder_names=not args.no_folder_names,
-                            ignore_empty_names=args.ignore_empty_names)
+                get_strings(
+                    data['roots'][root]['children'],  # type: ignore[literal-required]
+                    folder_names=not args.no_folder_names,
+                    ignore_empty_names=args.ignore_empty_names)
                 for root in ('bookmark_bar', 'other'))))
     args.output.close()
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

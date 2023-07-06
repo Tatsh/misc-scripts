@@ -1,10 +1,10 @@
-from typing import Any, Dict
+from typing import Any
 
 # The default ``config.py``
 # flake8: noqa
 
 
-def set_prefs(prefs: Dict[str, Any]) -> None:
+def set_prefs(prefs: dict[str, Any]) -> None:
     """This function is called before opening the project"""
 
     # Specify which files and folders to ignore in the project.

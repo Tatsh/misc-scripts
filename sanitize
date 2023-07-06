@@ -7,13 +7,14 @@ from yt_dlp.utils import sanitize_filename
 
 def main(s: str) -> int:
     try:
-        r = sanitize_filename(s, restricted=True)
+        res = sanitize_filename(s, restricted=True)
     except IndexError:
         return 1
-    if not (r := r.strip()):
+    if not (res := res.strip()):
         return 1
     print(
-        re.sub(r'([a-z0-9])\-s\-', r'\1s-', re.sub(r'\.-', '-', re.sub(r'[_\-]+', '-', r.lower()))))
+        re.sub(r'([a-z0-9])\-s\-', r'\1s-', re.sub(r'\.-', '-', re.sub(r'[_\-]+', '-',
+                                                                       res.lower()))))
     return 0
 
 

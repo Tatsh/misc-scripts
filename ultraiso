@@ -5,7 +5,7 @@
 from functools import lru_cache
 from os.path import basename, expanduser, join as path_join, realpath
 from shlex import quote
-from typing import Any, AnyStr, Optional, Sequence, Union, cast
+from typing import Any, AnyStr, Sequence, cast
 import argparse
 import logging
 import os
@@ -14,7 +14,7 @@ import sys
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -25,7 +25,7 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
     return log
 
 
-def get_ultraiso_path(prefix: str) -> Optional[str]:
+def get_ultraiso_path(prefix: str) -> str | None:
     name_of_exe = 'UltraISO.exe'
     paths = (path_join(prefix, 'drive_c', f'Program Files{x}', 'UltraISO', name_of_exe)
              for x in ('', ' (x86)'))
@@ -49,13 +49,13 @@ class ExistantFile(argparse.Action):
     def __call__(self,
                  _parser: argparse.ArgumentParser,
                  namespace: argparse.Namespace,
-                 values: Optional[Union[str, Sequence[Any]]],
-                 _option_string: Optional[str] = None) -> None:
+                 values: str | Sequence[Any] | None,
+                 _option_string: str | None = None) -> None:
         with open(cast(str, values), 'rb'):
             setattr(namespace, self.dest, adjust_unix_path_to_wine(cast(str, values)))
 
 
-def isfile(f: Union[AnyStr, int]) -> bool:
+def isfile(f: AnyStr | int) -> bool:
     try:
         with open(f, 'rb'):
             return True
@@ -285,13 +285,7 @@ def main() -> int:
     args = parser.parse_args()
     actual_exe_path = get_ultraiso_path(args.prefix)
     env = {'WINEPREFIX': args.prefix, 'HOME': os.environ['HOME']}
-    need_two_dashes = (
-        'checksum',
-        'md5',
-        'crc32',
-        'crc16',
-    )
-    fix_to_one = ('optimise',)
+    need_two_dashes = ('checksum', 'md5', 'crc32', 'crc16')
 
     if actual_exe_path is None:
         log.error('UltraISO.exe not found')
@@ -309,7 +303,7 @@ def main() -> int:
         if arg not in full_argv or arg == 'prefix':
             continue
 
-        if arg in need_two_dashes and arg not in fix_to_one:
+        if arg in need_two_dashes:
             sp_args.append(f'--{arg}')
         else:
             sp_args.append(f'-{arg}')
@@ -326,9 +320,9 @@ def main() -> int:
     wprefix_env = quote(f'WINEPREFIX={args.prefix}')
     log.debug('env %s %s', wprefix_env, ' '.join(quote(x) for x in sp_args))
     # pylint: disable=subprocess-run-check
-    p = sp.run(sp_args, stderr=sp.PIPE, env=env, encoding='utf-8')
-    stderr: str = p.stderr.strip()
-    exit_status = p.returncode
+    proc = sp.run(sp_args, stderr=sp.PIPE, env=env, text=True)
+    stderr: str = proc.stderr.strip()
+    exit_status = proc.returncode
     if stderr:
         for line in stderr.splitlines():
             if 'winemenubuilder.exe' in line or 'fixme:' in line:

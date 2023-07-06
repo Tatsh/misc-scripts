@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from datetime import datetime
-from typing import TypedDict, cast
+from typing import Final, TypedDict, cast
 import argparse
 import sys
 
-from typing_extensions import Final
 import argcomplete
 import requests
 
@@ -23,7 +22,7 @@ class ContentDict(TypedDict):
     fica: float
     state: float
     medicare: float
-    netPay: float
+    netPay: float  # pylint: disable=invalid-name
 
 
 class ResponseDict(TypedDict):
@@ -52,89 +51,89 @@ def main() -> int:
     args = cast(Namespace, parser.parse_args())
     check_date = int(datetime.now().timestamp() * 1000)
     gross_pay = args.hours * args.pay_rate
-    r = requests.post(POST_URI,
-                      headers={
-                          'pcc-api-key': API_KEY,
-                          'referer': REFERER,
-                          'origin': 'https://www.adp.com',
-                      },
-                      json={
-                          'checkDate': check_date,
-                          'state': args.state.upper(),
-                          'rates': [{
-                              'payRate': str(args.pay_rate),
-                              'hours': str(args.hours),
-                          }],
-                          'grossPay': str(gross_pay),
-                          'grossPayType': 'PAY_PER_PERIOD',
-                          'grossPayYTD': '0',
-                          'payFrequency': 'MONTHLY',
-                          'exemptFederal': 'false',
-                          'exemptFica': 'false',
-                          'exemptMedicare': 'false',
-                          'federalFilingStatusType': 'SINGLE',
-                          'federalAllowances': '0',
-                          'additionalFederalWithholding': '0',
-                          'roundFederalWithholding': 'false',
-                          'print': {
-                              'id': '',
-                              'employeeName': '',
-                              'employeeAddressLine1': '',
-                              'employeeAddressLine2': '',
-                              'employeeAddressLine3': '',
-                              'checkNumber': '',
-                              'checkNumberOnCheck': 'false',
-                              'checkDate': check_date,
-                              'remarks': '',
-                              'companyNameOnCheck': 'false',
-                              'companyName': '',
-                              'companyAddressLine1': '',
-                              'companyAddressLine2': '',
-                              'companyAddressLine3': ''
-                          },
-                          'otherIncome': [],
-                          'payCodes': [],
-                          'stockOptions': [],
-                          'stateInfo': {
-                              'parms': [{
-                                  'name': 'TOTALALLOWANCES',
-                                  'value': '0'
-                              }, {
-                                  'name': 'additionalStateWithholding',
-                                  'value': '0'
-                              }, {
-                                  'name': 'SPOUSEBLINDNESS',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'stateExemption',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'PERSONALBLINDNESS',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'HEADOFHOUSEHOLD',
-                                  'value': 'false'
-                              }, {
-                                  'name': 'FULLTIMESTUDENT',
-                                  'value': 'false'
-                              }]
-                          },
-                          'voluntaryDeductions': [],
-                          'presetDeductions': []
-                      },
-                      timeout=30)
-    r.raise_for_status()
-    data = cast(ResponseDict, r.json())['content']
-    print('Gross     \033[1;32m{:8.2f}\033[0m'.format(gross_pay))
-    print('Federal   \033[1;32m{:8.2f}\033[0m'.format(data['federal']))
-    print('FICA      \033[1;32m{:8.2f}\033[0m'.format(data['fica']))
-    print('State     \033[1;32m{:8.2f}\033[0m'.format(data['state']))
-    print('Medicare  \033[1;32m{:8.2f}\033[0m'.format(data['medicare']))
+    req = requests.post(POST_URI,
+                        headers={
+                            'pcc-api-key': API_KEY,
+                            'referer': REFERER,
+                            'origin': 'https://www.adp.com',
+                        },
+                        json={
+                            'checkDate': check_date,
+                            'state': args.state.upper(),
+                            'rates': [{
+                                'payRate': str(args.pay_rate),
+                                'hours': str(args.hours),
+                            }],
+                            'grossPay': str(gross_pay),
+                            'grossPayType': 'PAY_PER_PERIOD',
+                            'grossPayYTD': '0',
+                            'payFrequency': 'MONTHLY',
+                            'exemptFederal': 'false',
+                            'exemptFica': 'false',
+                            'exemptMedicare': 'false',
+                            'federalFilingStatusType': 'SINGLE',
+                            'federalAllowances': '0',
+                            'additionalFederalWithholding': '0',
+                            'roundFederalWithholding': 'false',
+                            'print': {
+                                'id': '',
+                                'employeeName': '',
+                                'employeeAddressLine1': '',
+                                'employeeAddressLine2': '',
+                                'employeeAddressLine3': '',
+                                'checkNumber': '',
+                                'checkNumberOnCheck': 'false',
+                                'checkDate': check_date,
+                                'remarks': '',
+                                'companyNameOnCheck': 'false',
+                                'companyName': '',
+                                'companyAddressLine1': '',
+                                'companyAddressLine2': '',
+                                'companyAddressLine3': ''
+                            },
+                            'otherIncome': [],
+                            'payCodes': [],
+                            'stockOptions': [],
+                            'stateInfo': {
+                                'parms': [{
+                                    'name': 'TOTALALLOWANCES',
+                                    'value': '0'
+                                }, {
+                                    'name': 'additionalStateWithholding',
+                                    'value': '0'
+                                }, {
+                                    'name': 'SPOUSEBLINDNESS',
+                                    'value': 'false'
+                                }, {
+                                    'name': 'stateExemption',
+                                    'value': 'false'
+                                }, {
+                                    'name': 'PERSONALBLINDNESS',
+                                    'value': 'false'
+                                }, {
+                                    'name': 'HEADOFHOUSEHOLD',
+                                    'value': 'false'
+                                }, {
+                                    'name': 'FULLTIMESTUDENT',
+                                    'value': 'false'
+                                }]
+                            },
+                            'voluntaryDeductions': [],
+                            'presetDeductions': []
+                        },
+                        timeout=30)
+    req.raise_for_status()
+    data = cast(ResponseDict, req.json())['content']
+    print(f'Gross     \033[1;32m{gross_pay:8.2f}\033[0m')
+    print(f'Federal   \033[1;32m{data["federal"]:8.2f}\033[0m')
+    print(f'FICA      \033[1;32m{data["fica"]:8.2f}\033[0m')
+    print(f'State     \033[1;32m{data["state"]:8.2f}\033[0m')
+    print(f'Medicare  \033[1;32m{data["medicare"]:8.2f}\033[0m')
     print('------------------')
-    print('Net       \033[1;32m{:8.2f}\033[0m'.format(data['netPay']))
+    print(f'Net       \033[1;32m{data["netPay"]:8.2f}\033[0m')
     print('')
     print('------------------')
-    print('Fuckery   \033[1;31m{:8.2f}\033[0m'.format(gross_pay - data['netPay']))
+    print(f'Fuckery   \033[1;31m{gross_pay - data["netPay"]:8.2f}\033[0m')
 
     return 0
 

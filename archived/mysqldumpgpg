@@ -137,11 +137,11 @@ def main() -> int:
                 rm_if_exists(fn)
                 rm_if_exists(output_fn)
                 return 1
-            _fp = open(output_fn, 'rb')
             try:
-                assert len(_fp.read()) > 0
-            finally:
-                _fp.close()
+                with open(output_fn, 'rb') as _fp:
+                    assert len(_fp.read()) > 0
+            except IOError:
+                pass
         log.info('Removing %s', fn)
         rm(fn)
 

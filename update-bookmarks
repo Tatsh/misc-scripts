@@ -3,7 +3,7 @@
 from functools import lru_cache
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
-from typing import Any, Sequence, TextIO, cast
+from typing import Any, Final, Sequence, TextIO, cast
 import argparse
 import logging
 import os
@@ -11,10 +11,10 @@ import re
 import sys
 
 from bs4 import BeautifulSoup as Soup
-from requests.exceptions import ConnectionError, InvalidSchema, InvalidURL
-from typing_extensions import Final
+from requests.exceptions import InvalidSchema, InvalidURL
 import argcomplete
 import requests
+import requests.exceptions
 
 
 class FailedConnection:
@@ -54,22 +54,22 @@ def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logg
     return log
 
 
-def send(r: requests.Response | None) -> requests.Response | FailedConnection | None:
-    if not r:
+def send(res: requests.Response | None) -> requests.Response | FailedConnection | None:
+    if not res:
         return None
     try:
-        r.raise_for_status()
+        res.raise_for_status()
     except InvalidURL:
-        if re.match(r'^file:///', r.url):
-            return FailedConnection(r, reason=FailedConnection.REASON_FILE_URL)
-        return FailedConnection(r, reason=FailedConnection.REASON_INVALID_URL)
+        if re.match(r'^file:///', res.url):
+            return FailedConnection(res, reason=FailedConnection.REASON_FILE_URL)
+        return FailedConnection(res, reason=FailedConnection.REASON_INVALID_URL)
     except InvalidSchema:
-        return FailedConnection(r, reason=FailedConnection.REASON_INVALID_SCHEMA)
-    except ConnectionError as e:
-        return FailedConnection(r, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
+        return FailedConnection(res, reason=FailedConnection.REASON_INVALID_SCHEMA)
+    except requests.exceptions.ConnectionError as e:
+        return FailedConnection(res, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
     except Exception as e:  # pylint: disable=broad-except
-        return FailedConnection(r, exc=e, reason=FailedConnection.REASON_UNKNOWN)
-    return r
+        return FailedConnection(res, exc=e, reason=FailedConnection.REASON_UNKNOWN)
+    return res
 
 
 def head(session: requests.Session, uri: str) -> requests.Response | None:
@@ -90,13 +90,13 @@ def recursive_scan(
     errors = []
     urls: list[tuple[str, str]] = []
     assert soup.body is not None
-    for a in soup.body.select('a'):
-        title = ' '.join(b.get_text() for b in a.contents)
-        href = a['href']
+    for anchor in soup.body.select('a'):
+        title = ' '.join(i.get_text() for i in anchor.contents)
+        href = anchor['href']
         assert isinstance(href, str)
         urls.append((title, href))
     index = 0
-    for req, url_data in zip(map(send, (head(session, u[1]) for u in urls)), urls):
+    for req, url_data in zip(map(send, (head(session, i[1]) for i in urls)), urls):
         if not req:
             log.error('Failed connection: "%s" @ "%s", reason: other', url_data[0], url_data[1])
             index += 1

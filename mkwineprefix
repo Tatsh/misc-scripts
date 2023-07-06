@@ -5,13 +5,12 @@ from os import devnull, environ, makedirs
 from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
 from shutil import rmtree
-from typing import Any, Dict, Mapping, Optional, Sequence, cast
+from typing import Any, Final, Literal, Mapping, Sequence, cast
 import argparse
 import logging
 import subprocess as sp
 import sys
 
-from typing_extensions import Final, Literal
 import argcomplete
 
 VERSION_MAPPING: Final[Mapping[str, str]] = {
@@ -35,12 +34,12 @@ class Args(argparse.Namespace):
     no_xdg: bool
     windows_version: Sequence[Literal['10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']]
     sandbox: bool
-    vd: str
+    vd: str  # pylint: disable=invalid-name
     verbose: bool
 
 
 @lru_cache()
-def setup_logging_stderr(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stderr(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -51,7 +50,7 @@ def setup_logging_stderr(name: Optional[str] = None, verbose: bool = False) -> l
     return log
 
 
-def run(args: Any, **kwargs: Any) -> sp.CompletedProcess:
+def run(args: Any, **kwargs: Any) -> sp.CompletedProcess[str]:
     log = setup_logging_stderr(verbose=kwargs.pop('verbose', False))
     if kwargs.get('env'):
         log.debug('Environment: %s', kwargs['env'])
@@ -71,7 +70,7 @@ def wine(args: Args) -> int:
         log.error('Not touching existing prefix at %s', target)
         return 1
     arch: Final[Literal['win32', 'win64']] = ('win32' if args.thirty2bit else 'win64')
-    env: Final[Dict[str, str]] = dict(WINEPREFIX=target,
+    env: Final[dict[str, str]] = dict(WINEPREFIX=target,
                                       DISPLAY=environ.get('DISPLAY', ''),
                                       XAUTHORITY=environ.get('XAUTHORITY', ''),
                                       WINEARCH=environ.get('WINEARCH', arch))
@@ -79,22 +78,23 @@ def wine(args: Args) -> int:
         env['DISPLAY'] = ':0'
     if args.no_xdg:
         try:
-            run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
+            run(
+                ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
                  'winemenubuilder.exe', '/f'),
                 env=env,
                 check=True,
-                stdout=open(devnull, 'w'),
+                stdout=open(devnull, 'w'),  # pylint: disable=consider-using-with
                 stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)
             return 1
     target = quote(target)
     try:
-        winetricks: Optional[str] = run(('sh', '-c', 'command -v winetricks'),
-                                        stdout=sp.PIPE,
-                                        stderr=sp.PIPE,
-                                        check=True,
-                                        encoding='utf-8').stdout.strip()
+        winetricks: str | None = run(('sh', '-c', 'command -v winetricks'),
+                                     stdout=sp.PIPE,
+                                     stderr=sp.PIPE,
+                                     check=True,
+                                     encoding='utf-8').stdout.strip()
     except sp.CalledProcessError:
         winetricks = None
     if not winetricks:

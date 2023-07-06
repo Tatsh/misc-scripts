@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from os.path import basename
-from typing import Any, Dict, Sequence, Text, cast
+from typing import Any, Final, Sequence, cast
 import argparse
 import logging
 import sys
 
 from requests.adapters import HTTPAdapter
 from requests.structures import CaseInsensitiveDict
-from typing_extensions import Final
 import argcomplete
 import requests
 
@@ -17,7 +16,7 @@ POST_URL: Final[str] = ('https://tools.usps.com/go/'
                         'TrackConfirmRequestUpdateAJAXAction.action')
 NAME1_EMPTY_VALUE: Final[str] = 'not required'
 MAX_RETRIES: Final[int] = 10
-HEADERS: Final[CaseInsensitiveDict[Text]] = CaseInsensitiveDict({
+HEADERS: Final[CaseInsensitiveDict[str]] = CaseInsensitiveDict({
     'Accept-Language': 'en-US,en;q=0.8,en-GB;q=0.6',
     'Connection': 'keep-alive',
     'Accept': 'text/html,application/xhtml+xml,'
@@ -76,9 +75,9 @@ def main() -> int:
     ret = 0
     arg: str
     for arg in args.tracking_number:
-        r = session.get(GET_URL, params=dict(qtc_tLabels1=arg))
-        r.raise_for_status()
-        content = r.content.decode('utf-8')
+        req = session.get(GET_URL, params=dict(qtc_tLabels1=arg))
+        req.raise_for_status()
+        content = req.content.decode('utf-8')
         if 'could not locate the tracking information' in content:
             log.error('Failed with tracking number %s', arg)
             continue
@@ -101,9 +100,9 @@ def main() -> int:
             'Referer': f'{GET_URL}?qtc_tLabels1={arg}',
             'X-Requested-With': 'XMLHttpRequest',
         }
-        r = session.post(POST_URL, data=data, headers=add_headers)
-        r.raise_for_status()
-        json: Dict[str, Any] = r.json()
+        req = session.post(POST_URL, data=data, headers=add_headers)
+        req.raise_for_status()
+        json: dict[str, Any] = req.json()
         log.debug('Response: %s', json)
         if json.get('textServiceError') != 'false':
             log.error('Failed with tracking number %s', arg)
