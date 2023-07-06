@@ -6,5 +6,5 @@ if command -v poetry > /dev/null; then
 fi
 while IFS=$'\n' read -r name; do
     echo "$name"
-    $cmd "$name"
+    $cmd "$name" || exit 1
 done < <(file -i ./* archived/* | grep -F text/x-script.python | cut -d: -f1 | sort -u)
