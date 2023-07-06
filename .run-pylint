@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # This file is intentionally without +x permissions.
-cmd=mypy
+cmd=pylint
 if command -v poetry > /dev/null; then
-    cmd='poetry run mypy'
+    cmd='poetry run pylint'
 fi
 while IFS=$'\n' read -r name; do
     echo "$name"
