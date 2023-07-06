@@ -3,7 +3,7 @@
 from copy import copy
 from functools import lru_cache
 from os.path import basename
-from typing import Any, Iterable, Optional, Tuple, cast
+from typing import Any, Iterable, cast
 import argparse
 import logging
 import subprocess as sp
@@ -13,7 +13,7 @@ import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -25,21 +25,21 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
 
 
 def metaflac(*args: Any) -> str:
-    return sp.run(('metaflac',) + cast(Tuple[str, ...], args),
+    return sp.run(('metaflac',) + cast(tuple[str, ...], args),
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
 
 
 class Namespace(argparse.Namespace):
-    album: Optional[str]
-    artist: Optional[str]
-    delete_all_before: Optional[bool]
+    album: str | None
+    artist: str | None
+    delete_all_before: bool | None
     files: Iterable[str]
-    genre: Optional[str]
-    picture: Optional[str]
-    title: Optional[str]
-    year: Optional[str]
+    genre: str | None
+    picture: str | None
+    title: str | None
+    year: str | None
 
 
 def main() -> int:
@@ -49,7 +49,7 @@ def main() -> int:
     # pylint: disable=too-many-nested-blocks
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
         tag_requested = invoked_as.split('-')[1]
-        possible: Tuple[str,
+        possible: tuple[str,
                         ...] = (tag_requested.title(), tag_requested.upper(), tag_requested.lower())
         if tag_requested.lower() == 'year':
             possible += ('Date', 'DATE', 'date')
@@ -72,7 +72,7 @@ def main() -> int:
                 if val:
                     if tag_requested.lower() == 'track':
                         try:
-                            val_int: Optional[int] = int(val)
+                            val_int: int | None = int(val)
                         except TypeError:
                             val = ''
                             val_int = None

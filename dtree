@@ -19,6 +19,7 @@ def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry[str]]:
     except OSError as e:
         print(f'Error: {e}', file=sys.stderr)
         yield from []
+    return []
 
 
 def recurse_cwd(path: str,

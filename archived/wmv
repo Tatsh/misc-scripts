@@ -2,16 +2,15 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename
-from typing import List, Optional, Sequence, Tuple, cast
+from typing import Final, Sequence, cast
 import argparse
 import logging
 import subprocess as sp
 import sys
 
-from typing_extensions import Final
 import argcomplete
 
-TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
+TR_MAP: Final[tuple[tuple[str, str], ...]] = (
     ('　', ' '),
     ('…', '...'),
     ('！', '!'),
@@ -24,7 +23,7 @@ TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
     ('＄', '$'),
     ('％', '%'),
     ('＆', '&'),
-    ('＇', "'"),
+    ('＇', "'"),  # pylint: disable=invalid-string-quote
     ('＊', '*'),
     ('，', ','),
     ('－', '-'),
@@ -121,7 +120,7 @@ TR_MAP: Final[Tuple[Tuple[str, str], ...]] = (
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -139,7 +138,7 @@ def make_target(filename: str) -> str:
 
 
 class Namespace(argparse.Namespace):
-    b: bool
+    b: bool  # pylint: disable=invalid-name
     backup: bool
     file: Sequence[str]
     force: bool
@@ -187,7 +186,7 @@ def main() -> int:
         ('--update', args.update),
         ('--strip-trailing-slashes', args.strip_trailing_slashes),
     )
-    mv_args: List[str] = []
+    mv_args: list[str] = []
     if args.b and args.backup:
         log.error('Cannot use -b and --backup simultaneously')
         return 1

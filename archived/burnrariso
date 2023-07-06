@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename
-from typing import Mapping, Optional, Sequence, Tuple, cast
+from typing import Mapping, Sequence, cast
 import argparse
 import glob
 import logging
@@ -14,7 +14,7 @@ import argcomplete
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -43,7 +43,7 @@ def crc_check_with_sfv(sfv_filename: str, verbose: bool = False) -> bool:
 
 def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
     log = setup_logging_stdout('test_extraction', verbose=verbose)
-    args: Tuple[str, ...] = ('unrar', 't')
+    args: tuple[str, ...] = ('unrar', 't')
     if not verbose:
         args += ('-inul',)
     args += (rar_filename,)
@@ -55,18 +55,18 @@ def test_extraction(rar_filename: str, verbose: bool = False) -> bool:
         return False
 
 
-def find_iso_in_rar(rar_filename: str) -> Tuple[Optional[str], Optional[int]]:
+def find_iso_in_rar(rar_filename: str) -> tuple[str | None, int | None]:
     """Find if there is an ISO within the RAR."""
-    iso_line: Optional[Sequence[str]] = None
+    iso_line: Sequence[str] | None = None
     try:
-        r = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE, encoding='utf-8', check=True)
+        proc = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE, encoding='utf-8', check=True)
     except sp.CalledProcessError:
         return None, None
-    for line in r.stdout.split('\n'):
+    for line in proc.stdout.split('\n'):
         if 'iso' in line.lower():
             iso_line = line.split()
             break
-    assert iso_line is not None, "Did not find ISO"
+    assert iso_line is not None, 'Did not find ISO'
     # Handle spaces in ISO file name
     filename = iso_line[4]
     i = 0
@@ -92,7 +92,7 @@ def unrar_cdrecord_pipe(rar_filename: str,
                         iso_filename: str,
                         tsize: int,
                         speed: int = 8,
-                        device_name: Optional[str] = None,
+                        device_name: str | None = None,
                         verbose: bool = False) -> bool:
     log = setup_logging_stdout('unrar_cdrecord_pipe', verbose)
     unrar_args = (
@@ -102,7 +102,7 @@ def unrar_cdrecord_pipe(rar_filename: str,
         rar_filename,
         iso_filename,
     )
-    cdrecord_args: Tuple[str, ...] = (
+    cdrecord_args: tuple[str, ...] = (
         'cdrecord',
         f'speed={speed}',
         'driveropts=burnfree',
@@ -114,12 +114,12 @@ def unrar_cdrecord_pipe(rar_filename: str,
     if verbose:
         cdrecord_args += ('-v',)
     log.debug('Command: %s | %s', ' '.join(unrar_args), ' '.join(cdrecord_args))
-    first = sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True)
-    second = sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True)
-    assert first.stdout is not None
-    first.stdout.close()
-    second.wait()
-    first.wait()
+    with sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True) as first:
+        with sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True) as second:
+            assert first.stdout is not None
+            first.stdout.close()
+            second.wait()
+            first.wait()
     return first.returncode == 0 and second.returncode == 0
 
 
@@ -134,7 +134,7 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
         command_needed = e.cmd.replace('which ', '')
         log.error('Your system is missing "%s" (or it is not in PATH)', command_needed)
         apps_to_gentoo_packages = cast(
-            Mapping[str, Tuple[str, ...]], {
+            Mapping[str, tuple[str, ...]], {
                 'unrar': ('app-arch/unrar', 'app-arch/unrar-gpl'),
                 'cksfv': ('app-arch/cksfv'),
                 'cdrecord': ('app-cdr/cdrtools'),
@@ -155,7 +155,7 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
 
 class Namespace(argparse.Namespace):
     crc_test: bool
-    device: Optional[str]
+    device: str | None
     rar_filename: str
     rar_test: bool
     speed: int

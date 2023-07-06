@@ -5,7 +5,7 @@ from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
 from os.path import basename, dirname, isdir, join as path_join, realpath
-from typing import AsyncIterable, Iterable, Optional, Set, TextIO, cast
+from typing import AsyncIterable, Iterable, TextIO, cast
 import argparse
 import asyncio
 import logging
@@ -17,7 +17,7 @@ import magic
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -28,8 +28,8 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
     return log
 
 
-def get_all_excludes(patterns: Iterable[str]) -> Set[str]:
-    ret: Set[str] = set()
+def get_all_excludes(patterns: Iterable[str]) -> set[str]:
+    ret: set[str] = set()
     for pathname in patterns:
         entries = glob(pathname)
         if entries:
@@ -58,7 +58,7 @@ async def _get_listing(newdir: str) -> AsyncIterable[str]:
 async def _handle_listing(listing: AsyncIterable[str],
                           outdir: str,
                           top: str,
-                          exclusions: Set[str],
+                          exclusions: set[str],
                           verbose: bool = False) -> None:
     log = setup_logging_stdout(verbose=verbose)
     async for entry in listing:
@@ -91,7 +91,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                 except FileNotFoundError:
                     log.debug('Dummy file not found')
                 log.info('Scanning %s', entry)
-                found: Optional[TextIO] = None
+                found: TextIO | None = None
                 ctx_count = 0
                 try:
                     lines = enumerate(f.readlines())
@@ -117,12 +117,12 @@ async def _handle_listing(listing: AsyncIterable[str],
                             pass
                         makedirs(dirname(log_fn), exist_ok=True)
                         if not found:
+                            # pylint: disable=consider-using-with
                             found = open(path_join(outdir, log_fn), 'w')
                             log.info('Writing to %s', found.name)
                         found.write(f'{entry:s}:{i:d}\n')
                         found.write(f'{line:s}\n')
-                        found.write('{space:s}{caret:s}\n'.format(space=' ' * m.start(),
-                                                                  caret='^' * len(m.group(0))))
+                        found.write(f'{" " * m.start():s}{"^" * len(m.group(0)):s}\n')
                         ctx_count = 5
                 if found:
                     filename = found.name

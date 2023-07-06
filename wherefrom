@@ -2,7 +2,7 @@
 # PYTHON_ARGCOMPLETE_OK
 from functools import lru_cache
 from os.path import basename
-from typing import Iterator, Optional, Sequence, cast
+from typing import Final, Iterator, Sequence, cast
 import argparse
 import logging
 import platform
@@ -11,7 +11,6 @@ import re
 import subprocess as sp
 import sys
 
-from typing_extensions import Final
 import argcomplete
 
 KEY_ORIGIN_URL: Final[str] = 'user.xdg.origin.url'
@@ -19,7 +18,7 @@ KEY_WHEREFROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -48,7 +47,7 @@ def xattr_mac(key: str, filename: str) -> str:
         sp.run(('xattr', '-p', key, filename), text=True, stdout=sp.PIPE, check=True).stdout)
 
 
-def xattr_linux(key: str, filename: str) -> Optional[str]:
+def xattr_linux(key: str, filename: str) -> str | None:
     return (sp.run(('getfattr', '-n', key, '--only-values', filename),
                    text=True,
                    check=True,

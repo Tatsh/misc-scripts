@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 # This file is intentionally without +x permissions.
-cmd=mypy
-if command -v poetry > /dev/null; then
-    cmd='poetry run mypy'
-fi
 while IFS=$'\n' read -r name; do
     echo "$name"
-    $cmd "$name" || exit 1
+    poetry run mypy "$name" || exit 1
 done < <(file -i ./* archived/* | grep -F text/x-script.python | cut -d: -f1 | sort -u)

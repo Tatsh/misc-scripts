@@ -26,6 +26,7 @@ asyncio
 atempo
 autorun
 basedomain
+beautifulsoup
 bi
 biha
 bihi
@@ -102,6 +103,7 @@ extdebug
 f'prescaled
 f'wineprefix
 favicon
+fcntl
 fetchall
 ffmetadata
 ffmpeg
@@ -161,6 +163,7 @@ ilong
 imax
 imessage
 iname
+inlinevar
 inul
 is
 isatty
@@ -176,6 +179,7 @@ jlong
 joinpath
 kakasi
 khtml
+killall
 kwargs
 l
 lahu
@@ -192,6 +196,7 @@ loadfile
 localtime
 logfile
 loglevel
+loguru
 lsregister
 lstrip
 lxml
@@ -237,6 +242,7 @@ msgs
 msys
 msystem
 mypy
+mysqlclient
 mysqldump
 namelist
 nargs
@@ -244,6 +250,7 @@ ncmds
 newdir
 nfat
 nologo
+nonblock
 nssdb
 numargv
 nvenc
@@ -260,6 +267,7 @@ outpath
 pabrv
 palettegen
 paletteuse
+paren
 parms
 pathlib
 pathsep
@@ -284,9 +292,11 @@ pycache
 pydbus
 pylint
 pytest
+pyyaml
 qphotorec
 r'filesizes
 rars
+rdonly
 readline
 readlines
 realpath

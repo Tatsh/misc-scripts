@@ -4,7 +4,7 @@ from argparse import ArgumentParser
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
 from tempfile import mkstemp
-from typing import Any, Iterable, Tuple
+from typing import Any, Iterable
 import subprocess as sp
 import sys
 
@@ -35,7 +35,7 @@ def main() -> int:
         output_file = path_join(dirname(input_video), f'{splitext(basename(input_video))[0]}.gif')
     else:
         output_file = args.output
-    ffmpeg_args: Tuple[str, ...] = ('-y',)
+    ffmpeg_args: tuple[str, ...] = ('-y',)
     palette_filter = (f'fps={args.fps},scale={args.width}:-1:flags=lanczos,'
                       'palettegen')
     if args.to and args.t:

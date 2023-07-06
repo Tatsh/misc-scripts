@@ -18,7 +18,7 @@ class LocalState(TypedDict):
     browser: LocalStateBrowser
 
 
-def start_test(flags: Sequence[str], ls: LocalState, sn: str, ls_path: str,
+def start_test(flags: Sequence[str], local_state: LocalState, subprocess_name: str, ls_path: str,
                sleep_time: float) -> tuple[bool, str | None]:
     """
     Returns ``True`` if:
@@ -26,34 +26,38 @@ def start_test(flags: Sequence[str], ls: LocalState, sn: str, ls_path: str,
     - if there is only one flag left (problem flag possibly found)
     - if the problematic flag exists within the passed in flags
     """
-    l = len(flags)
-    if l == 0:
+    len_flags = len(flags)
+    if len_flags == 0:
         print('Could not find the problem flag', file=sys.stderr)
         return True, None
     print('Testing flags:')
     for flag in flags:
         print(f'- {flag}')
-    ls['browser']['enabled_labs_experiments'] = flags
+    local_state['browser']['enabled_labs_experiments'] = flags
     with open(ls_path, 'w+') as f:
-        json.dump(ls, f, allow_nan=False)
+        json.dump(local_state, f, allow_nan=False)
     input('Start browser and test for the issue, then press enter')
-    sp.run(('killall', sn), stderr=sp.PIPE, stdout=sp.PIPE)
+    sp.run(('killall', subprocess_name), stderr=sp.PIPE, stdout=sp.PIPE, check=False)
     sleep(sleep_time)
     at_fault = input('Did the problem occur? ').lower().startswith('y')
-    return at_fault, flags[0] if at_fault and l == 1 else None
+    return at_fault, flags[0] if at_fault and len_flags == 1 else None
 
 
-def do_test(flags: Sequence[str], ls_path: str, sn: str, sleep_time: float,
-            ls: LocalState) -> str | None:
-    l = len(flags)
-    if l < 2:
-        return flags[0] if l == 1 else None
-    done, bad_flag = start_test(flags[:l // 2], deepcopy(ls), sn, ls_path, sleep_time)
+def do_test(flags: Sequence[str], ls_path: str, subprocess_name: str, sleep_time: float,
+            local_state: LocalState) -> str | None:
+    len_flags = len(flags)
+    if len_flags < 2:
+        return flags[0] if len_flags == 1 else None
+    done, bad_flag = start_test(flags[:len_flags // 2], deepcopy(local_state), subprocess_name,
+                                ls_path, sleep_time)
     if done:
-        return bad_flag or do_test(flags[:l // 2], ls_path, sn, sleep_time, ls)
-    done, bad_flag = start_test(flags[l // 2:], deepcopy(ls), sn, ls_path, sleep_time)
+        return bad_flag or do_test(flags[:len_flags // 2], ls_path, subprocess_name, sleep_time,
+                                   local_state)
+    done, bad_flag = start_test(flags[len_flags // 2:], deepcopy(local_state), subprocess_name,
+                                ls_path, sleep_time)
     if done:
-        return bad_flag or do_test(flags[l // 2:], ls_path, sn, sleep_time, ls)
+        return bad_flag or do_test(flags[len_flags // 2:], ls_path, subprocess_name, sleep_time,
+                                   local_state)
     return None
 
 
@@ -83,25 +87,26 @@ def main() -> int:
     args = cast(Args, parser.parse_args())
     print(f'Using "{args.local_state_path}"', file=sys.stderr)
     with open(args.local_state_path, 'r') as f:
-        ls = json.load(f)
-        flags = ls['browser']['enabled_labs_experiments']
-        l = len(flags)
-        if l == 0:
+        local_state_data = json.load(f)
+        flags = local_state_data['browser']['enabled_labs_experiments']
+        len_flags = len(flags)
+        if len_flags == 0:
             print('Nothing to test', file=sys.stderr)
             return 1
     bad_flag = None
     try:
         input('Exit the browser and press any key')
-        bad_flag = do_test(flags, args.local_state_path, args.subprocess_name, args.sleep_time, ls)
-    except Exception:
+        bad_flag = do_test(flags, args.local_state_path, args.subprocess_name, args.sleep_time,
+                           local_state_data)
+    except Exception:  # pylint: disable=broad-exception-caught
         return 1
     finally:
         if bad_flag:
-            ls['browser']['enabled_labs_experiments'] = [
-                x for x in ls['browser']['enabled_labs_experiments'] if x != bad_flag
+            local_state_data['browser']['enabled_labs_experiments'] = [
+                x for x in local_state_data['browser']['enabled_labs_experiments'] if x != bad_flag
             ]
         with open(args.local_state_path, 'w+') as f:
-            json.dump(ls, f, sort_keys=True, indent=2, allow_nan=False)
+            json.dump(local_state_data, f, sort_keys=True, indent=2, allow_nan=False)
         if not bad_flag:
             print('Restored original "Local State"', file=sys.stderr)
         else:

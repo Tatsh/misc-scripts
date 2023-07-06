@@ -3,7 +3,7 @@
 from os import close, unlink
 from os.path import basename, splitext
 from tempfile import mkstemp
-from typing import Tuple, cast
+from typing import cast
 import argparse
 import subprocess as sp
 import sys
@@ -34,10 +34,11 @@ def main() -> int:
     unlink(tmp)
     bn = basename(args.input)
     out = f'{splitext(bn)[0]}-audio.mkv'
-    sp.run(('convert', '-size', '1920x1080', 'xc:black', '-fill', 'white', '-pointsize', '50',
-            '-draw', f"gravity Center text 0,0 '{args.title}'", tmp),
-           check=True)
-    args_start: Tuple[str, ...] = ('ffmpeg', '-loglevel', 'warning', '-hide_banner', '-y', '-loop',
+    sp.run(
+        ('convert', '-size', '1920x1080', 'xc:black', '-fill', 'white', '-pointsize', '50', '-draw',
+         f"gravity Center text 0,0 '{args.title}'", tmp),  # pylint: disable=invalid-string-quote
+        check=True)
+    args_start: tuple[str, ...] = ('ffmpeg', '-loglevel', 'warning', '-hide_banner', '-y', '-loop',
                                    '1', '-i', tmp, '-i', args.input, '-shortest', '-acodec', 'copy')
     if args.nvenc:
         args_start += (
@@ -72,5 +73,5 @@ def main() -> int:
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     sys.exit(main())

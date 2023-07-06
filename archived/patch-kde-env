@@ -2,12 +2,10 @@
 from functools import lru_cache
 from os.path import basename
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Final
 import logging
 import plistlib
 import sys
-
-from typing_extensions import Final
 
 ENVIRONMENT_VARS_KEY: Final = 'LSEnvironment'
 KDE_SESSION_VERSION: Final = 'KDE_SESSION_VERSION'
@@ -17,7 +15,7 @@ QT_QPA_PLATFORMTHEME_VALUE: Final = 'kde'
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -31,18 +29,18 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
 def main() -> int:
     log = setup_logging_stdout()
     for fin in sys.argv[1:]:
-        p = Path(fin).joinpath('Contents', 'Info.plist')
-        if not p.exists():
+        path = Path(fin).joinpath('Contents', 'Info.plist')
+        if not path.exists():
             log.warning('Skipping %s (Info.plist not found)', fin)
             continue
-        with p.open('rb') as f:
-            data: Dict[str, Any] = plistlib.load(f)
+        with path.open('rb') as fp:
+            data: dict[str, Any] = plistlib.load(fp)
             if ENVIRONMENT_VARS_KEY not in data:
                 data[ENVIRONMENT_VARS_KEY] = {}
             data[ENVIRONMENT_VARS_KEY][QT_QPA_PLATFORMTHEME] = QT_QPA_PLATFORMTHEME_VALUE
             data[ENVIRONMENT_VARS_KEY][KDE_SESSION_VERSION] = KDE_SESSION_VERSION_VALUE
-        with p.open('wb') as f:
-            plistlib.dump(data, f, sort_keys=False)
+        with path.open('wb') as fp:
+            plistlib.dump(data, fp, sort_keys=False)
         Path(fin).touch()
         log.info('Rewrote Info.plist for %s', fin)
     return 0

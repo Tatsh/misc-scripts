@@ -9,38 +9,37 @@ from copy import copy
 from functools import lru_cache
 from os import environ as env
 from os.path import basename, join as path_join
-from typing import Optional, Sequence, Tuple, cast
+from typing import Final, Sequence, cast
 import argparse
 import logging
 import os
 import subprocess as sp
 import sys
 
-from typing_extensions import Final
 import argcomplete
 
 # NOTE For anything not here, use unidecode
-JIS_ASCII_MAP: Final[Tuple[Tuple[str, str], ...]] = (
-    (u' 、', ','),
-    (u'、', ','),
-    (u' 。', '.'),
-    (u'・', ''),
-    (u'「 ', " '"),
-    (u' 」', "'"),
-    (u' ！', '!'),
-    (u'！', '!'),
-    (u'（ ', '('),
-    (u' ）', ')'),
-    (u'☆', '*'),
-    (u' ：', ':'),
-    (u'×', 'x'),
+JIS_ASCII_MAP: Final[tuple[tuple[str, str], ...]] = (
+    (' 、', ','),
+    ('、', ','),
+    (' 。', '.'),
+    ('・', ''),
+    ('「 ', " '"),  # pylint: disable=invalid-string-quote
+    (' 」', "'"),  # pylint: disable=invalid-string-quote
+    (' ！', '!'),
+    ('！', '!'),
+    ('（ ', '('),
+    (' ）', ')'),
+    ('☆', '*'),
+    (' ：', ':'),
+    ('×', 'x'),
 )
 KAKASI_HELP_LOOK_FOR: Final[str] = ('KAKASI - Kanji Kana Simple '
                                     'Inverter  Version 2.3.4')
 
 
 @lru_cache()
-def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> logging.Logger:
+def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
     name = name if name else basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
@@ -51,35 +50,33 @@ def setup_logging_stdout(name: Optional[str] = None, verbose: bool = False) -> l
     return log
 
 
-def find_bin(name: str, look_for: str, help_cmd: str = '--help') -> Optional[str]:
+def find_bin(name: str, look_for: str, help_cmd: str = '--help') -> str | None:
     for path in env['PATH'].split(os.pathsep):
         candidate = path_join(path, name)
         try:
             with open(candidate, 'rb') as f:
                 if os.access(f.name, os.X_OK):
-                    r = sp.Popen([candidate, help_cmd],
-                                 stdout=sp.PIPE,
-                                 stderr=sp.PIPE,
-                                 encoding='utf-8')
-                    r.wait()
-                    err = r.stderr
-                    out = r.stdout
-                    assert err is not None
-                    assert out is not None
-                    for line in (err.read().splitlines() + out.read().splitlines()):
-                        line_ = line.strip()
-                        if look_for in line_:
-                            return candidate
+                    with sp.Popen([candidate, help_cmd], stdout=sp.PIPE, stderr=sp.PIPE,
+                                  text=True) as proc:
+                        proc.wait()
+                        err = proc.stderr
+                        out = proc.stdout
+                        assert err is not None
+                        assert out is not None
+                        for line in (err.read().splitlines() + out.read().splitlines()):
+                            line_ = line.strip()
+                            if look_for in line_:
+                                return candidate
         except FileNotFoundError:
             pass
     return None
 
 
-def find_kakasi() -> Optional[str]:
+def find_kakasi() -> str | None:
     return find_bin('kakasi', KAKASI_HELP_LOOK_FOR)
 
 
-def find_iconv() -> Optional[str]:
+def find_iconv() -> str | None:
     return find_bin('iconv', 'SJIS', '--list')
 
 
@@ -121,31 +118,36 @@ def main() -> int:
     words += stdin_words
 
     for word_s, word in ((x, x.encode('utf-8')) for x in words):
-        iconv_to_sjis = sp.Popen(iconv_to_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
-        out, err = iconv_to_sjis.communicate(word)
-        err_s = err.decode('utf-8').strip()
-        if err_s:
-            log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s, err_s)
-            continue
+        with sp.Popen(iconv_to_args, stdin=sp.PIPE, stdout=sp.PIPE,
+                      stderr=sp.PIPE) as iconv_to_sjis:
+            out, err = iconv_to_sjis.communicate(word)
+            err_s = err.decode('utf-8').strip()
+            if err_s:
+                # pylint: disable=invalid-string-quote
+                log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s, err_s)
+                continue
 
-        kakasi = sp.Popen(kakasi_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
-        out, err = kakasi.communicate(out)
+            with sp.Popen(kakasi_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE) as kakasi:
+                out, err = kakasi.communicate(out)
 
-        iconv_from_sjis = sp.Popen(iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE, stderr=sp.PIPE)
-        final, err = iconv_from_sjis.communicate(out)
-        err_s = err.decode('utf-8').strip()
-        if err_s:
-            log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)", word_s, err_s)
-            continue
+                with sp.Popen(iconv_from_args, stdin=sp.PIPE, stdout=sp.PIPE,
+                              stderr=sp.PIPE) as iconv_from_sjis:
+                    final, err = iconv_from_sjis.communicate(out)
+                    err_s = err.decode('utf-8').strip()
+                    if err_s:
+                        # pylint: disable=invalid-string-quote
+                        log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)", word_s,
+                                  err_s)
+                        continue
 
-        final_s = final.decode('utf-8')
-        if not args.keep_long:
-            final_s = final_s.replace('^', '')
+                final_s = final.decode('utf-8')
+                if not args.keep_long:
+                    final_s = final_s.replace('^', '')
 
-        if not args.allow_non_ascii:
-            for find, repl in JIS_ASCII_MAP:
-                final_s = final_s.replace(find, repl)
-        log.info(final_s)
+                if not args.allow_non_ascii:
+                    for find, repl in JIS_ASCII_MAP:
+                        final_s = final_s.replace(find, repl)
+                log.info(final_s)
     return 0
 
 
