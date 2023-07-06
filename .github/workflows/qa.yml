@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies (Yarn)
         run: yarn
       - name: Install Shellcheck
-        run: apt-get install -y shellcheck
+        run: sudo apt-get install -y shellcheck
       - name: Lint with Shellcheck
         run: yarn shellcheck
       - name: Lint with mypy
