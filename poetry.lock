@@ -1197,13 +1197,13 @@ websockets = "*"
 
 [[package]]
 name = "yt-dlp-types"
-version = "0.0.6"
-description = "Typing stubs for yt-dlp"
+version = "0.0.7"
+description = "Typing stubs for yt-dlp."
 optional = false
 python-versions = ">=3.10,<4"
 files = [
-    {file = "yt_dlp_types-0.0.6-py3-none-any.whl", hash = "sha256:ed03b4bd66dae4b5e73c3bf5a1dff23f72cab043801c92b47c0dbd5819042bad"},
-    {file = "yt_dlp_types-0.0.6.tar.gz", hash = "sha256:3f65e0aa468e1119d903591fd1a5e1db5ed2c194a95a222780c9aad31fc445b9"},
+    {file = "yt_dlp_types-0.0.7-py3-none-any.whl", hash = "sha256:8d3e7029e51996a4c446da7185a262e2edd62ff8231ae4148cec1dd8e3999ace"},
+    {file = "yt_dlp_types-0.0.7.tar.gz", hash = "sha256:fca97b28c4b6cfd5abafb01e8c8f678af1bcbc670d282df082c59436f7c04ddd"},
 ]
 
 [[package]]
@@ -1224,4 +1224,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "73557d2954d50767753fd72589d4541c7dd991465025e7973dc75654c4aacb4a"
+content-hash = "3baa9e3a7312f1d6466f496795e294ce464c0e0d8d11625ff7a5357894b9ca1d"
