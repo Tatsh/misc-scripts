@@ -1,32 +1,16 @@
 #!/usr/bin/env python
-# PYTHON_ARGCOMPLETE_OK
-from functools import lru_cache
-from os.path import basename
 from typing import Final, Iterator, Sequence, cast
 import argparse
-import logging
 import platform
 import plistlib
 import re
 import subprocess as sp
 import sys
 
-import argcomplete
+import click
 
 KEY_ORIGIN_URL: Final[str] = 'user.xdg.origin.url'
-KEY_WHEREFROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
-
-
-@lru_cache()
-def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
-    log = logging.getLogger(name)
-    log.setLevel(logging.DEBUG if verbose else logging.INFO)
-    channel = logging.StreamHandler(sys.stdout)
-    channel.setFormatter(logging.Formatter('%(message)s'))
-    channel.setLevel(logging.DEBUG if verbose else logging.INFO)
-    log.addHandler(channel)
-    return log
+KEY_WHERE_FROMS: Final[str] = 'com.apple.metadata:kMDItemWhereFroms'
 
 
 def hexstr2bytes(s: str) -> bytes:
@@ -60,29 +44,34 @@ class Namespace(argparse.Namespace):
     webpage: bool
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description='Determine where downloaded files came from.')
-    parser.add_argument('files', metavar='FILE', nargs='+', help='Files to process.')
-    parser.add_argument('-w', '--webpage', action='store_true', help='Print the webpage URL')
-    argcomplete.autocomplete(parser)
-    args = cast(Namespace, parser.parse_args())
-    has_multiple = len(args.files) > 1
-    index = 1 if args.webpage else 0
-    ret = 0
-    for arg in args.files:
+@click.command('Determine where downloaded files came from.')
+@click.argument('files',
+                metavar='FILE',
+                nargs=-1,
+                type=click.Path(exists=True, dir_okay=False, readable=True))
+@click.option('-w', '--webpage', help='Print the webpage URL.')
+def main(webpage: bool, files: list[str]) -> None:
+    has_multiple = len(files) > 1
+    index = 1 if webpage else 0
+    failed = False
+    for arg in files:
         try:
             if platform.uname().system == 'Linux':
                 val = xattr_linux(KEY_ORIGIN_URL, arg)
             else:
                 val = cast(Sequence[str],
-                           plistlib.loads(hexstr2bytes(xattr_mac(KEY_WHEREFROMS, arg))))[index]
+                           plistlib.loads(hexstr2bytes(xattr_mac(KEY_WHERE_FROMS, arg))))[index]
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
         except Exception:  # pylint: disable=broad-except
-            ret = 1
-    return ret
+            if has_multiple:
+                click.echo(f'{arg}: unknown')
+            else:
+                failed = True
+    if not has_multiple and failed:
+        raise click.Abort()
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main())  # pylint: disable=E1120
