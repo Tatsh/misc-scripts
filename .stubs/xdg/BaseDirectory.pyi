@@ -1,0 +1,3 @@
+from typing import Final
+
+xdg_config_home: Final[str] = ...

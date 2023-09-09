@@ -1,0 +1,285 @@
+#!/usr/bin/env python
+from datetime import datetime
+from os import chdir, listdir
+from pathlib import Path
+from typing import Any, TypeVar, cast
+from xml.etree.ElementTree import Element
+import glob
+import hashlib
+import re
+import string
+import uuid
+import zipfile
+
+from defusedxml.ElementTree import parse as parse_xml
+from loguru import logger
+from requests import HTTPError
+from xdg.BaseDirectory import xdg_config_home
+from tomlkit.container import Container
+from tomlkit.items import Item, Table
+import click
+import tomlkit
+import requests
+
+T = TypeVar('T')
+PYCHOCO_TOML_PATH = Path(xdg_config_home) / 'pychoco/config.toml'
+PYCHOCO_API_KEYS_TOML_PATH = Path(xdg_config_home) / 'pychoco/api.toml'
+NUSPEC_XSD_URI_PREFIX = '{http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd}'
+NUSPEC_FIELD_AUTHORS = f'{NUSPEC_XSD_URI_PREFIX}authors'
+NUSPEC_FIELD_DESCRIPTION = f'{NUSPEC_XSD_URI_PREFIX}description'
+NUSPEC_FIELD_ID = f'{NUSPEC_XSD_URI_PREFIX}id'
+NUSPEC_FIELD_TAGS = f'{NUSPEC_XSD_URI_PREFIX}tags'
+NUSPEC_FIELD_VERSION = f'{NUSPEC_XSD_URI_PREFIX}version'
+CONTENT_TYPES_XML = '''<?xml version="1.0" encoding="utf-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
+  <Default Extension="psmdcp" ContentType="application/vnd.openxmlformats-package.core-properties+xml" />
+  <Default Extension="ps1" ContentType="application/octet" />
+  <Default Extension="nuspec" ContentType="application/octet" />
+</Types>\n'''
+RELS_XML_TEMPLATE = string.Template('''<?xml version="1.0" encoding="utf-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Type="http://schemas.microsoft.com/packaging/2010/07/manifest" Target="/${package_id}.nuspec" Id="${nuspec_id}" />
+  <Relationship Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="/package/services/metadata/core-properties/${psmdcp_filename}" Id="${psmdcp_id}" />
+</Relationships>\n''')
+PSMDCP_XML_TEMPLATE = string.Template('''<?xml version="1.0" encoding="utf-8"?>
+<coreProperties xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.openxmlformats.org/package/2006/metadata/core-properties">
+  <dc:creator>${creator}</dc:creator>
+  <dc:description>${description}</dc:description>
+  <dc:identifier>${package_id}</dc:identifier>
+  <version>${version}</version>
+  <keywords>${keywords}</keywords>
+  <lastModifiedBy>choco, Version=2.2.2.0, Culture=neutral, PublicKeyToken=79d02ea9cad655eb;Microsoft Windows NT 10.0.22621.0;.NET Framework 4.8</lastModifiedBy>
+</coreProperties>\n''')
+VALID_NAME_RE = r'^[0-9a-z-]+(\.(commandline|install|portable))?$'
+NUSPEC_TEMPLATE = string.Template('''<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>${package_id}</id>
+    <version>VERSION</version>
+    <title>PACKAGE_NAME (Install)</title>
+    <authors>AUTHORS</authors>
+    <owners>NUGET_MAKER</owners>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <projectUrl>https://a-url</projectUrl>
+    <description>DESCRIPTION</description>
+    <summary>SUMMARY</summary>
+    <tags>tag1 tag2</tags>
+    <packageSourceUrl>https://a-url-can-be-same-as-project</packageSourceUrl>
+  </metadata>
+</package>\n''')
+CHOCOLATEY_INSTALL_PS1_TEMPLATE = string.Template('''$$ErrorActionPreference = 'Stop'
+$$packageName = '${package_id}'
+$$${package_id}Version    = '1.0'
+$$toolsDir   = "$$(Split-Path -parent $$MyInvocation.MyCommand.Definition)"
+$$packageArgs = @{
+  checksum      = ''
+  checksumType  = 'sha256'
+  packageName   = $$packageName
+  unzipLocation = $$toolsDir
+  url           = 'https://somewhere/${package_id}.zip'
+}
+# https://chocolatey.org/docs/helpers-install-chocolatey-zip-package
+Install-ChocolateyZipPackage @packageArgs
+## Unzips a file to the specified location - auto overwrites existing content
+## - https://chocolatey.org/docs/helpers-get-chocolatey-unzip
+#Get-ChocolateyUnzip @packageArgs\n''')
+CHOCOLATEY_UNINSTALL_PS1_TEMPLATE = '''$$ErrorActionPreference = 'Stop'
+[array]$$key = Get-UninstallRegistryKey -SoftwareName "PACKAGE_NAME"
+if ($$key.Count -eq 1) {
+  $$key | ForEach-Object {
+    $$packageArgs = @{
+      packageName = $$env:ChocolateyPackageName
+      fileType    = 'exe'
+      silentArgs  = '/S'
+      file        = ($$_.UninstallString -split '"')[1]
+    }
+    Uninstall-ChocolateyPackage @packageArgs
+  }
+}
+elseif ($$key.Count -eq 0) {
+  Write-Warning "$$packageName has already been uninstalled by other means."
+}
+elseif ($$key.Count -gt 1) {
+  Write-Warning "$$($$key.Count) matches found!"
+  Write-Warning "To prevent accidental data loss, no programs will be uninstalled."
+  Write-Warning "Please alert package maintainer the following keys were matched:"
+  $$key | ForEach-Object { Write-Warning "- $$($$_.DisplayName)" }
+}\n'''
+
+
+def generate_unique_id() -> str:
+    return f'R{str(uuid.uuid4()).replace("-", "")}'.upper()
+
+
+def assert_not_none(x: T | None) -> T:
+    assert x is not None
+    return x
+
+
+def get_unique_tag_text(root: Element | Any, tag_name: str) -> str:
+    text = assert_not_none(assert_not_none(root[0].find(tag_name)).text).strip()
+    assert len(text) > 0, f'No value in {tag_name}'
+    return text
+
+
+def append_dir_recursive(root: Path, z: zipfile.ZipFile) -> None:
+    for item in listdir(root):
+        if item.endswith('.nupkg'):
+            continue
+        abs_item = root / item
+        if abs_item.is_dir():
+            logger.debug(f'Recursing into {abs_item}')
+            append_dir_recursive(abs_item, z)
+        else:
+            logger.debug(f'Adding {abs_item}')
+            z.write(abs_item)
+
+
+@click.command()
+@click.option('-d', '--debug', is_flag=True)
+@click.argument('work_dir', type=click.Path(file_okay=False, resolve_path=True), default='.')
+def pack(work_dir: str = '.', debug: bool = False) -> None:
+    if debug:
+        logger.level('DEBUG')
+    nuspecs = glob.glob('*.nuspec', root_dir=work_dir)
+    if not nuspecs:
+        logger.error('No nuspec files found.')
+        raise click.Abort()
+    if len(nuspecs) > 1:
+        logger.error(f'Only one nuspec file should be present in {work_dir}.')
+    with (Path(work_dir) / nuspecs[0]).open() as spec:
+        root = parse_xml(spec).getroot()
+    package_id = get_unique_tag_text(root, NUSPEC_FIELD_ID)
+    version = get_unique_tag_text(root, NUSPEC_FIELD_VERSION)
+    sha = hashlib.sha1()
+    sha.update(f'{package_id}{version}{datetime.now()}'.encode())
+    psmdcp_filename = f'{sha.hexdigest()}.psmdcp'
+    with zipfile.ZipFile(f'test-{package_id}.{version}.nupkg', 'w') as z:
+        chdir(work_dir)
+        append_dir_recursive(Path('.'), z)
+        z.writestr('[Content_Types].xml', CONTENT_TYPES_XML)
+        z.writestr(
+            '_rels/.rels',
+            RELS_XML_TEMPLATE.safe_substitute(nuspec_id=generate_unique_id(),
+                                              package_id=package_id,
+                                              psmdcp_filename=psmdcp_filename,
+                                              psmdcp_id=generate_unique_id()))
+        z.writestr(
+            f'package/services/metadata/core-properties/{psmdcp_filename}',
+            PSMDCP_XML_TEMPLATE.safe_substitute(
+                creator=get_unique_tag_text(root, NUSPEC_FIELD_AUTHORS),
+                description=get_unique_tag_text(root, NUSPEC_FIELD_DESCRIPTION),
+                keywords=get_unique_tag_text(root, NUSPEC_FIELD_TAGS),
+                package_id=package_id,
+                version=version))
+
+
+def source_default_cb() -> str:
+    try:
+        with PYCHOCO_TOML_PATH.open() as f:
+            return cast(str, cast(Container, tomlkit.load(f)['pychoco'])['defaultPushSource'])
+    except (KeyError, FileNotFoundError):
+        return 'https://push.chocolatey.org'
+
+
+@click.command()
+@click.option('-s', '--source', default=source_default_cb)
+@click.argument('PACKAGE_NAME', type=click.Path(dir_okay=False, readable=True))
+def push(package_name: str, source: str) -> None:
+    session = requests.Session()
+    if PYCHOCO_API_KEYS_TOML_PATH.exists():
+        with open(PYCHOCO_API_KEYS_TOML_PATH) as f:
+            keys = tomlkit.load(f)
+            if source in keys.keys():
+                session.headers.update({'X-NuGet-ApiKey': cast(str, keys[source])})
+    with open(package_name, 'rb') as f:
+        r = session.put(f'{source}/api/v2/package/', files={package_name: f})
+        try:
+            r.raise_for_status()
+        except HTTPError as e:
+            click.echo(e.response)
+
+
+@click.command()
+@click.option('-n', '--name', required=True, type=click.Choice(['defaultPushSource']))
+@click.option('-v', '--value', required=True)
+def config_set(name: str, value: str) -> None:
+    PYCHOCO_TOML_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if PYCHOCO_TOML_PATH.exists():
+        with PYCHOCO_TOML_PATH.open() as f:
+            config_ = tomlkit.load(f)
+    else:
+        config_ = tomlkit.document()
+    if 'pychoco' not in config_:
+        config_['pychoco'] = tomlkit.table()
+    if name == 'defaultPushSource':
+        value = value.rstrip('/')
+    cast(Table, config_['pychoco']).add(name, value)  # pylint: disable=no-member
+    with PYCHOCO_TOML_PATH.open('w') as f:
+        tomlkit.dump(config_, f)
+
+
+@click.group()
+def config() -> None:
+    pass
+
+
+def validate_name(_ctx: click.Context, _param: click.Parameter, value: str) -> str:
+    if not re.match(VALID_NAME_RE, value):
+        raise click.BadParameter(f'format must be "{VALID_NAME_RE}"')
+    if Path(value).exists():
+        raise click.BadParameter('Directory already exists.')
+    return value
+
+
+@click.command()
+@click.argument('name', type=click.UNPROCESSED, callback=validate_name)
+def new(name: str) -> None:
+    p_name = Path(name)
+    p_name.mkdir()
+    with open(p_name / f'{name}.nuspec', 'w') as f:
+        f.write(NUSPEC_TEMPLATE.safe_substitute(package_id=name))
+    tools = p_name / 'tools'
+    tools.mkdir()
+    with open(tools / 'chocolateyInstall.ps1', 'w') as f:
+        f.write(CHOCOLATEY_INSTALL_PS1_TEMPLATE.safe_substitute(package_id=name))
+    with open(tools / 'chocolateyUninstall.ps1', 'w') as f:
+        f.write(CHOCOLATEY_UNINSTALL_PS1_TEMPLATE)
+
+
+@click.command()
+@click.option('-k', '--key', required=True)
+@click.option('-s', '--source', required=True)
+def apikey_add(key: str, source: str) -> None:
+    PYCHOCO_API_KEYS_TOML_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if PYCHOCO_API_KEYS_TOML_PATH.exists():
+        with open(PYCHOCO_API_KEYS_TOML_PATH) as f:
+            keys = tomlkit.load(f)
+    else:
+        keys = tomlkit.document()
+    keys.add(source, cast(Item, key))
+    with open(PYCHOCO_API_KEYS_TOML_PATH, 'w') as f:
+        tomlkit.dump(keys, f)
+
+
+@click.group()
+def apikey() -> None:
+    pass
+
+
+@click.group()
+def choco() -> None:
+    """Root command."""
+
+
+apikey.add_command(apikey_add, 'add')
+choco.add_command(apikey, 'apikey')
+choco.add_command(config, 'config')
+choco.add_command(new, 'new')
+choco.add_command(pack, 'pack')
+choco.add_command(push, 'push')
+config.add_command(config_set, 'set')
+
+if __name__ == '__main__':
+    choco()

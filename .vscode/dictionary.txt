@@ -48,6 +48,7 @@ cdrom
 cdrtools
 certutil
 chdir
+choco
 chost
 cigam
 cksfv
@@ -73,6 +74,7 @@ cygpath
 datafile
 dataoffset
 datetime
+dcterms
 deepcopy
 devnull
 directores
@@ -253,6 +255,7 @@ nologo
 nonblock
 nssdb
 numargv
+nupkg
 nvenc
 objectdb
 openssl
@@ -285,10 +288,12 @@ popd
 popen
 printf
 printmsg
+psmdcp
 psql
 psutil
 pushd
 pycache
+pychoco
 pydbus
 pylint
 pytest
@@ -303,6 +308,7 @@ realpath
 recognised
 recurse
 referer
+rels
 returncode
 ripcd
 rmtree
@@ -354,6 +360,7 @@ tempfile
 tencent
 timebase
 todos
+tomlkit
 totalallowances
 tracknumber
 tsheets
