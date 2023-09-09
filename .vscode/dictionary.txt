@@ -15,6 +15,7 @@ anhu
 anka
 anni
 aout
+apikey
 arcname
 argcomplete
 argparse
@@ -56,6 +57,7 @@ cmds
 codesign
 colnames
 colorspace
+commandline
 concat
 cond
 configparser
@@ -76,6 +78,7 @@ dataoffset
 datetime
 dcterms
 deepcopy
+defusedxml
 devnull
 directores
 discid
@@ -93,6 +96,7 @@ epqrv
 epub
 errno
 esac
+etree
 execdir
 executable's
 executablepath
@@ -137,6 +141,7 @@ getenv
 geteuid
 getfattr
 getopts
+getroot
 gifflags
 globbed
 globbing
@@ -145,8 +150,10 @@ gnupg
 gnupghome
 groupdict
 handle
+hashlib
 headofhousehold
 hevc
+hexdigest
 hexstr
 hicolor
 hkcu
@@ -256,9 +263,11 @@ nonblock
 nssdb
 numargv
 nupkg
+nuspecs
 nvenc
 objectdb
 openssl
+openxmlformats
 optarg
 optimise
 oradiag
@@ -297,6 +306,7 @@ pychoco
 pydbus
 pylint
 pytest
+pyxdg
 pyyaml
 qphotorec
 r'filesizes
@@ -409,6 +419,7 @@ winxp
 wkwebview
 wprefix
 writerows
+writestr
 wwdc
 xargs
 xattr
