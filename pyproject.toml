@@ -21,12 +21,12 @@ python-magic = "^0.4.27"
 pyyaml = "^6.0.1"
 requests = "^2.31.0"
 yt-dlp = "^2023.7.6"
-
 # pretty-bad-protocol = "^3.1.1"
 # mysqlclient = "^2.2.0"
 defusedxml = "^0.7.1"
 pyxdg = "^0.28"
 tomlkit = "^0.12.1"
+
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.5.1"
 isort = "^5.12.0"
