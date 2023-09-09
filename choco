@@ -14,12 +14,12 @@ import zipfile
 from defusedxml.ElementTree import parse as parse_xml
 from loguru import logger
 from requests import HTTPError
-from xdg.BaseDirectory import xdg_config_home
 from tomlkit.container import Container
 from tomlkit.items import Item, Table
+from xdg.BaseDirectory import xdg_config_home
 import click
-import tomlkit
 import requests
+import tomlkit
 
 T = TypeVar('T')
 PYCHOCO_TOML_PATH = Path(xdg_config_home) / 'pychoco/config.toml'
