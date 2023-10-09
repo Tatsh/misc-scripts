@@ -10,6 +10,7 @@
   "editor.formatOnType": true,
   "editor.insertSpaces": true,
   "editor.tabSize": 2,
+  "files.eol": "\n",
   "python.analysis.stubPath": ".stubs",
   "python.analysis.typeCheckingMode": "strict"
 }
