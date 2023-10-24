@@ -38,7 +38,7 @@ types-requests = "^2.31.0.10"
 yapf = "^0.40.2"
 yt-dlp-types = "~0.0.7"
 types-mysqlclient = "^2.2.0.1"
-types-psutil = "^5.9.5.16"
+types-psutil = "^5.9.5.17"
 
 [build-system]
 requires = ["poetry-core"]
