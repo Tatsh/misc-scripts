@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+get-repos() {
+    gh repo list --limit 9999 --jq '.[].nameWithOwner' --json nameWithOwner --no-archived &&
+        while IFS=$'\n' read -r org; do
+            gh api \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "/orgs/${org}/repos" --jq '.[].full_name'
+        done < <(gh org list)
+
+}
+get-repos-sorted() {
+    get-repos | sort -u
+}
+uses-dependabot() {
+    gh api \
+        --silent \
+        -H 'Accept: application/vnd.github+json' \
+        -H 'X-GitHub-Api-Version: 2022-11-28' \
+        "/repos/${1}/contents/.github/dependabot.yml" &>/dev/null || return 1
+}
+comment-rebase() {
+    local -r number="$2"
+    local -r repo="$1"
+    gh pr --repo "$repo" comment "$number" --body '@dependabot rebase'
+}
+try-merge-pr() {
+    local -r number="$2"
+    local -r repo="$1"
+    if ! gh pr --repo "$repo" merge --admin --delete-branch --rebase "$number"; then
+        comment-rebase "$repo" "$number"
+        return 1
+    fi
+}
+get-dependabot-open-pr-numbers() {
+    gh pr --repo "$1" list --author app/dependabot --jq '.[].number' --json number --state open
+}
+do-main() {
+    local exit_code i number repo
+    exit_code=0
+    for i in gh jq rg; do
+        if ! command -v "$i" &>/dev/null; then
+            echo "Install ${i}" >&2
+            return 1
+        fi
+    done
+    while IFS=$'\n' read -r repo; do
+        if ! uses-dependabot "$repo"; then
+            continue
+        fi
+        echo "$repo"
+        while IFS=$'\n' read -r number; do
+            if ! try-merge-pr "$repo" "$number"; then
+                exit_code=1
+            fi
+        done < <(get-dependabot-open-pr-numbers "$repo")
+    done < <(get-repos-sorted)
+    return "$exit_code"
+}
+main() {
+    while true; do
+        do-main && break
+        delay 2m
+    done
+}
+main
