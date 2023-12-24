@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+main() {
+    local _ _mac _name dev_id g603_in_range max_time scan_pid time
+    max_time=20
+    time=0
+    while read -r _ mac _name; do
+        bluetoothctl remove "$mac"
+    done < <(bluetoothctl devices | grep -F G603)
+    bluetoothctl power off
+    delay 5 || sleep 5
+    bluetoothctl power on
+    delay 5 || sleep 5
+    bluetoothctl scan on &>/dev/null &
+    scan_pid=$!
+    trap 'kill ${scan_pid} 2>/dev/null' EXIT
+    g603_in_range=$(bluetoothctl devices | grep -F G603)
+    while [ -z "$g603_in_range" ] && ((time < max_time)); do
+        g603_in_range=$(bluetoothctl devices | grep -F G603)
+        ((time++))
+        delay 1 || sleep 1
+    done
+    dev_id=$(awk '{ print $2 }' <<< "$g603_in_range")
+    if [ -z "$dev_id" ]; then
+        echo 'Failed'
+        return 1
+    fi
+    bluetoothctl pair "$dev_id"
+    bluetoothctl trust "$dev_id"
+}
+main
