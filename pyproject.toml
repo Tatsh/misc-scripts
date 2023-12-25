@@ -28,7 +28,7 @@ pyxdg = "^0.28"
 tomlkit = "^0.12.3"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.7.1"
+mypy = "^1.8.0"
 isort = "^5.13.2"
 pylint = "^3.0.3"
 pylint-quotes = "^0.2.3"
