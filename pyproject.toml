@@ -9,7 +9,7 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = "^3.10"
 argcomplete = "^3.2.1"
-beautifulsoup4 = "^4.12.2"
+beautifulsoup4 = "^4.12.3"
 click = "^8.1.7"
 loguru = "^0.7.2"
 mysqlclient = "^2.2.1"
