@@ -24,8 +24,8 @@ JIS_ASCII_MAP: Final[tuple[tuple[str, str], ...]] = (
     ('、', ','),
     (' 。', '.'),
     ('・', ''),
-    ('「 ', " '"),  # pylint: disable=invalid-string-quote
-    (' 」', "'"),  # pylint: disable=invalid-string-quote
+    ('「 ', " '"),
+    (' 」', "'"),
     (' ！', '!'),
     ('！', '!'),
     ('（ ', '('),
@@ -123,7 +123,7 @@ def main() -> int:
             out, err = iconv_to_sjis.communicate(word)
             err_s = err.decode('utf-8').strip()
             if err_s:
-                # pylint: disable=invalid-string-quote
+
                 log.error("'%s': Conversion to Shift-JIS failed (%s)", word_s, err_s)
                 continue
 
@@ -135,7 +135,7 @@ def main() -> int:
                     final, err = iconv_from_sjis.communicate(out)
                     err_s = err.decode('utf-8').strip()
                     if err_s:
-                        # pylint: disable=invalid-string-quote
+
                         log.error("'%s': Conversion from Shift-JIS to UTF-8 failed (%s)", word_s,
                                   err_s)
                         continue

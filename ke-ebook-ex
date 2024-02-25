@@ -53,7 +53,7 @@ def main() -> int:
     for _dir in args.directories:
         last = getcwd()
         chdir(_dir)
-        # pylint: disable=consider-using-with
+
         zip_listing = frozenset(ZipFile(x) for x in listdir('.') if x.endswith('.zip'))
         if len(zip_listing) == 0:
             log.warning('No zip files found. Skipping directory %s', _dir)

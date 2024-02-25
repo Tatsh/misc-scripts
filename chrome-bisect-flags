@@ -98,7 +98,7 @@ def main() -> int:
         input('Exit the browser and press any key')
         bad_flag = do_test(flags, args.local_state_path, args.subprocess_name, args.sleep_time,
                            local_state_data)
-    except Exception:  # pylint: disable=broad-exception-caught
+    except Exception:
         return 1
     finally:
         if bad_flag:

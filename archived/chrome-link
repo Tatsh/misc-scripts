@@ -143,11 +143,10 @@ def _ico_index(tmp_name: str, verbose: bool | None = False) -> str:
     return f'[{index}]'
 
 
-def _fetch_convert_icon(  # pylint: disable=too-many-branches,too-many-statements
-        icon: str | None,
-        short_name: str,
-        session: requests.Session,
-        verbose: bool | None = False) -> str | None:
+def _fetch_convert_icon(icon: str | None,
+                        short_name: str,
+                        session: requests.Session,
+                        verbose: bool | None = False) -> str | None:
     log = _setup_logging_stdout(name='_fetch_convert_icon', verbose=verbose)
     if not re.match(r'^https?\://', icon or ''):
         return icon
@@ -369,7 +368,7 @@ link.WorkingDirectory=desktop;\n''')
             props['Hotkey'] = args.hotkey
         for prop, val in props.items():
             if isinstance(val, str):
-                val = f"'{val}'"  # pylint: disable=invalid-string-quote
+                val = f"'{val}'"
             f.write(f'link.{prop} = {val};\n')
         f.write('link.Save();\n')
     cscript_cmd = ('cscript', '//Nologo', script_js)

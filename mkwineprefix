@@ -34,7 +34,7 @@ class Args(argparse.Namespace):
     no_xdg: bool
     windows_version: Sequence[Literal['10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']]
     sandbox: bool
-    vd: str  # pylint: disable=invalid-name
+    vd: str
     verbose: bool
 
 
@@ -78,12 +78,11 @@ def wine(args: Args) -> int:
         env['DISPLAY'] = ':0'
     if args.no_xdg:
         try:
-            run(
-                ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
+            run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
                  'winemenubuilder.exe', '/f'),
                 env=env,
                 check=True,
-                stdout=open(devnull, 'w'),  # pylint: disable=consider-using-with
+                stdout=open(devnull, 'w'),
                 stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)

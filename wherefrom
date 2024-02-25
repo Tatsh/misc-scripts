@@ -64,7 +64,7 @@ def main(webpage: bool, files: list[str]) -> None:
             if has_multiple:
                 sys.stdout.write(f'{arg}: ')
             sys.stdout.write(f'{val}\n')
-        except Exception:  # pylint: disable=broad-except
+        except Exception:
             if has_multiple:
                 click.echo(f'{arg}: unknown')
             else:
@@ -74,4 +74,4 @@ def main(webpage: bool, files: list[str]) -> None:
 
 
 if __name__ == '__main__':
-    sys.exit(main())  # pylint: disable=E1120
+    sys.exit(main())

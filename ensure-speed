@@ -70,9 +70,9 @@ def main() -> int:
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
-        log_fh = open(args.log_file, 'a+')  # pylint: disable=consider-using-with
+        log_fh = open(args.log_file, 'a+')
         assert log_fh is not None
-        log_yaml_handle = open(args.log_file + '.yml', 'a+')  # pylint: disable=consider-using-with
+        log_yaml_handle = open(args.log_file + '.yml', 'a+')
         channel = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)

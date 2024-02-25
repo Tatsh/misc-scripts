@@ -67,7 +67,7 @@ def send(res: requests.Response | None) -> requests.Response | FailedConnection 
         return FailedConnection(res, reason=FailedConnection.REASON_INVALID_SCHEMA)
     except requests.exceptions.ConnectionError as e:
         return FailedConnection(res, exc=e, reason=FailedConnection.REASON_CONNECTION_ERROR)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:
         return FailedConnection(res, exc=e, reason=FailedConnection.REASON_UNKNOWN)
     return res
 
@@ -76,7 +76,7 @@ def head(session: requests.Session, uri: str) -> requests.Response | None:
     log = setup_logging_stdout()
     try:
         return session.head(uri, timeout=5)
-    except Exception as e:  # pylint: disable=broad-except
+    except Exception as e:
         log.error('Failed connection: %s (%s)', e, uri)
     return None
 

@@ -96,11 +96,11 @@ def main() -> int:
         # Unhandled race condition: what if mpv is terminating right now?
         for f in files:
             # escape: \ \n "
-            # pylint: disable=invalid-string-quote
+
             f = f.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
-            # pylint: enable=invalid-string-quote
+
             sock.send(f'raw loadfile "{f}"\n'.encode())
-            log.info('Loading file "%s"', f)  # pylint: disable=logging-too-many-args
+            log.info('Loading file "%s"', f)
     else:
         log.info('Starting new mpv instance')
         # Let mpv recreate socket if it does not already exist.

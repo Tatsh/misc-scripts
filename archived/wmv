@@ -23,7 +23,7 @@ TR_MAP: Final[tuple[tuple[str, str], ...]] = (
     ('＄', '$'),
     ('％', '%'),
     ('＆', '&'),
-    ('＇', "'"),  # pylint: disable=invalid-string-quote
+    ('＇', "'"),
     ('＊', '*'),
     ('，', ','),
     ('－', '-'),
@@ -138,7 +138,7 @@ def make_target(filename: str) -> str:
 
 
 class Namespace(argparse.Namespace):
-    b: bool  # pylint: disable=invalid-name
+    b: bool
     backup: bool
     file: Sequence[str]
     force: bool

@@ -15,7 +15,7 @@ TR_MAP: Final[tuple[tuple[str, str], ...]] = (
     ('＄', '$'),
     ('％', '%'),
     ('＆', '&'),
-    ('＇', "'"),  # pylint: disable=invalid-string-quote
+    ('＇', "'"),
     ('＊', '*'),
     ('，', ','),
     ('－', '-'),

@@ -74,7 +74,7 @@ def main() -> int:
         actual_exe_path = get_ultraiso_path(default_wine_prefix)
         assert actual_exe_path is not None
         assumed_xauthority = expanduser('~/.Xauthority')
-        # pylint: disable=subprocess-run-check
+
         sp.run(['wine', actual_exe_path] + sys.argv[1:],
                env=dict(WINEPREFIX=default_wine_prefix,
                         DISPLAY=os.environ.get('DISPLAY', ''),
@@ -319,7 +319,7 @@ def main() -> int:
 
     wprefix_env = quote(f'WINEPREFIX={args.prefix}')
     log.debug('env %s %s', wprefix_env, ' '.join(quote(x) for x in sp_args))
-    # pylint: disable=subprocess-run-check
+
     proc = sp.run(sp_args, stderr=sp.PIPE, env=env, text=True)
     stderr: str = proc.stderr.strip()
     exit_status = proc.returncode

@@ -30,10 +30,7 @@ def ignore_dir(name: bytes) -> tuple[str, bool]:
     return path, bool(re.search(IGNORE_RE, path)) or len(set(contents) - IGNORED_FILES) != 0
 
 
-async def iter_lines(
-        loop: AbstractEventLoop,
-        proc: sp.Process  # pylint: disable=no-member
-) -> AsyncIterator[str]:
+async def iter_lines(loop: AbstractEventLoop, proc: sp.Process) -> AsyncIterator[str]:
     assert proc.stdout
     while line := await proc.stdout.readline():
         path, ignore = await loop.run_in_executor(None, ignore_dir, line)
@@ -43,15 +40,14 @@ async def iter_lines(
 
 async def a_main(loop: AbstractEventLoop) -> None:
     async for path in iter_lines(
-            loop,
-            await sp.create_subprocess_exec(  # pylint: disable=no-member
-                'find',
-                await loop.run_in_executor(None, env_no_case, 'home'),
-                '-xdev',
-                '-type',
-                'd',
-                stdout=sp.PIPE,
-                stderr=sp.PIPE)):
+            loop, await sp.create_subprocess_exec('find',
+                                                  await loop.run_in_executor(
+                                                      None, env_no_case, 'home'),
+                                                  '-xdev',
+                                                  '-type',
+                                                  'd',
+                                                  stdout=sp.PIPE,
+                                                  stderr=sp.PIPE)):
         await loop.run_in_executor(None, print, path)
 
 

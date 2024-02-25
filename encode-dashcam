@@ -277,7 +277,7 @@ def name_d(arg: str) -> Callable[[str], tuple[str, str]]:
 
 
 def file_line(f: str) -> bytes:
-    return f"file '{f}'\n".encode()  # pylint: disable=invalid-string-quote
+    return f"file '{f}'\n".encode()
 
 
 def head(x: Sequence[T]) -> T:
@@ -337,7 +337,7 @@ def main() -> int:
             i += 1
             start = end = 0
             for line in (file_line(y) for y in (realpath(x) for x in sorted(things))):
-                fn: str = line.decode()[6:].replace("'", '').strip()  # pylint: disable=invalid-string-quote
+                fn: str = line.decode()[6:].replace("'", '').strip()
                 url = basename(fn).replace('.AVI', '')
                 metadata = f'file_packet_metadata url={url}\n'.encode()
                 write_tmp_fd(line)

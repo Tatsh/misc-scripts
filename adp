@@ -22,7 +22,7 @@ class ContentDict(TypedDict):
     fica: float
     state: float
     medicare: float
-    netPay: float  # pylint: disable=invalid-name
+    netPay: float
 
 
 class ResponseDict(TypedDict):

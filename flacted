@@ -46,7 +46,7 @@ def main() -> int:
     setup_logging_stdout()
     log = setup_logging_stdout()
     invoked_as = basename(sys.argv[0])
-    # pylint: disable=too-many-nested-blocks
+
     if invoked_as != 'flacted' and len(sys.argv) >= 2:
         tag_requested = invoked_as.split('-')[1]
         possible: tuple[str,

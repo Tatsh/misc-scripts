@@ -69,7 +69,7 @@ def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
     try:
         arg: int | TextIO = sp.DEVNULL
     except AttributeError:
-        arg = open('/dev/null')  # pylint: disable=consider-using-with
+        arg = open('/dev/null')
     if 'check' in kwargs:
         kwargs.pop('check')
     kwargs['stdout'] = arg

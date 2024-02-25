@@ -117,7 +117,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                             pass
                         makedirs(dirname(log_fn), exist_ok=True)
                         if not found:
-                            # pylint: disable=consider-using-with
+
                             found = open(path_join(outdir, log_fn), 'w')
                             log.info('Writing to %s', found.name)
                         found.write(f'{entry:s}:{i:d}\n')

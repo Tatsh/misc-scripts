@@ -10,7 +10,7 @@ import sys
 
 import argcomplete
 
-RootKey = Literal['bookmark_bar', 'other']  # pylint: disable=invalid-name
+RootKey = Literal['bookmark_bar', 'other']
 StringTuple = tuple[str, str | None, str, str]
 MICROSECONDS_PER_SECOND: Final[float] = 1e6
 # https://github.com/chromium/chromium/blob/670ff74372d149d0ee4d733e2254a4a3d6b0ec6d/base/time/time.h#L499

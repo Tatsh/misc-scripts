@@ -65,7 +65,7 @@ ARABIC_STOPS: Final[Sequence[str]] = ('al', 'ala', 'alayhi', 'alayka', 'alayya',
                                       'laka', 'li', 'maa', 'maahu', 'maaka', 'mai', 'min', 'minhu',
                                       'minka', 'minni', 'wa')
 NAMES: Final[Mapping[str, str]] = {
-    "mcdonald's": "McDonald's",  # pylint: disable=invalid-string-quote
+    "mcdonald's": "McDonald's",
     'Arkit': 'ARKit',
     'Imessage': 'iMessage',
     'Ios': 'iOS',  # Not Cisco IOS
@@ -78,7 +78,7 @@ NAMES: Final[Mapping[str, str]] = {
     'Sirikit': 'SiriKit',
     'Tvos': 'tvOS',
     'Watchos': 'watchOS',
-    'Whats': "What's",  # pylint: disable=invalid-string-quote
+    'Whats': "What's",
     'Wkwebview': 'WKWebView',
     'Wwdc': 'WWDC',
     'mcdonald': 'McDonald',
@@ -109,12 +109,10 @@ def is_roman_numeral(string: str) -> bool:
 
 
 def fix_apostrophes(word: str) -> str:
-    if "'" not in word:  # pylint: disable=invalid-string-quote
+    if "'" not in word:
         return word
-    return re.sub(
-        r"[A-Za-z]+('[A-Za-z]+)?",  # pylint: disable=invalid-string-quote
-        lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(),
-        word)
+    return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
+                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), word)
 
 
 def lower_stop(words: str,
@@ -178,7 +176,7 @@ def lower_stop(words: str,
             if word.lower() in to_lower_case_array:
                 word = word_list[index] = word.lower()
 
-            if "'" in word:  # pylint: disable=invalid-string-quote
+            if "'" in word:
                 word = fix_apostrophes(word)
 
             # MIX is a roman numeral but is more typically used in a sequence
