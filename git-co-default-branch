@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -e
+set -xv
+main() {
+    local origin repo
+    origin=$(git remote get-url origin)
+    if grep -E '^(git@|https://)github.com' <<< "$origin"; then
+        repo=$(git remote get-url origin | sed -re 's#^(https://|git@)github.com[:/]##' -e 's/\.git$//')
+        git checkout "$(gh api "/repos/${repo}" --cache 24h -q .default_branch)"
+    else
+        echo 'Cannot determine default branch.'
+        return 1
+    fi
+}
+main
