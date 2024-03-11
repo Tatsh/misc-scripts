@@ -807,13 +807,13 @@ files = [
 
 [[package]]
 name = "types-mysqlclient"
-version = "2.2.0.1"
+version = "2.2.0.20240311"
 description = "Typing stubs for mysqlclient"
 optional = false
-python-versions = "*"
+python-versions = ">=3.8"
 files = [
-    {file = "types-mysqlclient-2.2.0.1.tar.gz", hash = "sha256:8cec6909a506154731245620b2872c2e9d7e36f513ad38d78505adf647feef17"},
-    {file = "types_mysqlclient-2.2.0.1-py3-none-any.whl", hash = "sha256:84100cd61d0298da1fcf6cb78d119e3492024b9e7d19ac24862cfc8e95547598"},
+    {file = "types-mysqlclient-2.2.0.20240311.tar.gz", hash = "sha256:556a0b7a0bc632d32fcb2cab4fd02bfb96e9031f268dbeec54708365c15ccd7d"},
+    {file = "types_mysqlclient-2.2.0.20240311-py3-none-any.whl", hash = "sha256:9856abe7c0ef764fedb1fa1c804142cfb906cd3afa40f9e29c0fd6058e2cfc10"},
 ]
 
 [[package]]
@@ -1041,4 +1041,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "3043ff4deb46bcfd872ac004a130592a87a5d4b587b74e3e5967778b77345037"
+content-hash = "0f80bd39b5a105766f81964a3a3d15ed0996de69952b5419943eb8b07e3d0af4"
