@@ -49,6 +49,7 @@ cdrecord
 cdrom
 cdrtools
 certutil
+cffconvert
 chdir
 choco
 chost
@@ -272,6 +273,7 @@ openxmlformats
 optarg
 optimise
 oradiag
+orcid
 osascript
 osfmk
 outdir
