@@ -27,14 +27,15 @@ pyxdg = "^0.28"
 tomlkit = "^0.12.4"
 
 [tool.poetry.group.dev.dependencies]
-mypy = "^1.9.0"
+mypy = "^1.10.0"
 types-beautifulsoup4 = "^4.12.0.20240229"
 types-pyyaml = "^6.0.12.20240311"
 types-requests = "^2.31.0.20240406"
 yapf = "^0.40.2"
 yt-dlp-types = "~0.0.7"
 types-mysqlclient = "^2.2.0.20240311"
-types-psutil = "^5.9.5.20240316"
+types-psutil = "^5.9.5.20240423"
+cffconvert = "^2.0.0"
 
 [build-system]
 requires = ["poetry-core"]
