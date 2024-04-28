@@ -15,11 +15,9 @@ CSS_URI: Final[str] = 'https://cdn.muicss.com/mui-0.10.1/css/mui.min.css'
 
 def scandir_ignore(*args: Any, **kwargs: Any) -> Iterator[DirEntry[str]]:
     try:
-        return scandir(*args, **kwargs)
+        yield from scandir(*args, **kwargs)
     except OSError as e:
         print(f'Error: {e}', file=sys.stderr)
-        yield from []
-    return []
 
 
 def recurse_cwd(path: str,
