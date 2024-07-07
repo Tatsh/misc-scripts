@@ -1,6 +1,5 @@
 {
   "author": "Andrew Udvare <audvare@gmail.com>",
-  "dependencies": {},
   "devDependencies": {
     "cspell": "^6.31.1",
     "prettier": "^2.8.7",
@@ -18,5 +17,6 @@
     "qa": "yarn shellcheck && yarn mypy && yarn check-spelling && yarn check-formatting",
     "shellcheck": "bash .run-shellcheck"
   },
-  "version": "0.2.0"
+  "version": "0.2.0",
+  "packageManager": "yarn@4.3.1"
 }

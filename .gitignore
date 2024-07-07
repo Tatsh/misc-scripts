@@ -1,5 +1,7 @@
 .*~
 .directory
+.pnp.*
+/.yarn/install-state.gz
 /.mypy_cache/
 /.vscode/.ropeproject/objectdb
 /.vscode/tags
