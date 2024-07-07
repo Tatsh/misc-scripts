@@ -17,7 +17,11 @@ uses-dependabot() {
         --silent \
         -H 'Accept: application/vnd.github+json' \
         -H 'X-GitHub-Api-Version: 2022-11-28' \
-        "/repos/${1}/contents/.github/dependabot.yml" &>/dev/null || return 1
+        "/repos/${1}/contents/.github/dependabot.yml" &>/dev/null ||
+    gh api \
+        --jq .security_and_analysis.dependabot_security_updates.status \
+        "/repos/${1}" | grep -qE '^enabled$' ||
+    return 1
 }
 comment-rebase() {
     local -r number="$2"
