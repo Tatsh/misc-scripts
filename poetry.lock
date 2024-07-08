@@ -1243,13 +1243,13 @@ tomli = ">=2.0.1"
 
 [[package]]
 name = "yt-dlp"
-version = "2024.7.1"
+version = "2024.7.8"
 description = "A feature-rich command-line audio/video downloader"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "yt_dlp-2024.7.1-py3-none-any.whl", hash = "sha256:2479540f7a7bdea30258c7a46dfbd96e0904e706247db95c94bfa5a04239698a"},
-    {file = "yt_dlp-2024.7.1.tar.gz", hash = "sha256:eb0019474ffde6979378c07555fa01173cf55bde90b172a0181b5716793aaef2"},
+    {file = "yt_dlp-2024.7.8-py3-none-any.whl", hash = "sha256:d12fb17540f7da7c2c9fcd68a655f573d124548ea37657662cd4e471d14c14d2"},
+    {file = "yt_dlp-2024.7.8.tar.gz", hash = "sha256:9367e9b2e8dac4b37f512d21a4533273de22009dd74588ad24a7528c7f77b806"},
 ]
 
 [package.dependencies]
@@ -1301,4 +1301,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "10b807ce98a4f9e8809bbc5d211a52827ff5080342e958ddea8606adabe43159"
+content-hash = "ddf42c1fb316cbb31f5f1264adee7e0445ea674546f273f5d7ebc5c45d18eaa2"
