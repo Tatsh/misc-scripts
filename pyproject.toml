@@ -24,7 +24,7 @@ yt-dlp = "^2024.7.8"
 # mysqlclient = "^2.2.0"
 defusedxml = "^0.7.1"
 pyxdg = "^0.28"
-tomlkit = "^0.12.5"
+tomlkit = "^0.13.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.10.1"
