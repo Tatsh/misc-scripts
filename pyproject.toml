@@ -29,7 +29,7 @@ tomlkit = "^0.13.0"
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.11.0"
 types-beautifulsoup4 = "^4.12.0.20240511"
-types-pyyaml = "^6.0.12.20240311"
+types-pyyaml = "^6.0.12.20240724"
 types-requests = "^2.32.0.20240712"
 yapf = "^0.40.2"
 yt-dlp-types = "~0.0.7"
