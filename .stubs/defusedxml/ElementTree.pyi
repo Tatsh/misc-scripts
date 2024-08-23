@@ -1,6 +1,6 @@
 from pathlib import Path
 from typing import TextIO
-from xml.etree import ElementTree
+from xml.etree import ElementTree as ET
 
-def parse(filepath: Path | str | TextIO) -> ElementTree.ElementTree:
+def parse(filepath: Path | str | TextIO) -> ET.ElementTree:
     ...

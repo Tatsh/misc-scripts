@@ -9,7 +9,6 @@ class Notifications:
     def Inhibit(self, unk1: str, unk2: str, unk3: Any) -> int | None:
         ...
 
-
 class SessionBus:
     @overload
     def get(self, domain: Literal['org.freedesktop.Notifications'],

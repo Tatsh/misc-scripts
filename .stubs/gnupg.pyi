@@ -1,5 +1,5 @@
+from collections.abc import Sequence
 from io import BufferedReader
-from typing import Sequence
 
 class GPG:
     encoding: str

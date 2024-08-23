@@ -3,7 +3,6 @@ class Picture:
     data: bytes
     type: int
 
-
 class FLAC:
     def __init__(self, filename: str) -> None:
         ...
