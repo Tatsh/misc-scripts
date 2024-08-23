@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from argparse import ArgumentParser
+from collections.abc import Iterable
 from os import close as close_fd, unlink
 from os.path import basename, dirname, join as path_join, realpath, splitext
 from tempfile import mkstemp
-from typing import Any, Iterable
+from typing import Any
 import subprocess as sp
 import sys
 
@@ -12,7 +13,7 @@ import argcomplete
 
 
 def ffmpeg(args: Iterable[str], **kwargs: Any) -> None:
-    sp.run(('ffmpeg',) + tuple(args), check=True, **kwargs)
+    sp.run(('ffmpeg', *tuple(args)), check=True, **kwargs)
 
 
 def main() -> int:
@@ -62,7 +63,7 @@ def main() -> int:
     ffmpeg_args += ('-i', input_video, '-i', palette_fn, '-filter_complex', video_filter)
     if args.gifflags:
         ffmpeg_args += ('-gifflags', args.gifflags)
-    ffmpeg(ffmpeg_args + (output_file,))
+    ffmpeg((*ffmpeg_args, output_file))
     close_fd(fd)
     unlink(palette_fn)
     return 0

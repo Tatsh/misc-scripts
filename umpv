@@ -45,9 +45,9 @@ import psutil
 SOCK = expanduser('~/.cache/umpv-socket')
 
 
-@lru_cache()
+@lru_cache
 def setup_syslog(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = SysLogHandler(address='/dev/log')
@@ -79,7 +79,7 @@ def main() -> int:
     try:
         sock = socket.socket(socket.AF_UNIX)
         sock.connect(SOCK)
-    except socket.error as e:
+    except OSError as e:
         if e.errno == errno.ECONNREFUSED:
             log.debug('Socket refused connection')
             sock = None  # abandoned socket
@@ -88,7 +88,7 @@ def main() -> int:
             sock = None  # does not exist
         else:
             log.error('Socket errno: %d', e.errno, exc_info=True)
-            raise e
+            raise
     opts = split(os.getenv('MPV') or 'mpv')
     mpv_bin = opts[0]
     mpv_running = len([x for x in psutil.process_iter(['pid', 'name']) if x.name() == mpv_bin]) > 0
@@ -97,7 +97,7 @@ def main() -> int:
         for f in files:
             # escape: \ \n "
 
-            f = f.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
+            f = f.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
 
             sock.send(f'raw loadfile "{f}"\n'.encode())
             log.info('Loading file "%s"', f)

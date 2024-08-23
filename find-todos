@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import AsyncIterable, Iterable
 from functools import lru_cache
 from glob import glob
 from math import floor
 from os import listdir, makedirs, remove as rm, stat, utime as setfiletime
 from os.path import basename, dirname, isdir, join as path_join, realpath
-from typing import AsyncIterable, Iterable, TextIO, cast
+from typing import TextIO, cast
 import argparse
 import asyncio
 import logging
@@ -16,9 +17,9 @@ import argcomplete
 import magic
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -33,7 +34,7 @@ def get_all_excludes(patterns: Iterable[str]) -> set[str]:
     for pathname in patterns:
         entries = glob(pathname)
         if entries:
-            ret |= set(realpath(x) for x in entries)
+            ret |= {realpath(x) for x in entries}
         else:
             ret.add(basename(pathname))
     return ret
@@ -42,7 +43,7 @@ def get_all_excludes(patterns: Iterable[str]) -> set[str]:
 async def _get_listing(newdir: str) -> AsyncIterable[str]:
     for x in sorted(
             realpath(path_join(newdir, x)) for x in listdir(newdir)
-            if not x.endswith('~') and not x.endswith('.svn-base') and x not in (
+            if not x.endswith('~') and not x.endswith('.svn-base') and x not in {
                 '.git',
                 '.svn',
                 '.hg',
@@ -51,7 +52,7 @@ async def _get_listing(newdir: str) -> AsyncIterable[str]:
                 '__pycache__',
                 '.vscode',
                 '.ropeproject',
-            )):
+            }):
         yield x
 
 
@@ -71,18 +72,18 @@ async def _handle_listing(listing: AsyncIterable[str],
             try:
                 file_info = magic.from_file(entry, mime=True)
             except OSError as e:
-                log.error('%s: %s', entry, e.strerror)
+                log.exception('%s: %s', entry, e.strerror)
                 continue
             log.debug('From magic: %s', file_info)
             if (file_info == 'application/octet-stream'
                     or (not file_info.startswith('text/') and not file_info.endswith('+xml'))):
                 continue
             unix_ts = floor(stat(entry).st_mtime)
-            with open(entry, 'r') as f:
+            with open(entry, encoding='utf-8') as f:
                 dummy_log_fn = f'.{entry[len(top) + 1:]}.txt'
                 dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
                 try:
-                    with open(dummy_log_fn, 'r'):
+                    with open(dummy_log_fn, encoding='utf-8'):
                         pass
                     dummy_unix_ts = floor(stat(dummy_log_fn).st_mtime)
                     if dummy_unix_ts == unix_ts:
@@ -104,7 +105,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                         ctx_count -= 1
                         if ctx_count == 0:
                             found.write('\n')
-                    m = re.search(r'\b(@?todo|fixme|hack)\b', line, flags=re.I)
+                    m = re.search(r'\b(@?todo|fixme|hack)\b', line, flags=re.IGNORECASE)
                     if m:
                         log_fn = f'{entry[len(top) + 1:]:s}.txt'
                         log_fn = realpath(path_join(outdir, log_fn))
@@ -118,7 +119,7 @@ async def _handle_listing(listing: AsyncIterable[str],
                         makedirs(dirname(log_fn), exist_ok=True)
                         if not found:
 
-                            found = open(path_join(outdir, log_fn), 'w')
+                            found = open(path_join(outdir, log_fn), 'w', encoding='utf-8')
                             log.info('Writing to %s', found.name)
                         found.write(f'{entry:s}:{i:d}\n')
                         found.write(f'{line:s}\n')
@@ -130,16 +131,16 @@ async def _handle_listing(listing: AsyncIterable[str],
                     setfiletime(filename, (unix_ts, unix_ts))
                     found = None
                     try:
-                        with open(dummy_log_fn, 'r'):
+                        with open(dummy_log_fn, encoding='utf-8'):
                             pass
                         rm(dummy_log_fn)
-                    except IOError:
+                    except OSError:
                         pass
                 else:
                     dummy_log_fn = f'.{entry[len(top) + 1:]:s}.txt'
                     dummy_log_fn = realpath(path_join(outdir, dummy_log_fn))
                     makedirs(dirname(dummy_log_fn), exist_ok=True)
-                    with open(dummy_log_fn, 'w+') as f:
+                    with open(dummy_log_fn, 'w+', encoding='utf-8') as f:
                         f.write('Dummy\n')
                     setfiletime(dummy_log_fn, (unix_ts, unix_ts))
                     log.debug('Created dummy %s', dummy_log_fn)

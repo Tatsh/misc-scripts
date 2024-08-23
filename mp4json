@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 from base64 import standard_b64encode
+from collections.abc import Sequence
 from datetime import datetime
 from os import replace, unlink as rm, utime
 from os.path import dirname, splitext
 from shutil import copyfile
-from typing import Any, AnyStr, Final, Literal, Sequence, TextIO
+from typing import Any, AnyStr, Final, Literal, TextIO
+import contextlib
 import json
 import re
 import subprocess as sp
@@ -40,14 +42,13 @@ def id3ted_remove_frame_command(
 def mp4box_write_command(
         json_filename: str,
         mp4_filename: str) -> tuple[Literal['MP4Box'], Literal['-add-item'], str, str]:
-    options = ':'.join(
-        ('replace', 'name=youtube-dl metadata', 'mime=application/json', 'encoding=utf8'))
+    options = 'replace:name=youtube-dl metadata:mime=application/json:encoding=utf8'
     return ('MP4Box', '-add-item', f'{json_filename}:{options}', mp4_filename)
 
 
 def mp4box_set_meta_command(
         mp4_filename: str) -> tuple[Literal['MP4Box'], Literal['-set-meta'], Literal['mp21'], str]:
-    """https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/"""
+    """https://sourceforge.net/p/gpac/discussion/327349/thread/6d010474/."""
     return ('MP4Box', '-set-meta', 'mp21', mp4_filename)
 
 
@@ -69,7 +70,7 @@ def quiet_subprocess_check_call(args: Sequence[str], **kwargs: Any) -> None:
     try:
         arg: int | TextIO = sp.DEVNULL
     except AttributeError:
-        arg = open('/dev/null')
+        arg = open('/dev/null', encoding='utf-8')
     if 'check' in kwargs:
         kwargs.pop('check')
     kwargs['stdout'] = arg
@@ -90,10 +91,8 @@ def set_date(path: str, json_str: bytes) -> None:
 
 
 def mp4box_add_json(filename: str, json_filename: str) -> bool:
-    try:
+    with contextlib.suppress(sp.CalledProcessError):
         quiet_subprocess_check_call(mp4box_rem_item_command(filename))
-    except sp.CalledProcessError:
-        pass
     cmd = mp4box_set_meta_command(filename)
     quiet_subprocess_check_call(cmd)
     better_json_filename = 'info.json'
@@ -125,9 +124,9 @@ def mkvpropedit_add_json(filename: str, json_filename: str) -> bool:
 
 def isfile(path: AnyStr | int) -> bool:
     try:
-        with open(path):
+        with open(path, encoding='utf-8'):
             pass
-    except IOError:
+    except OSError:
         return False
     return True
 
@@ -135,7 +134,7 @@ def isfile(path: AnyStr | int) -> bool:
 def ffmpeg_add_json(filename: str, json_filename: str) -> bool:
     with tempfile.NamedTemporaryFile(suffix='.txt') as ffm:
         ffm.write(b';FFMETADATA1')
-    with open(json_filename) as f:
+    with open(json_filename, encoding='utf-8') as f:
         json_data = f'info_json={f.read()}'
     _, ext = splitext(filename)
     out_dir = dirname(filename)

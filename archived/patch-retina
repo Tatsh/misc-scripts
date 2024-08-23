@@ -10,9 +10,9 @@ import sys
 HIGH_RES_KEY: Final[str] = 'NSHighResolutionCapable'
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)

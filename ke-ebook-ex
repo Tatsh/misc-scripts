@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Iterator, Sequence
 from functools import lru_cache
 from os import chdir, getcwd, listdir, remove as rm, rename
 from os.path import basename, dirname, isdir, realpath
-from typing import Iterator, Sequence, cast
+from typing import cast
 from zipfile import ZipFile
 import argparse
 import logging
@@ -14,9 +15,9 @@ import sys
 import argcomplete
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)

@@ -14,9 +14,9 @@ FILESIZE_RE: Final[re.Pattern[str]] = re.compile(r'filesizes="(\d+?)"')
 OFFSET_RE: Final[re.Pattern[str]] = re.compile(r'offset=`head -n (\d+?) "\$0"')
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -48,7 +48,7 @@ def main() -> int:
         script_lines = int(offset_match.group(1))
         # Read the number of lines to determine the script size
         game_bin.seek(0, io.SEEK_SET)
-        for _ in range(0, script_lines):
+        for _ in range(script_lines):
             game_bin.readline()
         script_size = game_bin.tell()
         log.debug('Makeself script size: %d', script_size)

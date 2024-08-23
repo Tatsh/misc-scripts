@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from datetime import datetime
-from io import TextIOWrapper
 from logging.handlers import SysLogHandler
 from os.path import realpath
-from typing import Any, Final, NoReturn, TextIO, cast
+from typing import TYPE_CHECKING, Any, Final, NoReturn, TextIO, cast
 import argparse
 import logging
 import signal
@@ -13,6 +12,9 @@ import sys
 
 import argcomplete
 import yaml
+
+if TYPE_CHECKING:
+    from io import TextIOWrapper
 
 LOG_FORMATTER: Final[logging.Formatter] = logging.Formatter('%(message)s')
 log_handle: TextIO | None = None
@@ -26,7 +28,7 @@ def speedtest(*args: str, **kwargs: Any) -> sp.CompletedProcess[str]:
     kwargs['check'] = True
     kwargs['stdout'] = sp.PIPE
     kwargs['encoding'] = 'utf-8'
-    return sp.run(('speedtest',) + args, check=True, stdout=sp.PIPE, text=True, **kwargs)
+    return sp.run(('speedtest', *args), check=True, stdout=sp.PIPE, text=True, **kwargs)
 
 
 def ctrl_c(signum: int, frame: Any) -> NoReturn:
@@ -71,9 +73,9 @@ def main() -> int:
     failed = False
     if args.log_file:
         args.log_file = realpath(args.log_file)
-        log_fh = open(args.log_file, 'a+')
+        log_fh = open(args.log_file, 'a+', encoding='utf-8')
         assert log_fh is not None
-        log_yaml_handle = open(args.log_file + '.yml', 'a+')
+        log_yaml_handle = open(args.log_file + '.yml', 'a+', encoding='utf-8')
         channel: logging.StreamHandler[TextIO] | logging.StreamHandler[
             TextIOWrapper] = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
@@ -102,7 +104,7 @@ def main() -> int:
             elif line.startswith('Share results: '):
                 share = ':'.join(line.split(':')[1:]).strip()
     except sp.CalledProcessError as e:
-        logger.error('speedtest failed to run')
+        logger.exception('speedtest failed to run')
         if e.stderr:
             logger.exception(e)
         return 1

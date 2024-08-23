@@ -131,7 +131,7 @@ def main() -> int:
     print(f'Medicare  \033[1;32m{data["medicare"]:8.2f}\033[0m')
     print('------------------')
     print(f'Net       \033[1;32m{data["netPay"]:8.2f}\033[0m')
-    print('')
+    print()
     print('------------------')
     print(f'Fuckery   \033[1;31m{gross_pay - data["netPay"]:8.2f}\033[0m')
 

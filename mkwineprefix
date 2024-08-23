@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Mapping, Sequence
 from functools import lru_cache
 from os import devnull, environ, makedirs
 from os.path import basename, expanduser, isdir, join as path_join
 from shlex import quote
 from shutil import rmtree
-from typing import Any, Final, Literal, Mapping, Sequence, cast
+from typing import Any, Final, Literal, cast
 import argparse
 import logging
 import subprocess as sp
@@ -38,9 +39,9 @@ class Args(argparse.Namespace):
     verbose: bool
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stderr(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stderr)
@@ -70,10 +71,12 @@ def wine(args: Args) -> int:
         log.error('Not touching existing prefix at %s', target)
         return 1
     arch: Final[Literal['win32', 'win64']] = ('win32' if args.thirty2bit else 'win64')
-    env: Final[dict[str, str]] = dict(WINEPREFIX=target,
-                                      DISPLAY=environ.get('DISPLAY', ''),
-                                      XAUTHORITY=environ.get('XAUTHORITY', ''),
-                                      WINEARCH=environ.get('WINEARCH', arch))
+    env: Final[dict[str, str]] = {
+        'WINEPREFIX': target,
+        'DISPLAY': environ.get('DISPLAY', ''),
+        'XAUTHORITY': environ.get('XAUTHORITY', ''),
+        'WINEARCH': environ.get('WINEARCH', arch)
+    }
     if not env['DISPLAY']:
         env['DISPLAY'] = ':0'
     if args.no_xdg:
@@ -82,7 +85,7 @@ def wine(args: Args) -> int:
                  'winemenubuilder.exe', '/f'),
                 env=env,
                 check=True,
-                stdout=open(devnull, 'w'),
+                stdout=open(devnull, 'w', encoding='utf-8'),
                 stderr=sp.STDOUT)
         except (sp.CalledProcessError, KeyboardInterrupt):
             rmtree(o_target)
@@ -102,8 +105,7 @@ def wine(args: Args) -> int:
     prefix_arg = f'prefix={prefix_name}'
     winetricks_args = [winetricks, prefix_arg, VERSION_MAPPING[args.windows_version[0]]]
     if args.sandbox:
-        winetricks_args.append('isolate_home')
-        winetricks_args.append('sandbox')
+        winetricks_args.extend(('isolate_home', 'sandbox'))
     if args.vd != 'off':
         winetricks_args.append(f'vd={args.vd[0]}')
     try:
@@ -115,11 +117,11 @@ def wine(args: Args) -> int:
         rmtree(o_target)
         return 1
     wineprefix_env = quote(f'WINEPREFIX={target}')
-    print(f'''Run `export WINEPREFIX={target}` before running wine or use env:
+    print(f"""Run `export WINEPREFIX={target}` before running wine or use env:
 
 env {wineprefix_env} wine ...
 
-If you ran this with eval, your shell is ready.''',
+If you ran this with eval, your shell is ready.""",
           file=sys.stderr)
     print(f'export {wineprefix_env}')
     ps1_env = f'PS1={prefix_name}🍷$PS1'

@@ -67,7 +67,7 @@ def main() -> int:
         )
     else:
         args_start += ('-vcodec', 'libx265', '-crf', '20', '-level', '1', '-profile:v', 'main')
-    sp.run(args_start + ('-pix_fmt', 'yuv420p', '-b:v', '1M', '-maxrate:v', '1M', out), check=True)
+    sp.run((*args_start, '-pix_fmt', 'yuv420p', '-b:v', '1M', '-maxrate:v', '1M', out), check=True)
     unlink(tmp)
     return 0
 

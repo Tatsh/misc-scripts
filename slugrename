@@ -18,7 +18,7 @@ def main() -> int:
     arg: str
     for arg in args.files:
         name, ext = splitext(arg)
-        if ext in ('.bz2', '.gpg', '.gz'):
+        if ext in {'.bz2', '.gpg', '.gz'}:
             name, ext2 = splitext(name)
             ext = f'{ext2}{ext}'
         name = re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', basename(name))).strip().lower()

@@ -1,11 +1,12 @@
 #!/usr/bin/env python
-from typing import Any, Final, Mapping
+from collections.abc import Mapping
+from typing import Any, Final
 import json
 import sys
 
 import yaml
 
-YD_ARGS: Final[Mapping[str, Any]] = dict(default_flow_style=False, indent=2)
+YD_ARGS: Final[Mapping[str, Any]] = {'default_flow_style': False, 'indent': 2}
 
 
 def main() -> int:
@@ -13,7 +14,7 @@ def main() -> int:
     if len(sys.argv) >= 2:
         for arg in sys.argv[1:]:
             try:
-                with open(arg, 'r') as f:
+                with open(arg, encoding='utf-8') as f:
                     print(yaml.dump(json.loads(f.read().strip()), **YD_ARGS))
             except FileNotFoundError:
                 return 1

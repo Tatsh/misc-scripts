@@ -10,9 +10,9 @@ import sys
 import argcomplete
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -45,7 +45,7 @@ def safe_rename(fn: str, target: str, preserve: bool) -> bool:
         bfn, ext = splitext(target)
         while isfile(target):
             suffix = f'-{n:d}'
-            last = ext if ext else ''
+            last = ext or ''
             target = f'{bfn}{suffix}{last}'
             n += 1
         renamed = safe_rename(fn, target, preserve)

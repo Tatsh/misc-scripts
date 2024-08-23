@@ -18,10 +18,9 @@ def main() -> int:
         print('This script is only for Linux', file=sys.stderr)
         return 1
     print('Determining deb filename', file=sys.stderr)
-    pool_path = [
-        link for link in requests.get(f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages',
-                                      timeout=30).text.split('\n') if link.startswith('Filename: ')
-    ][0].split(' ')[1]
+    pool_path = next(link for link in requests.get(
+        f'{URL_PREFIX}/dists/stable/main/binary-amd64/Packages', timeout=30).text.split('\n')
+                     if link.startswith('Filename: ')).split(' ')[1]
     deb_file = basename(pool_path)
     try:
         with open(deb_file, 'rb'):
@@ -45,13 +44,13 @@ def main() -> int:
         print('Fixing desktop files', file=sys.stderr)
         for desktop_file in DESKTOP_FILES:
             lines = []
-            with open(desktop_file) as f:
-                for line in f.readlines():
+            with open(desktop_file, encoding='utf-8') as f:
+                for line in f:
                     if '/usr/share' in line:
                         lines.append(line.replace('/usr/share', expanduser('~/.local/share')))
                     else:
                         lines.append(line)
-            with open(desktop_file, 'w') as f:
+            with open(desktop_file, 'w', encoding='utf-8') as f:
                 for line in lines:
                     f.write(line)
         sp.run(('update-desktop-database', expanduser('~/.local/share/applications/')), check=True)

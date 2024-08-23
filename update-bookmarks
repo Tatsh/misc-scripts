@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Sequence
 from functools import lru_cache
 from os.path import basename, dirname, splitext
 from tempfile import mkstemp
-from typing import Any, Final, Sequence, TextIO, cast
+from typing import Any, Final, TextIO, cast
 import argparse
 import logging
 import os
@@ -24,7 +25,10 @@ class FailedConnection:
     REASON_INVALID_URL: Final[int] = 1
     REASON_UNKNOWN: Final[int] = 5
 
-    def __init__(self, response: requests.Response, reason: int, exc: Exception | None = None):
+    def __init__(self,
+                 response: requests.Response,
+                 reason: int,
+                 exc: Exception | None = None) -> None:
         self.response = response
         self.url = response.url
         self.reason = reason
@@ -42,9 +46,9 @@ class FailedConnection:
         return f'Unspecified error: {self.exc}'
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -77,7 +81,7 @@ def head(session: requests.Session, uri: str) -> requests.Response | None:
     try:
         return session.head(uri, timeout=5)
     except Exception as e:
-        log.error('Failed connection: %s (%s)', e, uri)
+        log.exception('Failed connection: %s (%s)', e, uri)
     return None
 
 
@@ -96,7 +100,7 @@ def recursive_scan(
         assert isinstance(href, str)
         urls.append((title, href))
     index = 0
-    for req, url_data in zip(map(send, (head(session, i[1]) for i in urls)), urls):
+    for req, url_data in zip(map(send, (head(session, i[1]) for i in urls)), urls, strict=False):
         if not req:
             log.error('Failed connection: "%s" @ "%s", reason: other', url_data[0], url_data[1])
             index += 1
@@ -107,11 +111,11 @@ def recursive_scan(
             index += 1
             continue
         if req.status_code != 200:
-            if req.status_code in (301, 302):
+            if req.status_code in {301, 302}:
                 log.info('%d: "%s" @ "%s" -> now "%s"', req.status_code, url_data[0], url_data[1],
                          req.headers['location'])
                 ret.append((url_data[1], req.headers['location']))
-            elif req.status_code not in [401, 403]:
+            elif req.status_code not in {401, 403}:
                 log.error('%d: "%s" @ "%s"', req.status_code, url_data[0], url_data[1])
                 errors.append(url_data)
         else:
@@ -172,7 +176,7 @@ def main() -> int:
         os.close(output_fd)
     else:
         assert args.output
-        with open(args.output, 'w') as f:
+        with open(args.output, 'w', encoding='utf-8') as f:
             f.write(contents)
     log.info('Updated %d URLs', len(replacements))
     log.info('%d URLs had unrecoverable errors', len(errors))

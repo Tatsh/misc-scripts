@@ -25,9 +25,9 @@ PG_JOBS: Final[int] = 2
 PG_USER: Final[str] = 'postgres'
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -43,17 +43,17 @@ def rm_if_exists(fn: str) -> bool:
             pass
         rm(fn)
         return True
-    except IOError:
+    except OSError:
         pass
     return False
 
 
 def psql(*args: str) -> str:
-    return sp.run(('psql',) + args, check=True, stdout=sp.PIPE, encoding='utf-8').stdout
+    return sp.run(('psql', *args), check=True, stdout=sp.PIPE, encoding='utf-8').stdout
 
 
 def pg_dump(*args: str) -> str:
-    return sp.run(('pg_dump',) + args, check=True, stdout=sp.PIPE, encoding='utf-8').stdout
+    return sp.run(('pg_dump', *args), check=True, stdout=sp.PIPE, encoding='utf-8').stdout
 
 
 def main() -> int:
@@ -111,7 +111,7 @@ def main() -> int:
             out = pg_dump(*pg_dump_args).strip()
         except (KeyboardInterrupt, SystemExit, sp.CalledProcessError):
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            log.error('Caught interrupt. Removing "%s"', fn)
+            log.exception('Caught interrupt. Removing "%s"', fn)
             if isdir(fn):
                 rmtree(fn)
             return 1
@@ -127,7 +127,7 @@ def main() -> int:
                 tar.close()
             except (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
-                log.error('Caught interrupt. Removing "%s" and data', tar_fn)
+                log.exception('Caught interrupt. Removing "%s" and data', tar_fn)
                 rmtree(fn)
                 try:
                     with open(tar_fn, 'rb'):

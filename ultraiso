@@ -2,10 +2,11 @@
 # Provides easy Linux-friendly command line access to UltraISO.
 # Based on http://www.ezbsystems.com/ultraiso/cmdline.htm
 # UltraISO must be installed with Wine in the default directory.
+from collections.abc import Sequence
 from functools import lru_cache
 from os.path import basename, expanduser, join as path_join, realpath
 from shlex import quote
-from typing import Any, AnyStr, Sequence, cast
+from typing import Any, AnyStr, cast
 import argparse
 import logging
 import os
@@ -13,9 +14,9 @@ import subprocess as sp
 import sys
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -32,10 +33,10 @@ def get_ultraiso_path(prefix: str) -> str | None:
     actual_exe_path = None
     for exe in paths:
         try:
-            with open(exe):
+            with open(exe, encoding='utf-8'):
                 actual_exe_path = exe
                 break
-        except IOError:
+        except OSError:
             pass
     return actual_exe_path
 
@@ -59,7 +60,7 @@ def isfile(f: AnyStr | int) -> bool:
     try:
         with open(f, 'rb'):
             return True
-    except IOError:
+    except OSError:
         pass
     return False
 
@@ -76,9 +77,12 @@ def main() -> int:
         assumed_xauthority = expanduser('~/.Xauthority')
 
         sp.run(['wine', actual_exe_path] + sys.argv[1:],
-               env=dict(WINEPREFIX=default_wine_prefix,
-                        DISPLAY=os.environ.get('DISPLAY', ''),
-                        XAUTHORITY=os.environ.get('XAUTHORITY', assumed_xauthority)))
+               env={
+                   'WINEPREFIX': default_wine_prefix,
+                   'DISPLAY': os.environ.get('DISPLAY', ''),
+                   'XAUTHORITY': os.environ.get('XAUTHORITY', assumed_xauthority)
+               },
+               check=False)
         return 0
 
     parser.add_argument('-prefix',
@@ -320,7 +324,7 @@ def main() -> int:
     wprefix_env = quote(f'WINEPREFIX={args.prefix}')
     log.debug('env %s %s', wprefix_env, ' '.join(quote(x) for x in sp_args))
 
-    proc = sp.run(sp_args, stderr=sp.PIPE, env=env, text=True)
+    proc = sp.run(sp_args, stderr=sp.PIPE, env=env, text=True, check=False)
     stderr: str = proc.stderr.strip()
     exit_status = proc.returncode
     if stderr:

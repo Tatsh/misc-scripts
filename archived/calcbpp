@@ -49,10 +49,7 @@ def main() -> int:
     while width >= 320:
         height = 16 * round(width / picture_ar / 16)
         diff = width / picture_ar - height
-        if diff < 0 and diff % 0.5 == 0:
-            diff = floor(diff) + 1
-        else:
-            diff = round(diff)
+        diff = floor(diff) + 1 if diff < 0 and diff % 0.5 == 0 else round(diff)
         new_ar = width / height
         picture_ar_error: float = abs(100 - picture_ar / new_ar * 100)
         bpp: float = (int(bps) * 1000) / (width * height * float(fps))

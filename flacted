@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Iterable
 from copy import copy
 from functools import lru_cache
 from os.path import basename
-from typing import Any, Iterable, cast
+from typing import Any, cast
 import argparse
 import logging
 import subprocess as sp
@@ -12,9 +13,9 @@ import sys
 import argcomplete
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -25,7 +26,7 @@ def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logg
 
 
 def metaflac(*args: Any) -> str:
-    return sp.run(('metaflac',) + cast(tuple[str, ...], args),
+    return sp.run(('metaflac', *cast(tuple[str, ...], args)),
                   check=True,
                   stdout=sp.PIPE,
                   encoding='utf-8').stdout
@@ -57,7 +58,7 @@ def main() -> int:
         files = []
         for file in unfiltered_files:
             try:
-                with open(file):
+                with open(file, encoding='utf-8'):
                     files.append(file)
             except FileNotFoundError:
                 pass
@@ -117,9 +118,9 @@ def main() -> int:
         try:
             with open(args.picture, 'rb'):
                 metaflac_args.append(f'--import-picture-from={args.picture}')
-        except IOError:
-            log.error('Cannot add file "%s". Specified argument is not '
-                      'supported', args.picture)
+        except OSError:
+            log.exception('Cannot add file "%s". Specified argument is not '
+                          'supported', args.picture)
             return 1
     if len(metaflac_args) == 2:
         log.error('Not doing anything')

@@ -11,6 +11,7 @@ from typing import Any, Final, TypedDict, cast
 from urllib.parse import unquote_plus, urljoin, urlparse
 import argparse
 import logging
+import operator
 import os
 import platform
 import plistlib
@@ -33,9 +34,9 @@ USER_AGENT: Final[str] = (
     'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.29 Safari/537.36')
 
 
-@lru_cache()
+@lru_cache
 def _setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     ret = logging.getLogger(name)
     ret.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -68,10 +69,13 @@ class ChromeCommandKwArgs(TypedDict):
 
 
 def _chrome_command_kwargs() -> ChromeCommandKwArgs:
-    return cast(
-        ChromeCommandKwArgs,
-        dict(required=True, default=None) if not IS_LINUX else dict(
-            default='/usr/lib64/chromium-browser/chromium-launcher.sh', required=False))
+    return cast(ChromeCommandKwArgs, {
+        'required': True,
+        'default': None
+    } if not IS_LINUX else {
+        'default': '/usr/lib64/chromium-browser/chromium-launcher.sh',
+        'required': False
+    })
 
 
 def _cygpath_win(path: str) -> str:
@@ -118,16 +122,16 @@ def _get_icon_from_site(args: MainArgs, session: requests.Session) -> str | None
         if uri:
             if 'sizes' in tag.attrs:
                 if (size_str := tag['sizes']) and isinstance(size_str, str):
-                    for width, height in map(lambda x: map(int, x.split('x')),
-                                             re.split(r'\s+', size_str)):
+                    for width, height in (map(int, x.split('x'))
+                                          for x in re.split(r'\s+', size_str)):
                         icon_uri = urljoin(args.url, uri)
                         log.debug('Icon with size %dx%d at URI %s', width, height, icon_uri)
-                        sizes.append((width if width > height else height, icon_uri))
+                        sizes.append((max(height, width), icon_uri))
             else:
                 icon_uri = urljoin(args.url, uri)
                 log.debug('Icon without size at URI %s', icon_uri)
                 sizes.append((1, urljoin(args.url, icon_uri)))
-    icon = sorted(sizes, reverse=True, key=lambda x: x[0])[0][1]
+    icon = max(sizes, key=operator.itemgetter(0))[1]
     log.debug('Attempting to use icon URI %s', icon)
     if icon and session.get(icon).status_code != 200:
         return None
@@ -139,7 +143,7 @@ def _ico_index(tmp_name: str, verbose: bool | None = False) -> str:
     id_out = subprocess.check_output(('identify', '-format', '%w\n', tmp_name),
                                      encoding='utf-8').strip().splitlines()
     log.debug('ICO sizes available: %s', ' '.join(id_out))
-    index = str(list(enumerate(sorted(id_out, reverse=True)))[0][0])
+    index = str(next(enumerate(sorted(id_out, reverse=True)))[0])
     return f'[{index}]'
 
 
@@ -155,7 +159,7 @@ def _fetch_convert_icon(icon: str | None,
     icon_prefix, icon_ext = splitext(urlparse(icon).path)
     icon_ext = icon_ext.lower()
     if IS_LINUX:
-        if icon_ext in ('.png', '.xpm'):
+        if icon_ext in {'.png', '.xpm'}:
             log.debug('Using PNG or XPM icon')
             icon = expanduser(f'~/.local/share/pixmaps/{short_name}{icon_ext}')
             with open(icon, 'wb+') as f:
@@ -183,9 +187,9 @@ def _fetch_convert_icon(icon: str | None,
             try:
                 with open(icon, 'rb') as f:
                     if len(f.read()) <= 10:
-                        raise FileNotFoundError()
+                        raise FileNotFoundError
             except FileNotFoundError:
-                icon = sorted(glob(f'{icon_prefix}-*.png'), reverse=True)[0]
+                icon = max(glob(f'{icon_prefix}-*.png'))
             os.unlink(tmp_name)
     elif IS_MAC:
         if icon_ext != '.png':
@@ -205,10 +209,10 @@ def _fetch_convert_icon(icon: str | None,
             try:
                 with open(icon, 'rb') as f:
                     if len(f.read()) <= 10:
-                        raise FileNotFoundError()
+                        raise FileNotFoundError
             except FileNotFoundError:
                 icon_prefix = splitext(icon)[0]
-                icon = sorted(glob(f'{icon_prefix}-*.png'), reverse=True)[0]
+                icon = max(glob(f'{icon_prefix}-*.png'))
             os.unlink(tmp_name)
         else:
             fd, icon = mkstemp(suffix='.png')
@@ -231,7 +235,7 @@ def _fetch_convert_icon(icon: str | None,
             kwargs: Final[dict[str, Any]] = {}
             if IS_MSYS:
                 path = environ['PATH']
-                kwargs['env'] = {**environ, **dict(PATH=f'/mingw64/bin:{path}')}
+                kwargs['env'] = {**environ, 'PATH': f'/mingw64/bin:{path}'}
             subprocess.check_call(
                 ('convert', _cygpath_win(tmp_name), '-define', 'icon:auto-resize=128,64,48,32,16',
                  _cygpath_win(icon)), **kwargs)
@@ -257,22 +261,22 @@ def _create_desktop_file(args: MainArgs) -> None:
     makedirs(desktop_dirs, exist_ok=True)
     chrome_apps_dir_file = path_join(desktop_dirs, 'chrome-apps.directory')
     try:
-        with open(chrome_apps_dir_file):
+        with open(chrome_apps_dir_file, encoding='utf-8'):
             pass
-    except IOError:
-        with open(chrome_apps_dir_file) as f:
-            f.write('''[Desktop Entry]
+    except OSError:
+        with open(chrome_apps_dir_file, encoding='utf-8') as f:
+            f.write("""[Desktop Entry]
 Version=1.0
 Type=Directory
 Name=Chromium Apps
 Icon=chromium-browser
-''')
+""")
     # Create .desktop file
     profile_name = args.profile_name.replace(' ', '_')
     out_name = f'./chrome-{args.name}-{profile_name}.desktop'.replace(' ', '')
     assert args.chrome_command is not None
     comment = f'\nComment={args.comment}' if args.comment else ''
-    with open(out_name, 'w+') as f:
+    with open(out_name, 'w+', encoding='utf-8') as f:
         f.write(f'''#!/usr/bin/env xdg-open
 [Desktop Entry]
 Version=1.0
@@ -280,9 +284,9 @@ Terminal=false
 Type=Application{comment}
 Name={args.name}
 Exec={args.chrome_command} "--user-data-directory={args.profile_name}"'''
-                f''' "--app={args.url}"
+                f""" "--app={args.url}"
 Icon={args.icon}
-''')
+""")
     log.debug('Executing xdg-desktop-menu')
     subprocess.check_call(('xdg-desktop-menu', 'install', chrome_apps_dir_file, out_name),
                           stdout=subprocess.PIPE,
@@ -298,7 +302,7 @@ def _create_iconset(args: MainArgs) -> str:
                                path_join(iconset_dir, f'icon_{width}x{width}.png')),
                               stdout=subprocess.PIPE)
         subprocess.check_call(('sips', '-z', str(width), str(width), args.icon, '--out',
-                               path_join(iconset_dir, f'icon_{width//2}x{width//2}@2x.png')),
+                               path_join(iconset_dir, f'icon_{width // 2}x{width // 2}@2x.png')),
                               stdout=subprocess.PIPE)
     return iconset_dir
 
@@ -313,22 +317,24 @@ def _create_app_bundle(args: MainArgs, short_name: str) -> None:
     profile_dir_short = args.profile_name.replace(' ', '')
     bundle_id = ('com.google.Chrome.app.'
                  f'{profile_dir_short}-{short_name}')
-    info_plist_data = dict(
-        CFBundleExecutable='app_mode_loader',
-        CFBundleIconFile='app.icns',
-        CFBundleIdentifier=bundle_id,
-        CFBundleName=args.name,
-        LSEnvironment=dict(MallocNanoZone='0'),
-        NSAppleScriptEnabled=True,
-        NSHighResolutionCapable=True,
-    )
+    info_plist_data = {
+        'CFBundleExecutable': 'app_mode_loader',
+        'CFBundleIconFile': 'app.icns',
+        'CFBundleIdentifier': bundle_id,
+        'CFBundleName': args.name,
+        'LSEnvironment': {
+            'MallocNanoZone': '0'
+        },
+        'NSAppleScriptEnabled': True,
+        'NSHighResolutionCapable': True,
+    }
     for x in (contents_dir, macos_dir, res_dir):
         makedirs(x, exist_ok=True)
     subprocess.check_call(
         ('iconutil', '-c', 'icns', iconset_dir, '-o', path_join(res_dir, 'app.icns')),
         stdout=subprocess.PIPE)
     script = path_join(macos_dir, 'app_mode_loader')
-    with open(script, 'w+') as f:
+    with open(script, 'w+', encoding='utf-8') as f:
         f.write('#!/usr/bin/env bash\n')
         chrome_command = quote(cast(str, args.chrome_command))
         app_arg = quote(f'--app={args.url}')
@@ -344,24 +350,28 @@ def _create_shortcut(args: MainArgs) -> int:
     # Generate a JScript file and run it
     fd, script_js = mkstemp(suffix='.js')
     close(fd)
-    with open(script_js, 'w+') as f:
-        f.write(f'''var ows = WScript.CreateObject('WScript.Shell');
+    with open(script_js, 'w+', encoding='utf-8') as f:
+        f.write(f"""var ows = WScript.CreateObject('WScript.Shell');
 var desktop = ows.SpecialFolders('Desktop');
 var link = ows.CreateShortcut(desktop + '\\\\{args.name}.lnk');
-link.WorkingDirectory=desktop;\n''')
+link.WorkingDirectory=desktop;\n""")
         assert args.chrome_command is not None
         if IS_MSYS and (args.chrome_command.startswith('/')
                         or args.chrome_command.startswith('./')):
             args.chrome_command = _fix_msys_arg(_cygpath_win(args.chrome_command))
         default_icon = f'{args.chrome_command},0'
-        props = dict(
-            TargetPath=args.chrome_command,
-            Arguments=_fix_msys_arg(' '.join(
-                map(lambda x: f'"{x}"',
-                    (f'--app={args.url}', f'--user-data-directory={args.profile_name}')))),
-            IconLocation=_fix_msys_arg(_cygpath_win(args.icon)) if args.icon else default_icon,
-            WindowStyle=args.window_style,
-        )
+        props = {
+            'TargetPath':
+                args.chrome_command,
+            'Arguments':
+                _fix_msys_arg(' '.join(
+                    f'"{x}"'
+                    for x in (f'--app={args.url}', f'--user-data-directory={args.profile_name}'))),
+            'IconLocation':
+                _fix_msys_arg(_cygpath_win(args.icon)) if args.icon else default_icon,
+            'WindowStyle':
+                args.window_style,
+        }
         if args.comment:
             props['Description'] = args.comment
         if args.hotkey:
@@ -376,8 +386,8 @@ link.WorkingDirectory=desktop;\n''')
     try:
         subprocess.check_call(cscript_cmd)
     except subprocess.CalledProcessError as e:
-        log.error('Caught exception: %s', e)
-        with open(script_js, 'r') as f:
+        log.exception('Caught exception: %s', e)
+        with open(script_js, encoding='utf-8') as f:
             log.info('Script:\n%s', f.read())
         return 1
     return 0

@@ -21,7 +21,7 @@ def main() -> int:
         f = os.open(sys.argv[1], os.O_RDONLY | os.O_NONBLOCK)
     except IndexError:
         f = os.open('/dev/sr0', os.O_RDONLY | os.O_NONBLOCK)
-    except IOError:
+    except OSError:
         print(f'open {sys.argv[1]}', file=sys.stderr)
         return 1
     try:

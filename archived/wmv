@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Sequence
 from functools import lru_cache
 from os.path import basename
-from typing import Final, Sequence, cast
+from typing import Final, cast
 import argparse
 import logging
 import subprocess as sp
@@ -119,9 +120,9 @@ TR_MAP: Final[tuple[tuple[str, str], ...]] = (
 )
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -155,7 +156,7 @@ class Namespace(argparse.Namespace):
 def main() -> int:
     parser = argparse.ArgumentParser(
         description='Renames file names with full-width characters to normal '
-        'width name. Please see `man mv` or `info coreutils \'mv invocation\'`'
+        "width name. Please see `man mv` or `info coreutils 'mv invocation'`"
         ' for option arguments')
     # ilm mv | grep -E '^‘\-' | cut -c 2- | sed -e "s/’$//"
     parser.add_argument('--backup')
@@ -196,13 +197,13 @@ def main() -> int:
     for arg, val in bool_args:
         if val is True:
             mv_args.append(arg)
-    command = ['mv'] + mv_args + [args.file[0], make_target(args.file[0])]
+    command = ['mv', *mv_args, args.file[0], make_target(args.file[0])]
     log.info('Command: %s', ' '.join(command))
     try:
-        proc = sp.run(command, stdout=sp.PIPE, stderr=sp.PIPE, encoding='utf-8', check=True)
+        proc = sp.run(command, capture_output=True, encoding='utf-8', check=True)
     except sp.CalledProcessError as e:
-        log.error('STDOUT: %s', e.output)
-        log.error('STDERR: %s', e.stderr)
+        log.exception('STDOUT: %s', e.output)
+        log.exception('STDERR: %s', e.stderr)
         return e.returncode
     if '-v' in mv_args or '--verbose' in mv_args:
         log.info('%s', proc.stdout)

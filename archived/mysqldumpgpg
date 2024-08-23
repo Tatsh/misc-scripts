@@ -23,9 +23,9 @@ LOCK_WAIT_TIMEOUT: Final[int] = 10
 DB_BLACKLIST: Final[tuple[str, ...]] = ('information_schema', 'mysql', 'performance_schema')
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -37,7 +37,7 @@ def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logg
 
 def mysqldump(args: tuple[str, ...], outpath: str) -> None:
     with open(outpath, 'wb+') as f:
-        sp.run(('mysqldump',) + args, stdout=f, check=True)
+        sp.run(('mysqldump', *args), stdout=f, check=True)
 
 
 def rm_if_exists(filename: str) -> bool:
@@ -122,7 +122,7 @@ def main() -> int:
             rm_if_exists(fn)
             return 1
         except sp.CalledProcessError as e:
-            log.error('%s failed with code %d', e.cmd, e.returncode)
+            log.exception('%s failed with code %d', e.cmd, e.returncode)
             rm_if_exists(fn)
             return 1
 
@@ -130,7 +130,7 @@ def main() -> int:
         log.info('Encrypting "%s" to "%s"', basename(fn), basename(output_fn))
         with open(fn, 'rb') as fp:
             try:
-                kwargs = dict(compress_algo='BZIP2', output=output_fn)
+                kwargs = {'compress_algo': 'BZIP2', 'output': output_fn}
                 gpg.encrypt(fp, *list(fingerprints), **kwargs)
             except (KeyboardInterrupt, SystemExit):
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
@@ -140,7 +140,7 @@ def main() -> int:
             try:
                 with open(output_fn, 'rb') as _fp:
                     assert len(_fp.read()) > 0
-            except IOError:
+            except OSError:
                 pass
         log.info('Removing %s', fn)
         rm(fn)

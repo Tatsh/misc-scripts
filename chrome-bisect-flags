@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 from argparse import Namespace
+from collections.abc import Sequence
 from copy import deepcopy
 from os.path import expanduser
 from time import sleep
-from typing import Sequence, TypedDict, cast
+from typing import TypedDict, cast
 import argparse
 import json
 import subprocess as sp
@@ -24,7 +25,7 @@ def start_test(flags: Sequence[str], local_state: LocalState, subprocess_name: s
     Returns ``True`` if:
     - there are no more flags (problem flag not found)
     - if there is only one flag left (problem flag possibly found)
-    - if the problematic flag exists within the passed in flags
+    - if the problematic flag exists within the passed in flags.
     """
     len_flags = len(flags)
     if len_flags == 0:
@@ -34,10 +35,10 @@ def start_test(flags: Sequence[str], local_state: LocalState, subprocess_name: s
     for flag in flags:
         print(f'- {flag}')
     local_state['browser']['enabled_labs_experiments'] = flags
-    with open(ls_path, 'w+') as f:
+    with open(ls_path, 'w+', encoding='utf-8') as f:
         json.dump(local_state, f, allow_nan=False)
     input('Start browser and test for the issue, then press enter')
-    sp.run(('killall', subprocess_name), stderr=sp.PIPE, stdout=sp.PIPE, check=False)
+    sp.run(('killall', subprocess_name), capture_output=True, check=False)
     sleep(sleep_time)
     at_fault = input('Did the problem occur? ').lower().startswith('y')
     return at_fault, flags[0] if at_fault and len_flags == 1 else None
@@ -86,7 +87,7 @@ def main() -> int:
         help='Time to sleep after attempting to kill the browser processes in seconds.')
     args = cast(Args, parser.parse_args())
     print(f'Using "{args.local_state_path}"', file=sys.stderr)
-    with open(args.local_state_path, 'r') as f:
+    with open(args.local_state_path, encoding='utf-8') as f:
         local_state_data = json.load(f)
         flags = local_state_data['browser']['enabled_labs_experiments']
         len_flags = len(flags)
@@ -105,7 +106,7 @@ def main() -> int:
             local_state_data['browser']['enabled_labs_experiments'] = [
                 x for x in local_state_data['browser']['enabled_labs_experiments'] if x != bad_flag
             ]
-        with open(args.local_state_path, 'w+') as f:
+        with open(args.local_state_path, 'w+', encoding='utf-8') as f:
             json.dump(local_state_data, f, sort_keys=True, indent=2, allow_nan=False)
         if not bad_flag:
             print('Restored original "Local State"', file=sys.stderr)

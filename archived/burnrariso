@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Mapping, Sequence
 from functools import lru_cache
 from os.path import basename
-from typing import Mapping, Sequence, cast
+from typing import cast
 import argparse
 import glob
 import logging
@@ -13,9 +14,9 @@ import sys
 import argcomplete
 
 
-@lru_cache()
+@lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -132,7 +133,7 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
         sp.check_output(('which', 'cdrecord'))
     except sp.CalledProcessError as e:
         command_needed = e.cmd.replace('which ', '')
-        log.error('Your system is missing "%s" (or it is not in PATH)', command_needed)
+        log.exception('Your system is missing "%s" (or it is not in PATH)', command_needed)
         apps_to_gentoo_packages = cast(
             Mapping[str, tuple[str, ...]], {
                 'unrar': ('app-arch/unrar', 'app-arch/unrar-gpl'),
@@ -141,13 +142,13 @@ def check_requirements(skip_crc: bool, verbose: bool = False) -> bool:
             })
         if len(apps_to_gentoo_packages[command_needed]) == 1:
             log.info(
-                'If you are using Gentoo or a derivative with Gentoo\'s '
+                "If you are using Gentoo or a derivative with Gentoo's "
                 'Portage tree, you can find "%s" in package %s', command_needed,
                 apps_to_gentoo_packages[command_needed][0])
         else:
             packages = ', '.join(apps_to_gentoo_packages[command_needed])
             log.info(
-                'If you are using Gentoo or a derivative with Gentoo\'s '
+                "If you are using Gentoo or a derivative with Gentoo's "
                 'Portage tree, you can find "%s" in packages %s', command_needed, packages)
         return False
     return True

@@ -1,14 +1,16 @@
 #!/usr/bin/env python
 from asyncio import subprocess as sp
 from asyncio.events import AbstractEventLoop
+from collections.abc import AsyncIterator
 from os import environ, listdir
-from typing import AsyncIterator
 import asyncio
 import re
 import sys
 
-IGNORED_FILES = set(('.DS_Store', '.DS_Store?', '.Spotlight-V100', '.Trashes', '.directory',
-                     '.localized', 'Thumbs.db', 'ehthumbs.db'))
+IGNORED_FILES = {
+    '.DS_Store', '.DS_Store?', '.Spotlight-V100', '.Trashes', '.directory', '.localized',
+    'Thumbs.db', 'ehthumbs.db'
+}
 IGNORE_RE = re.compile(r'(?:/\.(?:[Tt]rash|git|npm/_git-remotes))/?')
 
 

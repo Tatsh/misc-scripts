@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Usage: change_mach_o_flags.py [--executable-heap] [--no-pie]
-<executablepath>
+<executablepath>.
 
 Arranges for the executable at |executable_path| to have its data (heap)
 pages protected to prevent execution on Mac OS X 10.7 ("Lion"), and to have
@@ -74,7 +74,8 @@ linkers used are recent enough to support -pie. However, it's used to
 disable the PIE bit as needed on already-linked executables.
 """
 
-from typing import BinaryIO, Final, Literal, Sequence, cast
+from collections.abc import Sequence
+from typing import BinaryIO, Final, Literal, cast
 import argparse
 import os
 import struct
@@ -109,7 +110,8 @@ def checked_seek(file: BinaryIO, offset: int) -> None:
     file.seek(offset, os.SEEK_SET)
     new_offset = file.tell()
     if new_offset != offset:
-        raise MachOError(f'seek: expected offset {offset:d}, observed {new_offset:d}')
+        msg = f'seek: expected offset {offset:d}, observed {new_offset:d}'
+        raise MachOError(msg)
 
 
 def checked_read(file: BinaryIO, count: int) -> bytes:
@@ -119,7 +121,8 @@ def checked_read(file: BinaryIO, count: int) -> bytes:
     """
     bytes_ = file.read(count)
     if len(bytes_) != count:
-        raise MachOError(f'read: expected length {count:d}, observed {len(bytes_)}')
+        msg = f'read: expected length {count:d}, observed {len(bytes_)}'
+        raise MachOError(msg)
     return bytes_
 
 
@@ -135,10 +138,11 @@ def read_uint32(file: BinaryIO, endian: str) -> int:
 
 def read_mach_header(file: BinaryIO, endian: EndianIndicator) -> tuple[int, ...]:
     """Reads an entire |mach_header| structure (<mach-o/loader.h>) from the
-  file-like |file| object, treating it as having endianness specified by
-  |endian| (per the |struct| module), and returns a 7-tuple of its members
-  as numbers. Raises a MachOError if the proper length of data can't be read
-  from |file|."""
+    file-like |file| object, treating it as having endianness specified by
+    |endian| (per the |struct| module), and returns a 7-tuple of its members
+    as numbers. Raises a MachOError if the proper length of data can't be read
+    from |file|.
+    """
     bytes_ = checked_read(file, 28)
     (magic, cputype, cpusubtype, filetype, ncmds, sizeofcmds, flags) = struct.unpack(
         endian + '7I', bytes_)
@@ -147,10 +151,11 @@ def read_mach_header(file: BinaryIO, endian: EndianIndicator) -> tuple[int, ...]
 
 def read_fat_arch(file: BinaryIO) -> tuple[int, ...]:
     """Reads an entire |fat_arch| structure (<mach-o/fat.h>) from the file-like
-  |file| object, treating it as having endianness specified by |endian|
-  (per the |struct| module), and returns a 5-tuple of its members as numbers.
-  Raises a MachOError if the proper length of data can't be read from
-  |file|."""
+    |file| object, treating it as having endianness specified by |endian|
+    (per the |struct| module), and returns a 5-tuple of its members as numbers.
+    Raises a MachOError if the proper length of data can't be read from
+    |file|.
+    """
     bytes_ = checked_read(file, 20)
     cputype, cpusubtype, offset, size, align = struct.unpack('>5I', bytes_)
     return cputype, cpusubtype, offset, size, align
@@ -158,8 +163,9 @@ def read_fat_arch(file: BinaryIO) -> tuple[int, ...]:
 
 def write_uint32(file: BinaryIO, uint32: int, endian: str) -> None:
     """Writes |uint32| as an unsigned 32-bit integer to the file-like |file|
-  object, treating it as having endianness specified by |endian| (per the
-  |struct| module)."""
+    object, treating it as having endianness specified by |endian| (per the
+    |struct| module).
+    """
     bytes_ = struct.pack(endian + 'I', uint32)
     assert len(bytes_) == 4
     file.write(bytes_)
@@ -185,19 +191,21 @@ def handle_mach_o_file(file: BinaryIO, options: Namespace, offset: int = 0) -> N
     checked_seek(file, offset)
     magic = read_uint32(file, '<')
     endian: Literal['<', '>']
-    if magic in (MH_MAGIC, MH_MAGIC_64):
+    if magic in {MH_MAGIC, MH_MAGIC_64}:
         endian = '<'
-    elif magic in (MH_CIGAM, MH_CIGAM_64):
+    elif magic in {MH_CIGAM, MH_CIGAM_64}:
         endian = '>'
     else:
-        raise MachOError(f'Mach-O file at offset {offset:d} has illusion of magic')
+        msg = f'Mach-O file at offset {offset:d} has illusion of magic'
+        raise MachOError(msg)
     checked_seek(file, offset)
     (magic, _cputype, _cpusubtype, filetype, _ncmds, _sizeofcmds, flags) = read_mach_header(
         file, endian)
-    assert magic in (MH_MAGIC, MH_MAGIC_64)
+    assert magic in {MH_MAGIC, MH_MAGIC_64}
     if filetype != MH_EXECUTE:
-        raise MachOError(f'Mach-O file at offset {offset:d} is type 0x{filetype:x}, '
-                         f'expected MH_EXECUTE')
+        msg = (f'Mach-O file at offset {offset:d} is type 0x{filetype:x}, '
+               f'expected MH_EXECUTE')
+        raise MachOError(msg)
     original_flags = flags
     if options.no_heap_execution:
         flags |= MH_NO_HEAP_EXECUTION
@@ -214,12 +222,13 @@ def handle_mach_o_file(file: BinaryIO, options: Namespace, offset: int = 0) -> N
 
 def handle_fat_file(file: BinaryIO, options: Namespace, fat_offset: int = 0) -> None:
     """Seeks the file-like |file| object to |offset| and loops over its
-  |fat_header| entries, calling HandleMachOFile for each."""
+    |fat_header| entries, calling HandleMachOFile for each.
+    """
     checked_seek(file, fat_offset)
     magic = read_uint32(file, '>')
     assert magic == FAT_MAGIC
     nfat_arch = read_uint32(file, '>')
-    for _ in range(0, nfat_arch):
+    for _ in range(nfat_arch):
         _cputype, _cpusubtype, offset, size, _align = read_fat_arch(file)
         assert size >= 28
         # HandleMachOFile will seek around. Come back here after calling it, in
@@ -253,10 +262,11 @@ def main(args: Sequence[str]) -> int:
             # Check FAT_CIGAM and not FAT_MAGIC because the read was
             # little-endian.
             handle_fat_file(executable_file, options)
-        elif magic in (MH_MAGIC, MH_CIGAM, MH_MAGIC_64, MH_CIGAM_64):
+        elif magic in {MH_MAGIC, MH_CIGAM, MH_MAGIC_64, MH_CIGAM_64}:
             handle_mach_o_file(executable_file, options)
         else:
-            raise MachOError(f'{executable_file} is not a Mach-O or fat file')
+            msg = f'{executable_file} is not a Mach-O or fat file'
+            raise MachOError(msg)
     return 0
 
 

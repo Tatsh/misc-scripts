@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Iterable, Iterator, Sequence
 from datetime import date
 from itertools import chain
-from typing import Any, Final, Iterable, Iterator, Literal, Sequence, TextIO, TypedDict, cast
+from typing import Any, Final, Literal, TextIO, TypedDict, cast
 import argparse
 import csv
 import json
@@ -70,13 +71,13 @@ class Bookmarks(TypedDict):
 
 def chrome_timestamp_to_date(timestamp: str) -> date:
     """
-    https://github.com/chromium/chromium/blob/d7b85bd859088e217edeaa38d8629f181247b5cb/base/time/time_now_posix.cc#L73
+    https://github.com/chromium/chromium/blob/d7b85bd859088e217edeaa38d8629f181247b5cb/base/time/time_now_posix.cc#L73.
 
     The date may be slightly off because tv.usec is not re-added but for Python
     date objects it may not matter.
     """
     return date.fromtimestamp(
-        ((int(timestamp) - TIME_TO_MICROSECOND_OFFSET) / MICROSECONDS_PER_SECOND))
+        (int(timestamp) - TIME_TO_MICROSECOND_OFFSET) / MICROSECONDS_PER_SECOND)
 
 
 def get_strings(children: Iterable[URL | Folder],

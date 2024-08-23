@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from collections.abc import Sequence
 from os.path import basename
-from typing import Any, Final, Sequence, cast
+from typing import Any, Final, cast
 import argparse
 import logging
 import sys
@@ -75,26 +76,26 @@ def main() -> int:
     ret = 0
     arg: str
     for arg in args.tracking_number:
-        req = session.get(GET_URL, params=dict(qtc_tLabels1=arg))
+        req = session.get(GET_URL, params={'qtc_tLabels1': arg})
         req.raise_for_status()
         content = req.content.decode('utf-8')
         if 'could not locate the tracking information' in content:
             log.error('Failed with tracking number %s', arg)
             continue
-        data = dict(
-            confirmSms='on',
-            email1=NAME1_EMPTY_VALUE,
-            label=arg,
-            name1=NAME1_EMPTY_VALUE,
-            smsNumber=phone_number,
-            textAlert='on',
-            textAll='on',
-            textDnd='on',
-            textFuture='on',
-            textOA='on',
-            textPickup='on',
-            textToday='on',
-        )
+        data = {
+            'confirmSms': 'on',
+            'email1': NAME1_EMPTY_VALUE,
+            'label': arg,
+            'name1': NAME1_EMPTY_VALUE,
+            'smsNumber': phone_number,
+            'textAlert': 'on',
+            'textAll': 'on',
+            'textDnd': 'on',
+            'textFuture': 'on',
+            'textOA': 'on',
+            'textPickup': 'on',
+            'textToday': 'on',
+        }
         log.debug('POST data: %s', data)
         add_headers = {
             'Referer': f'{GET_URL}?qtc_tLabels1={arg}',

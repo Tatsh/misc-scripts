@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from functools import partial
 from itertools import filterfalse
@@ -7,7 +8,7 @@ from os import close, listdir, stat, unlink, write
 from os.path import basename, expanduser, isdir, join as path_join, realpath
 from shlex import quote
 from tempfile import mkstemp
-from typing import Any, Callable, Literal, Sequence, TypeVar, cast
+from typing import Any, Literal, TypeVar, cast
 import argparse
 import json
 import logging
@@ -25,12 +26,12 @@ import sys
 
 DRAWTEXT_TEMPLATE = string.Template('drawtext='
                                     'fontfile=${fontfile}:'
-                                    'text=\'${text}\':'
+                                    "text='${text}':"
                                     'fontcolor=${fontcolor}:'
                                     'fontsize=${fontsize}:'
                                     'x=${x}:'
                                     'y=${y}')
-TIME_KEYS = list(f'st_{x}time' for x in ('m', 'a', 'c'))
+TIME_KEYS = [f'st_{x}time' for x in ('m', 'a', 'c')]
 
 to_lower = str.lower
 
@@ -40,7 +41,7 @@ T = TypeVar('T')
 
 
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
-    name = name if name else basename(sys.argv[0])
+    name = name or basename(sys.argv[0])
     log = logging.getLogger(name)
     log.setLevel(logging.DEBUG if verbose else logging.INFO)
     channel = logging.StreamHandler(sys.stdout)
@@ -197,7 +198,7 @@ def encode_concat(fn: str,
                 '-maxrate:v',
                 '11M',
             )
-            filters = [filters[0], 'hwdownload', 'format=nv12'] + [filters[1]]
+            filters = [filters[0], 'hwdownload', 'format=nv12', filters[1]]
         elif has_nvenc:
             read_codec = (
                 '-hwaccel',
@@ -238,23 +239,10 @@ def encode_concat(fn: str,
             'copy',
         )
 
-    cmd = (
-        'ffmpeg',
-        '-loglevel',
-        'warning',
-        '-hide_banner',
-        '-stats',
-        '-y',
-        '-f',
-        'concat',
-        '-safe',
-        '0',
-    ) + read_codec + (
-        '-i',
-        fn,
-    ) + codec_args + ('-filter:v', ','.join(filters), '-colorspace', 'bt470bg', '-color_trc',
-                      'gamma28', '-color_primaries', 'bt470bg', '-color_range', 'pc', '-an',
-                      outfile) + metadata_args
+    cmd = ('ffmpeg', '-loglevel', 'warning', '-hide_banner', '-stats', '-y', '-f', 'concat',
+           '-safe', '0', *read_codec, '-i', fn, *codec_args, '-filter:v', ','.join(filters),
+           '-colorspace', 'bt470bg', '-color_trc', 'gamma28', '-color_primaries', 'bt470bg',
+           '-color_range', 'pc', '-an', outfile, *metadata_args)
     log.info('Executing: %s', ' '.join(map(quote, cmd)))
     if not dry_run:
         setname('ffmpeg')
@@ -348,7 +336,8 @@ def main() -> int:
                 try:
                     end = exif_json[0]['VideoFrameCount'] / 4
                 except (IndexError, KeyError) as e:
-                    raise KeyError(f'Key or index error: {e}, JSON: {exif_json}') from e
+                    msg = f'Key or index error: {e}, JSON: {exif_json}'
+                    raise KeyError(msg) from e
                 end += start
                 start = floor(start)
                 end = floor(end)

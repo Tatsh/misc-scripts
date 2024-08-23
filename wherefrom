@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-from typing import Final, Iterator, Sequence, cast
+from collections.abc import Iterator, Sequence
+from typing import Final, cast
 import argparse
 import platform
 import plistlib
@@ -70,7 +71,7 @@ def main(webpage: bool, files: list[str]) -> None:
             else:
                 failed = True
     if not has_multiple and failed:
-        raise click.Abort()
+        raise click.Abort
 
 
 if __name__ == '__main__':
