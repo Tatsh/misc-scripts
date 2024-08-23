@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from datetime import datetime
+from io import TextIOWrapper
 from logging.handlers import SysLogHandler
 from os.path import realpath
 from typing import Any, Final, NoReturn, TextIO, cast
@@ -73,7 +74,8 @@ def main() -> int:
         log_fh = open(args.log_file, 'a+')
         assert log_fh is not None
         log_yaml_handle = open(args.log_file + '.yml', 'a+')
-        channel = logging.StreamHandler(log_fh)
+        channel: logging.StreamHandler[TextIO] | logging.StreamHandler[
+            TextIOWrapper] = logging.StreamHandler(log_fh)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.DEBUG)
         logger.addHandler(channel)
@@ -84,7 +86,7 @@ def main() -> int:
         syslog_h.setLevel(logging.INFO)
         logger.addHandler(syslog_h)
     if args.verbose:
-        channel = logging.StreamHandler(sys.stdout)  # type: ignore[arg-type]
+        channel = logging.StreamHandler(sys.stdout)
         channel.setFormatter(LOG_FORMATTER)
         channel.setLevel(logging.INFO)
         logger.addHandler(channel)

@@ -317,6 +317,7 @@ rars
 rdonly
 readline
 readlines
+readlink
 realpath
 recognised
 recurse
