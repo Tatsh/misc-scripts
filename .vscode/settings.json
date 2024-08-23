@@ -11,6 +11,22 @@
   "editor.insertSpaces": true,
   "editor.tabSize": 2,
   "files.eol": "\n",
-  "python.analysis.stubPath": ".stubs",
-  "python.analysis.typeCheckingMode": "strict"
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.completeFunctionParens": true,
+  "python.analysis.importFormat": "relative",
+  "python.analysis.indexing": true,
+  "python.analysis.inlayHints.callArgumentNames": "all",
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  "python.analysis.inlayHints.pytestParameters": true,
+  "python.analysis.inlayHints.variableTypes": true,
+  "python.analysis.packageIndexDepths": [
+    {
+      "depth": 100,
+      "name": ""
+    }
+  ],
+  "python.analysis.typeCheckingMode": "off",
+  "python.languageServer": "Pylance",
+  "python.testing.pytestArgs": ["tests"],
+  "python.testing.pytestEnabled": true
 }

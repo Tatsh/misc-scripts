@@ -44,7 +44,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
-extend-exclude = ["migrations"]
+extend-exclude = []
 force-exclude = true
 line-length = 100
 namespace-packages = ["docs", "tests"]
@@ -151,9 +151,6 @@ preview = true
 [tool.ruff.lint.flake8-quotes]
 inline-quotes = "single"
 multiline-quotes = "double"
-
-[tool.ruff.lint.flake8-self]
-extend-ignore-names = ["_base_manager", "_default_manager", "_meta"]
 
 [tool.ruff.lint.isort]
 case-sensitive = true
