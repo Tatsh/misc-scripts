@@ -64,6 +64,7 @@ concat
 cond
 configparser
 constqp
+contextlib
 copyfile
 copyfileobj
 copytree
@@ -136,6 +137,7 @@ fullscreen
 fulltimestudent
 funcs
 functools
+furb
 getattr
 getboolean
 getcwd
@@ -166,6 +168,7 @@ hwinfo
 icns
 iconset
 iconutil
+ignorecase
 ila
 ilayhi
 ilayka
@@ -183,6 +186,7 @@ isdst
 isfile
 isinstance
 isort
+itemgetter
 itertools
 itunes
 jibberish
@@ -264,6 +268,7 @@ nologo
 nonblock
 nssdb
 numargv
+numpy
 nupkg
 nuspecs
 nvenc
@@ -307,6 +312,7 @@ pushd
 pycache
 pychoco
 pydbus
+pydocstyle
 pylint
 pytest
 pyxdg
@@ -434,6 +440,7 @@ xdpyinfo
 xinerama
 xsession
 yapf
+yapfignore
 yday
 zehm
 zipfile
