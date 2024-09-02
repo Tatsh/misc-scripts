@@ -15,6 +15,7 @@
     "format": "prettier -w './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && poetry run yapf -ri .",
     "mypy": "bash .run-mypy",
     "qa": "yarn shellcheck && yarn mypy && yarn check-spelling && yarn check-formatting",
+    "ruff": "bash .run-ruff",
     "shellcheck": "bash .run-shellcheck"
   },
   "version": "0.2.0",
