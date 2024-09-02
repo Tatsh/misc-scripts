@@ -36,7 +36,7 @@ def add_times(times: Iterable[str] | None) -> str | None:
 
 @click.command()
 @click.argument('times', nargs=-1)
-def main(times: list[str]) -> None:
+def main(times: tuple[str, ...]) -> None:
     if (result := add_times(times)) is None:
         raise click.Abort
     click.echo(result)
