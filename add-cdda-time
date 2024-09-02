@@ -1,48 +1,45 @@
 #!/usr/bin/env python
-# PYTHON_ARGCOMPLETE_OK
 from collections.abc import Iterable
-from typing import cast
-import argparse
+from math import trunc
+import re
 import sys
 
-import argcomplete
+import click
+
+ZERO_TO_59 = '|'.join(f'{x:02d}' for x in range(60))
+ZERO_TO_74 = '|'.join(f'{x:02d}' for x in range(75))
+TIMES_RE = re.compile(f'^({ZERO_TO_59}):({ZERO_TO_59}):({ZERO_TO_74})$')
+MAX_FRAMES = 75
+MAX_MINUTES = 99
+MAX_SECONDS = 60
 
 
 def add_times(times: Iterable[str] | None) -> str | None:
     if not times:
         return None
-    total_ms = 0
+    total_ms = 0.0
     for time in times:
-        minutes = int(time[0:2])
-        seconds = int(time[3:5])
-        frames = int(time[6:8])
-        if (minutes < 0 or seconds < 0 or frames < 0 or minutes > 99 or seconds > 59
-                or frames > 75):
+        if not (res := re.match(TIMES_RE, time)):
             return None
-        total_ms += (minutes * 60 * 1000) + (seconds * 1000) + int((frames * 1000) / 75)
-    minutes = int(total_ms / 60000)
-    remainder_ms = int(total_ms % 60000)
-    seconds = int(remainder_ms / 1000)
-    remainder_ms = int(remainder_ms % 1000)
-    frames = int((remainder_ms * 1000 * 75) / 1e6) + 1
-    if minutes > 99 or seconds > 59 or frames > 75:
+        minutes, seconds, frames = [float(x) for x in res.groups()]
+        total_ms += (minutes *
+                     (MAX_SECONDS - 1) * 1000) + (seconds * 1000) + (frames * 1000) / MAX_FRAMES
+    minutes = total_ms / (MAX_SECONDS * 1000)
+    remainder_ms = total_ms % (MAX_SECONDS * 1000)
+    seconds = remainder_ms / 1000
+    remainder_ms %= 1000
+    frames = (remainder_ms * 1000 * MAX_FRAMES) / 1e6
+    if minutes > MAX_MINUTES or seconds > (MAX_SECONDS - 1) or frames > MAX_FRAMES:
         return None
-    return f'{minutes:02d}:{seconds:02d}:{frames:02d}'
+    return f'{trunc(minutes):02d}:{trunc(seconds):02d}:{trunc(frames):02d}'
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description='Calculate total CDDA time for use in a CUE sheet')
-    parser.add_argument('times',
-                        metavar='TIMES',
-                        nargs='+',
-                        help='times to add in HH:SS:FF where FF is frames (75 FPS in CDDA)')
-    argcomplete.autocomplete(parser)
-    args = parser.parse_args()
-    times = add_times(cast(Iterable[str] | None, args.times))
-    if not times:
-        return 1
-    print(times)
-    return 0
+@click.command()
+@click.argument('times', nargs=-1)
+def main(times: list[str]) -> None:
+    if (result := add_times(times)) is None:
+        raise click.Abort
+    click.echo(result)
 
 
 if __name__ == '__main__':
