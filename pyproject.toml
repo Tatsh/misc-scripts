@@ -29,7 +29,7 @@ tomlkit = "^0.13.2"
 [tool.poetry.group.dev.dependencies]
 cffconvert = "^2.0.0"
 mypy = "^1.11.2"
-ruff = "^0.6.2"
+ruff = "^0.6.3"
 types-beautifulsoup4 = "^4.12.0.20240511"
 types-mysqlclient = "^2.2.0.20240311"
 types-psutil = "^6.0.0.20240621"
