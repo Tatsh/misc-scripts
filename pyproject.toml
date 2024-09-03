@@ -32,6 +32,7 @@ pyxdg = "^0.28"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 yt-dlp = "^2024.8.6"
+xattr = "^1.1.0"
 
 [tool.poetry.group.dev]
 optional = true
@@ -74,6 +75,7 @@ requests-mock = "^1.11.0"
 [tool.poetry.scripts]
 add-cdda-times = "tatsh_misc_utils.cdda:main"
 adp = "tatsh_misc_utils.adp:main"
+where-from = "tatsh_misc_utils.where_from:main"
 
 [tool.coverage.report]
 omit = ["conftest.py", "tests.py", "tests/test_*.py"]
