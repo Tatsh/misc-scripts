@@ -13,8 +13,10 @@ MAX_FRAMES = 75
 MAX_MINUTES = 99
 MAX_SECONDS = 60
 
+__all__ = ('add_cdda_times',)
 
-def add_times(times: Iterable[str] | None) -> str | None:
+
+def add_cdda_times(times: Iterable[str] | None) -> str | None:
     if not times:
         return None
     total_ms = 0.0
@@ -37,7 +39,7 @@ def add_times(times: Iterable[str] | None) -> str | None:
 @click.command()
 @click.argument('times', nargs=-1)
 def main(times: tuple[str, ...]) -> None:
-    if (result := add_times(times)) is None:
+    if (result := add_cdda_times(times)) is None:
         raise click.Abort
     click.echo(result)
 
