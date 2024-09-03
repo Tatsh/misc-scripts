@@ -74,8 +74,11 @@ requests-mock = "^1.11.0"
 [tool.poetry.scripts]
 add-cdda-times = "tatsh_misc_utils.commands:add_cdda_times_main"
 adp = "tatsh_misc_utils.commands:adp_main"
+is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
+netloc = "tatsh_misc_utils.commands:urldecode_main"
+urldecode = "tatsh_misc_utils.commands:urldecode_main"
 wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
-where-from = "tatsh_misc_utils.commands.where_from_main:main"
+where-from = "tatsh_misc_utils.commands:where_from_main"
 
 [tool.coverage.report]
 omit = ["conftest.py", "tests.py", "tests/test_*.py"]

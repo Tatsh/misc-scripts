@@ -95,6 +95,7 @@ directores
 discid
 dists
 doctrees
+docutils
 dpkg
 drawtext
 driveropts

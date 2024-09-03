@@ -13,9 +13,10 @@ import plistlib
 import re
 
 __all__ = ('IS_LINUX', 'chunks', 'context_os_open', 'hexstr2bytes', 'hexstr2bytes_generator',
-           'strip_ansi', 'strip_ansi_if_no_colors', 'wait_for_disc', 'where_from')
+           'is_ascii', 'strip_ansi', 'strip_ansi_if_no_colors', 'wait_for_disc', 'where_from')
 
 CDROM_DRIVE_STATUS = 0x5326
+ORD_MAX = 128
 IS_LINUX = platform.uname().system == 'Linux'
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
 KEY_ORIGIN_URL = 'user.xdg.origin.url'
@@ -34,6 +35,7 @@ INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE
                        'UT', 'VA', 'VI', 'VT', 'WA', 'WI', 'WV', 'WY']
 StrOrBytesPath = str | bytes | PathLike[str] | PathLike[bytes]
 FileDescriptorOrPath = int | StrOrBytesPath
+DecodeErrorsOption = Literal['ignore', 'replace', 'strict']
 
 
 class CDStatus(IntEnum):
@@ -129,3 +131,8 @@ def add_cdda_times(times: Iterable[str] | None) -> str | None:
     if minutes > MAX_MINUTES or seconds > (MAX_SECONDS - 1) or frames > MAX_FRAMES:
         return None
     return f'{trunc(minutes):02d}:{trunc(seconds):02d}:{trunc(frames):02d}'
+
+
+def is_ascii(s: Iterable[str]) -> bool:
+    """Check if a string consists of only ASCII characters."""
+    return len(s) == len(''.join(y for y in s if ord(y) < ORD_MAX))
