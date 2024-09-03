@@ -5,14 +5,42 @@
       "path": "dictionary.txt"
     }
   ],
+  "enableGlobDot": true,
+  "enabledLanguageIds": [
+    "git-commit",
+    "ignore",
+    "jinja",
+    "json",
+    "jsonc",
+    "markdown",
+    "plaintext",
+    "python",
+    "restructuredtext",
+    "text",
+    "toml",
+    "yaml",
+    "yml"
+  ],
   "ignorePaths": [
+    "*.har",
+    "*.log",
     ".coverage",
     ".directory",
+    ".doctrees",
+    ".git",
+    ".mypy_cache/",
+    ".pytest_cache/",
+    ".vscode/extensions.json",
+    "__pycache__",
+    "_build/**",
     "build/**",
     "dist/**",
+    "docs/_build/**",
     "htmlcov/**",
-    "xirvik_tools.egg-info/**"
+    "man/**",
+    "node_modules/**"
   ],
+  "language": "en-GB",
   "languageSettings": [
     {
       "dictionaries": ["main"],

@@ -1,10 +1,10 @@
 {
   "author": "Andrew Udvare <audvare@gmail.com>",
   "devDependencies": {
-    "cspell": "^6.31.1",
-    "prettier": "^2.8.7",
-    "prettier-plugin-ini": "^1.1.0",
-    "prettier-plugin-toml": "^0.3.1"
+    "cspell": "^8.14.2",
+    "prettier": "^3.3.3",
+    "prettier-plugin-ini": "^1.2.0",
+    "prettier-plugin-toml": "^2.0.1"
   },
   "license": "MIT",
   "name": "misc-scripts",
@@ -14,7 +14,7 @@
     "check-spelling": "cspell --no-progress './**/*'  './**/.*'",
     "format": "prettier -w './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && poetry run yapf -ri .",
     "mypy": "bash .run-mypy",
-    "qa": "yarn shellcheck && yarn mypy && yarn check-spelling && yarn check-formatting",
+    "qa": "yarn mypy && yarn ruff && yarn shellcheck && yarn check-spelling && yarn check-formatting",
     "ruff": "bash .run-ruff",
     "shellcheck": "bash .run-shellcheck"
   },
