@@ -38,25 +38,25 @@ def main() -> int:
     except IndexError:
         print(f'Usage: {sys.argv[0]} COOKIES_TXT_FILE', file=sys.stderr)
         return 1
-    conn: sqlite3.Connection | None = None
+    connection: sqlite3.Connection | None = None
     last_exc: BaseException | None = None
     for path in DB_PATHS:
         try:
             with open(path, 'rb'):
                 pass
-            conn = sqlite3.connect(path, detect_types=sqlite3.PARSE_COLNAMES)
+            connection = sqlite3.connect(path, detect_types=sqlite3.PARSE_COLNAMES)
             break
         except (FileNotFoundError, sqlite3.OperationalError) as e:
             last_exc = e
-    if not conn and last_exc:
+    if not connection and last_exc:
         raise last_exc
-    if not conn:
+    if not connection:
         raise RuntimeError('Failed to connect to database')
     try:
         with open(cookies_txt, encoding='utf-8') as f:
             i = 0
             lines = f.readlines()
-            c = conn.cursor()
+            c = connection.cursor()
             for line in lines:
                 match = re.match(REGEX, line)
                 if not match:
@@ -87,8 +87,8 @@ def main() -> int:
     except FileNotFoundError:
         print(f'Cookies file {cookies_txt} specified does not exist', file=sys.stderr)
     finally:
-        conn.commit()
-        conn.close()
+        connection.commit()
+        connection.close()
 
     return 0
 

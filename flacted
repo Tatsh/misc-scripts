@@ -98,10 +98,10 @@ def main() -> int:
     argcomplete.autocomplete(parser)
     args = cast(Namespace, parser.parse_args())
     metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
-    cleanup_args = copy(metaflac_args)
+    clean_up_args = copy(metaflac_args)
     destroy = args.delete_all_before
-    cleanup_args.append('--remove-all-tags')
-    cleanup_args.extend(args.files)
+    clean_up_args.append('--remove-all-tags')
+    clean_up_args.extend(args.files)
     for key in ('title', 'artist', 'album', 'year', 'track', 'genre'):
         value = getattr(args, key, None)
         if not value:
@@ -126,7 +126,7 @@ def main() -> int:
         log.error('Not doing anything')
         return 1
     if destroy:
-        metaflac(*cleanup_args)
+        metaflac(*clean_up_args)
     metaflac_args.extend(args.files)
     metaflac(*metaflac_args)
     return 0

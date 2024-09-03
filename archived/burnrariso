@@ -60,10 +60,10 @@ def find_iso_in_rar(rar_filename: str) -> tuple[str | None, int | None]:
     """Find if there is an ISO within the RAR."""
     iso_line: Sequence[str] | None = None
     try:
-        proc = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE, encoding='utf-8', check=True)
+        process = sp.run(('unrar', 'l', rar_filename), stdout=sp.PIPE, encoding='utf-8', check=True)
     except sp.CalledProcessError:
         return None, None
-    for line in proc.stdout.split('\n'):
+    for line in process.stdout.split('\n'):
         if 'iso' in line.lower():
             iso_line = line.split()
             break

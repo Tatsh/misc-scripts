@@ -340,7 +340,7 @@ sub processCommandLine {
 ##
 ##  Description: Handles all messages - logging them to a log file,
 ##               printing them to the screen or both depending on
-##               the $level passed in, $conf{'debug'} and wether
+##               the $level passed in, $conf{'debug'} and
 ##               $conf{'mode'}.
 ##
 ##  Input:       $message                A message to be printed, logged, etc.

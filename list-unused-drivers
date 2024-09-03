@@ -28,10 +28,10 @@ def main() -> None:
     all_ignored_modules: Final[Sequence[str]] = ((ignored_modules + list(recommended))
                                                  if ignored_modules else recommended)
     items_dict: dict[str, list[str]] = {}
-    with sp.Popen(('hwinfo',), stdout=sp.PIPE, text=True) as proc:
+    with sp.Popen(('hwinfo',), stdout=sp.PIPE, text=True) as process:
         enabled = False
-        while not proc.poll():
-            if proc.stdout and (line := proc.stdout.readline().strip()):
+        while not process.poll():
+            if process.stdout and (line := process.stdout.readline().strip()):
                 if 'sysfs driver list end' in line:
                     break
                 if 'sysfs driver list' in line:

@@ -200,13 +200,13 @@ def main() -> int:
     command = ['mv', *mv_args, args.file[0], make_target(args.file[0])]
     log.info('Command: %s', ' '.join(command))
     try:
-        proc = sp.run(command, capture_output=True, encoding='utf-8', check=True)
+        process = sp.run(command, capture_output=True, encoding='utf-8', check=True)
     except sp.CalledProcessError as e:
         log.exception('STDOUT: %s', e.output)
         log.exception('STDERR: %s', e.stderr)
         return e.returncode
     if '-v' in mv_args or '--verbose' in mv_args:
-        log.info('%s', proc.stdout)
+        log.info('%s', process.stdout)
     return 0
 
 

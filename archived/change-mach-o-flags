@@ -24,7 +24,7 @@ prohibit execution. Although user programs could call mprotect and
 mach_vm_protect to deny execution of code in data pages, the kernel would
 silently ignore such requests without updating the page tables, and the
 hardware would happily execute code on such pages. 64-bit processes were
-always given proper hardware protection of data pages. This behavior was
+always given proper hardware protection of data pages. This behaviour was
 controllable on a system-wide level via the vm.allow_data_exec sysctl, which
 is set by default to 1. The bit with value 1 (set by default) allows code
 execution on data pages for 32-bit processes, and the bit with value 2

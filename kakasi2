@@ -58,10 +58,10 @@ def find_bin(name: str, look_for: str, help_cmd: str = '--help') -> str | None:
             with open(candidate, 'rb') as f:
                 if os.access(f.name, os.X_OK):
                     with sp.Popen([candidate, help_cmd], stdout=sp.PIPE, stderr=sp.PIPE,
-                                  text=True) as proc:
-                        proc.wait()
-                        err = proc.stderr
-                        out = proc.stdout
+                                  text=True) as process:
+                        process.wait()
+                        err = process.stderr
+                        out = process.stdout
                         assert err is not None
                         assert out is not None
                         for line in (err.read().splitlines() + out.read().splitlines()):

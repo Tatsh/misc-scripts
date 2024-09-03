@@ -1,3 +1,4 @@
+abbrev
 abspath
 acodec
 ahci
@@ -11,6 +12,8 @@ alrm
 alsa
 amerge
 an
+analyses
+analyzes
 anhu
 anka
 anni
@@ -21,10 +24,12 @@ argcomplete
 argparse
 args
 arkit
+armor
 asctime
 aslr
 asyncio
 atempo
+atty
 autorun
 basedomain
 beautifulsoup
@@ -58,11 +63,13 @@ cksfv
 cmds
 codesign
 colnames
+color
 colorspace
 commandline
 concat
 cond
 configparser
+conftest
 constqp
 contextlib
 copyfile
@@ -72,6 +79,7 @@ coreutils
 cpqrv
 cpusubtype
 cputype
+crit
 crossorigin
 cscript
 cuvid
@@ -86,19 +94,24 @@ devnull
 directores
 discid
 dists
+doctrees
 dpkg
 drawtext
 driveropts
+dynload
 econnrefused
+eeyore
 ehthumbs
 elif
 endianness
 endswith
 enoent
+epilog
 epqrv
 epub
 errno
 esac
+esbonio
 etree
 execdir
 executable's
@@ -118,6 +131,7 @@ ffmetadata
 ffmpeg
 ffprobe
 fi
+fica
 fihi
 fika
 filesize
@@ -146,6 +160,7 @@ geteuid
 getfattr
 getopts
 getroot
+getxattr
 gifflags
 globbed
 globbing
@@ -161,6 +176,7 @@ hexdigest
 hexstr
 hicolor
 hkcu
+htmlcov
 httponly
 hwaccel
 hwdownload
@@ -177,8 +193,10 @@ ilong
 imax
 imessage
 iname
+incits
 inlinevar
 inul
+ioctl
 is
 isatty
 isdir
@@ -190,6 +208,7 @@ itemgetter
 itertools
 itunes
 jibberish
+jinja
 jlong
 joinpath
 kakasi
@@ -266,6 +285,7 @@ newdir
 nfat
 nologo
 nonblock
+norecursedirs
 nssdb
 numargv
 numpy
@@ -305,6 +325,7 @@ popd
 popen
 printf
 printmsg
+proc
 psmdcp
 psql
 psutil
@@ -313,7 +334,9 @@ pycache
 pychoco
 pydbus
 pydocstyle
+pylance
 pylint
+pyright
 pytest
 pyxdg
 pyyaml
@@ -339,6 +362,7 @@ rstrip
 safemv
 samplerate
 scandir
+secring
 setattr
 setfiletime
 setname
@@ -361,6 +385,7 @@ splitlines
 spouseblindness
 sqlite
 startswith
+stdmods
 strerror
 strftime
 strptime
@@ -378,6 +403,7 @@ tatsh
 tempdir
 tempfile
 tencent
+testspaths
 timebase
 todos
 tomlkit
@@ -396,6 +422,7 @@ ukpabmc
 ultraiso
 umount
 umpv
+undos
 unidecode
 unrar
 urldecode
@@ -406,8 +433,10 @@ usbfs
 usec
 utcnow
 utime
+vars
 vcodec
 vernum
+vers
 veryfy
 veryfymd
 veryslow

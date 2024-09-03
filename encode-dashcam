@@ -57,8 +57,8 @@ def t() -> Literal[True]:
 
 def cond(conditions: Sequence[tuple[CondPredicate, AnyCallableAnyReturn]]) -> AnyCallableAnyReturn:
     def ret(*args: Any) -> Any:
-        for pred, app in conditions:
-            if pred(*args):
+        for predicate, app in conditions:
+            if predicate(*args):
                 return app(*args)
         return None
 
@@ -280,12 +280,12 @@ _maybe_file_prefix: Callable[[str], str] = cond((
 ))
 
 
-def cleanup_cb(*args: Any) -> Callable[[], None]:
-    def cleanup() -> None:
+def clean_up_cb(*args: Any) -> Callable[[], None]:
+    def clean_up() -> None:
         for x in args:
             unlink(x)
 
-    return cleanup
+    return clean_up
 
 
 def main() -> int:
@@ -301,7 +301,7 @@ def main() -> int:
     assert log is not None
     outdir: str = args.outdir[0]
     arg: str
-    cleanup_funcs: list[Callable[[], None]] = []
+    clean_up_funcs: list[Callable[[], None]] = []
     for arg in args.in_dir:
         arg = realpath(arg)
         files_ = filterfalse(lambda x: isdir(head(x)), map(name_d(arg), sorted(listdir(arg))))
@@ -348,7 +348,7 @@ def main() -> int:
                 start = floor(end + 1)
             close(tmp_fd)
             close(chapter_fd)
-            cleanup_funcs.append(cleanup_cb(*(tempfile, chapter_file)))
+            clean_up_funcs.append(clean_up_cb(*(tempfile, chapter_file)))
             log.debug('Temporary file: %s', realpath(tempfile))
             try:
                 encode_concat(tempfile,
@@ -361,7 +361,7 @@ def main() -> int:
             except KeyboardInterrupt:
                 return 1
 
-    for func in cleanup_funcs:
+    for func in clean_up_funcs:
         func()
     return 0
 

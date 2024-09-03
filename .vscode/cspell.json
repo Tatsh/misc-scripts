@@ -31,6 +31,7 @@
     ".mypy_cache/",
     ".pytest_cache/",
     ".vscode/extensions.json",
+    ".yarn/releases/*.cjs",
     "__pycache__",
     "_build/**",
     "build/**",
