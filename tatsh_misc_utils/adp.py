@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 from datetime import UTC, datetime
-from typing import Final, Literal, TypedDict, cast
+from typing import Final, TypedDict, cast
 
-import click
 import requests
 
-from .utils import strip_ansi_if_no_colors
+from .utils import INCITS38Code, strip_ansi_if_no_colors
 
 __all__ = ('SalaryResponse', 'calculate_salary')
 
@@ -15,12 +14,6 @@ API_KEY: Final[str] = 'RnFqNFA0NVlRTExEenRwWjNiRnJrTXY4WkZHZEpkcENEeFFzQ3F0Nnh5V
 POST_URI: Final[str] = ('https://calculators.symmetry.com/api/calculators/'
                         'hourly?report=none')
 REFERER: Final[str] = 'https://www.symmetry.com/'
-
-INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'FM', 'GA',
-                       'GU', 'HI', 'IA', 'ID', 'IL', 'IN', 'KS', 'KY', 'LA', 'MA', 'MD', 'ME', 'MH',
-                       'MI', 'MN', 'MO', 'MP', 'MS', 'MT', 'NC', 'ND', 'NE', 'NH', 'NJ', 'NM', 'NV',
-                       'NY', 'OH', 'OK', 'OR', 'PA', 'PR', 'PW', 'RI', 'SC', 'SD', 'TN', 'TX', 'UM',
-                       'UT', 'VA', 'VI', 'VT', 'WA', 'WI', 'WV', 'WY']
 
 
 class ContentDict(TypedDict):
@@ -147,15 +140,3 @@ def calculate_salary(*,
                           medicare=data['medicare'],
                           net_pay=data['netPay'],
                           state=data['state'])
-
-
-@click.command()
-@click.option('-H', '--hours', default=160, help='Hours worked in a month.')
-@click.option('-r', '--pay-rate', default=70.0, help='Dollars per hour.')
-@click.option('-s',
-              '--state',
-              default='FL',
-              type=click.Choice(INCITS38Code.__args__),
-              help='US state abbreviation.')
-def main(hours: int = 160, pay_rate: float = 70.0, state: INCITS38Code = 'FL') -> None:
-    click.echo(str(calculate_salary(hours=hours, pay_rate=pay_rate, state=state)))
