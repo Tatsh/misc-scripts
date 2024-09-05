@@ -1,6 +1,3 @@
 #!/usr/bin/env bash
 # This file is intentionally without +x permissions.
-while IFS=$'\n' read -r name; do
-    echo "$name"
-    poetry run ruff check --fix "$name" || exit 1
-done < <(file -i ./* archived/* | grep -F text/x-script.python | cut -d: -f1 | sort -u)
+file -i ./* archived/* | grep -F text/x-script.python | cut -d: -f1 | sort -u | xargs poetry run ruff check --fix
