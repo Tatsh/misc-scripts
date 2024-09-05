@@ -1,21 +1,15 @@
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, TextIO, override
+from typing import TextIO, TypeVar, override
 from urllib.parse import unquote_plus, urlparse
 import sys
 
 import click
 
 from .adp import calculate_salary
-from .utils import (
-    TIMES_RE,
-    DecodeErrorsOption,
-    INCITS38Code,
-    add_cdda_times,
-    is_ascii,
-    wait_for_disc,
-    where_from,
-)
+from .string import is_ascii, underscorize
+from .typing import DecodeErrorsOption, INCITS38Code
+from .utils import TIMES_RE, add_cdda_times, wait_for_disc, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 
@@ -30,33 +24,37 @@ CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
               metavar='TIME')
 def wait_for_disc_main(drive_path: str, wait_time: float = 1.0) -> None:
     """Wait for a disc in a drive to be ready."""
-    if not wait_for_disc(drive_path, wait_time=wait_time):
+    if not wait_for_disc(drive_path, sleep_time=wait_time):
         raise click.Abort
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-H', '--hours', default=160, help='Hours worked in a month.', metavar='HOURS')
 @click.option('-r', '--pay-rate', default=70.0, help='Dollars per hour.', metavar='DOLLARS')
-@click.option('-s',
-              '--state',
-              metavar='STATE',
-              default='FL',
-              type=click.Choice(INCITS38Code.__args__),
-              help='US state abbreviation.')
+@click.option(
+    '-s',
+    '--state',
+    metavar='STATE',
+    default='FL',
+    type=click.Choice(INCITS38Code.__args__),  # type: ignore[attr-defined]
+    help='US state abbreviation.')
 def adp_main(hours: int = 160, pay_rate: float = 70.0, state: INCITS38Code = 'FL') -> None:
     """Calculate US salary."""
     click.echo(str(calculate_salary(hours=hours, pay_rate=pay_rate, state=state)))
+
+
+_T = TypeVar('_T', bound=str)
 
 
 class CDDATimeStringParamType(click.ParamType):
     name = 'cdda_time_string'
 
     @override
-    def convert(self, value: Any, param: click.Parameter | None, ctx: click.Context | None) -> Any:
+    def convert(self, value: _T, param: click.Parameter | None, ctx: click.Context | None) -> _T:
         if TIMES_RE.match(value):
             return value
         self.fail(f'{value!r} is not a valid CDDA time string.', param, ctx)
-        return None
+        return None  # type: ignore[unreachable]
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
@@ -90,18 +88,19 @@ def where_from_main(files: Sequence[str], *, webpage: bool = False) -> None:
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('file', type=click.File('r'), default=sys.stdin)
-def is_ascii_main(file: TextIO) -> int:
+def is_ascii_main(file: TextIO) -> None:
     if not is_ascii(file.read()):
         raise click.exceptions.Exit(1)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-e', '--encoding', default='utf-8', help='Text encoding.')
-@click.option('-r',
-              '--errors',
-              default='strict',
-              type=click.Choice(DecodeErrorsOption.__args__),
-              help='Error handling mode.')
+@click.option(
+    '-r',
+    '--errors',
+    default='strict',
+    type=click.Choice(DecodeErrorsOption.__args__),  # type: ignore[attr-defined]
+    help='Error handling mode.')
 @click.argument('file', type=click.File('r'), default=sys.stdin)
 def urldecode_main(file: TextIO,
                    encoding: str = 'utf-8',
@@ -112,3 +111,10 @@ def urldecode_main(file: TextIO,
         if is_netloc:
             val = urlparse(val).netloc.strip()
         click.echo(val.strip())
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+def underscorize_main(file: TextIO) -> None:
+    for line in file:
+        click.echo(underscorize(line.strip()))

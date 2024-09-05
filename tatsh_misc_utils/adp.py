@@ -4,7 +4,8 @@ from typing import Final, TypedDict, cast
 
 import requests
 
-from .utils import INCITS38Code, strip_ansi_if_no_colors
+from .string import strip_ansi_if_no_colors
+from .typing import INCITS38Code
 
 __all__ = ('SalaryResponse', 'calculate_salary')
 
@@ -30,7 +31,7 @@ class ResponseDict(TypedDict):
 
 class SalaryResponse:
     def __init__(self, *, federal: float, fica: float, gross: float, medicare: float,
-                 net_pay: float, state: float) -> None:
+                 net_pay: float, state: INCITS38Code) -> None:
         self.federal = federal
         self.fica = fica
         self.fuckery = gross - net_pay

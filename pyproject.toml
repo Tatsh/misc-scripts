@@ -76,6 +76,7 @@ add-cdda-times = "tatsh_misc_utils.commands:add_cdda_times_main"
 adp = "tatsh_misc_utils.commands:adp_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
 netloc = "tatsh_misc_utils.commands:urldecode_main"
+underscorize = "tatsh_misc_utils.commands:underscorize_main"
 urldecode = "tatsh_misc_utils.commands:urldecode_main"
 wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
 where-from = "tatsh_misc_utils.commands:where_from_main"
@@ -195,6 +196,7 @@ extend-select = [
   "YTT",
 ]
 ignore = [
+  "A005",
   "ANN401",
   "ARG001",
   "ARG002",
@@ -225,6 +227,7 @@ ignore = [
   "S101",
   "S404",
   "S603",
+  "T201", # temporary
   "TD002",
   "TD003",
   "TD004",
