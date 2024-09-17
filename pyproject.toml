@@ -57,7 +57,7 @@ docutils = "^0.21.2"
 esbonio = "^0.16.4"
 restructuredtext-lint = "^1.4.0"
 sphinx = "^7.2.6"
-sphinx-click = "^5.1.0"
+sphinx-click = "^6.0.0"
 tomlkit = "^0.13.2"
 
 [tool.poetry.group.tests]
