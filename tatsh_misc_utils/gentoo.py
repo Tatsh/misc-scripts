@@ -1,7 +1,6 @@
 from collections.abc import Iterator
 from fnmatch import fnmatch
 from pathlib import Path
-import logging
 import re
 
 from .typing import StrPath
@@ -9,8 +8,6 @@ from .typing import StrPath
 DEFAULT_ACTIVE_KERNEL_NAME = 'linux'
 DEFAULT_KERNEL_LOCATION = '/usr/src'
 DEFAULT_MODULES_PATH = '/lib/modules/'
-
-log = logging.getLogger(__name__)
 
 
 class InvalidActiveKernelSourcePath(Exception):
