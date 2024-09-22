@@ -13,6 +13,7 @@ INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE
                        'UT', 'VA', 'VI', 'VT', 'WA', 'WI', 'WV', 'WY']
 StrOrBytesPath = str | bytes | PathLike[str] | PathLike[bytes]
 StrPath = str | PathLike[str]
+"""String or ``PathLike[str]``."""
 FileDescriptorOrPath = int | StrOrBytesPath
 
 

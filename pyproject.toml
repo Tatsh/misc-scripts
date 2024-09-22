@@ -74,6 +74,7 @@ requests-mock = "^1.11.0"
 [tool.poetry.scripts]
 add-cdda-times = "tatsh_misc_utils.commands:add_cdda_times_main"
 adp = "tatsh_misc_utils.commands:adp_main"
+clean-old-kernels-modules = "tatsh_misc_utils.commands:clean_old_kernels_and_modules_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
 netloc = "tatsh_misc_utils.commands:urldecode_main"
 underscorize = "tatsh_misc_utils.commands:underscorize_main"

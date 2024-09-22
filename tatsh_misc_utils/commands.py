@@ -7,6 +7,12 @@ import sys
 import click
 
 from .adp import calculate_salary
+from .gentoo import (
+    DEFAULT_ACTIVE_KERNEL_NAME,
+    DEFAULT_KERNEL_LOCATION,
+    DEFAULT_MODULES_PATH,
+    clean_old_kernels_and_modules,
+)
 from .string import is_ascii, underscorize
 from .typing import DecodeErrorsOption, INCITS38Code
 from .utils import TIMES_RE, add_cdda_times, unpack_0day, wait_for_disc, where_from
@@ -129,3 +135,30 @@ def unpack_0day_main(dirs: Sequence[str]) -> None:
     """Unpack RAR files from 0day zip file sets."""
     for path in dirs:
         unpack_0day(path)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('path',
+                type=click.Path(exists=True, dir_okay=True, file_okay=False),
+                default=DEFAULT_KERNEL_LOCATION)
+@click.option('--active-kernel-name',
+              help='Kernel name like "linux".',
+              default=DEFAULT_ACTIVE_KERNEL_NAME)
+@click.option('-m',
+              '--modules-path',
+              type=click.Path(exists=True, dir_okay=True, file_okay=False),
+              help='Location where modules get installed, such as "/lib/modules".',
+              default=DEFAULT_MODULES_PATH)
+@click.option('-q', '--quiet', help='Prevent output.', is_flag=True)
+def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
+                                       modules_path: str = DEFAULT_MODULES_PATH,
+                                       active_kernel_name: str = DEFAULT_ACTIVE_KERNEL_NAME,
+                                       *,
+                                       quiet: bool = False) -> None:
+    """Remove inactive kernels and modules.
+    
+    By default, removes old Linux sources from /usr/src.
+    """
+    for item in clean_old_kernels_and_modules(path, modules_path, active_kernel_name):
+        if not quiet:
+            click.echo(item)
