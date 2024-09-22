@@ -155,7 +155,8 @@ def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
                                        active_kernel_name: str = DEFAULT_ACTIVE_KERNEL_NAME,
                                        *,
                                        quiet: bool = False) -> None:
-    """Remove inactive kernels and modules.
+    """
+    Remove inactive kernels and modules.
     
     By default, removes old Linux sources from /usr/src.
     """
