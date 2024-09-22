@@ -1,16 +1,20 @@
+from binascii import crc32
 from collections.abc import Iterable, Iterator, Sequence
-from contextlib import contextmanager
+from datetime import UTC, datetime
 from math import trunc
 from os import getxattr
+from pathlib import Path
 from time import sleep
 from typing import cast
+from zipfile import ZipFile
+import contextlib
 import fcntl
 import os
 import platform
 import plistlib
 import re
 
-from .typing import CDStatus, FileDescriptorOrPath
+from .typing import CDStatus, FileDescriptorOrPath, StrPath
 
 __all__ = ('IS_LINUX', 'add_cdda_times', 'chunks', 'context_os_open', 'hexstr2bytes',
            'hexstr2bytes_generator', 'wait_for_disc', 'where_from')
@@ -41,7 +45,7 @@ def hexstr2bytes(s: str) -> bytes:
     return bytes(hexstr2bytes_generator(s))
 
 
-@contextmanager
+@contextlib.contextmanager
 def context_os_open(path: str,
                     flags: int,
                     mode: int = 511,
@@ -94,3 +98,34 @@ def add_cdda_times(times: Iterable[str] | None) -> str | None:
     if minutes > MAX_MINUTES or seconds > (MAX_SECONDS - 1) or frames > MAX_FRAMES:
         return None
     return f'{trunc(minutes):02d}:{trunc(seconds):02d}:{trunc(frames):02d}'
+
+
+def unpack_0day(path: StrPath, *, remove_diz: bool = True) -> None:
+    """Unpack RAR files from 0day zip file sets.
+    
+    Parameters
+    ----------
+    path : str
+        Path where zip files are located.
+    remove_diz : bool
+        Remove any files matching `*.diz` glob (not case-sensitive). Defaults to ``True``.
+    """
+    path = Path(path)
+    with contextlib.chdir(path):
+        for zip_file in path.glob('*.zip'):
+            with ZipFile(zip_file) as z:
+                z.extractall()
+            zip_file.unlink()
+        if remove_diz:
+            for diz in path.glob('*.diz', case_sensitive=False):
+                diz.unlink()
+        rars = list(path.glob('*.rar'))
+        with Path(re.sub(r'(?:\.part\d+)?\.r(?:[0-9][0-9]|ar)$', '.sfv',
+                         rars[0].name.lower())).open('w+', encoding='utf-8') as f:
+            f.write(f'; {datetime.now(tz=UTC).astimezone()}\n')
+            for rar in sorted(
+                    path.glob('*.part*.rar' if any(
+                        re.search(r'\.part[0-9]{,3}\.rar$', str(r), re.IGNORECASE)
+                        for r in rars) else '*.[rstuvwxyz][0-9a][0-9r]',
+                              case_sensitive=False)):
+                f.write(f'{rar.name} {crc32(rar.read_bytes()):08X}\n')

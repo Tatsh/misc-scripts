@@ -360,6 +360,7 @@ roboto
 rockridge
 ropeproject
 rstrip
+rstuvwxyz
 safemv
 samplerate
 scandir

@@ -9,7 +9,7 @@ import click
 from .adp import calculate_salary
 from .string import is_ascii, underscorize
 from .typing import DecodeErrorsOption, INCITS38Code
-from .utils import TIMES_RE, add_cdda_times, wait_for_disc, where_from
+from .utils import TIMES_RE, add_cdda_times, unpack_0day, wait_for_disc, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 
@@ -118,3 +118,14 @@ def urldecode_main(file: TextIO,
 def underscorize_main(file: TextIO) -> None:
     for line in file:
         click.echo(underscorize(line.strip()))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('dirs',
+                nargs=-1,
+                metavar='DIR',
+                type=click.Path(exists=True, dir_okay=True, file_okay=False))
+def unpack_0day_main(dirs: Sequence[str]) -> None:
+    """Unpack RAR files from 0day zip file sets."""
+    for path in dirs:
+        unpack_0day(path)
