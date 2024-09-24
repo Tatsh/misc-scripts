@@ -1,9 +1,12 @@
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 from functools import cache
 import os
 import re
 
-__all__ = ('is_ascii', 'strip_ansi', 'strip_ansi_if_no_colors', 'underscorize')
+from .itertools import chunks
+
+__all__ = ('hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'strip_ansi',
+           'strip_ansi_if_no_colors', 'underscorize')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -34,3 +37,12 @@ def underscorize(s: str) -> str:
 def is_ascii(s: Sequence[str]) -> bool:
     """Check if a string consists of only ASCII characters."""
     return len(s) == len(''.join(y for y in s if ord(y) < ORD_MAX))
+
+
+def hexstr2bytes_generator(s: str) -> Iterator[int]:
+    for hex_num in chunks(s, 2):
+        yield int(hex_num, 16)
+
+
+def hexstr2bytes(s: str) -> bytes:
+    return bytes(hexstr2bytes_generator(s))
