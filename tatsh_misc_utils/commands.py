@@ -15,7 +15,14 @@ from .gentoo import (
 )
 from .string import is_ascii, underscorize
 from .typing import DecodeErrorsOption, INCITS38Code
-from .utils import TIMES_RE, add_cdda_times, unpack_0day, wait_for_disc, where_from
+from .utils import (
+    TIMES_RE,
+    add_cdda_times,
+    generate_html_dir_tree,
+    unpack_0day,
+    wait_for_disc,
+    where_from,
+)
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 
@@ -163,3 +170,18 @@ def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
     for item in clean_old_kernels_and_modules(path, modules_path, active_kernel_name):
         if not quiet:
             click.echo(item)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('path', type=click.Path(exists=True, dir_okay=True, file_okay=False), default='.')
+@click.option('-d', '--depth', default=2, help='Maximum depth.', metavar='DEPTH')
+@click.option('-f', '--follow-symlinks', is_flag=True, help='Follow symbolic links.')
+@click.option('-o', '--output-file', type=click.File('w'), default=sys.stdout, help='Output file.')
+def generate_html_dir_tree_main(path: str,
+                                *,
+                                output_file: TextIO,
+                                depth: int = 2,
+                                follow_symlinks: bool = False) -> None:
+    """Generate a HTML directory listing."""
+    click.echo(generate_html_dir_tree(path, follow_symlinks=follow_symlinks, depth=depth),
+               output_file)

@@ -178,6 +178,7 @@ hexstr
 hicolor
 hkcu
 htmlcov
+htmltree
 httponly
 hwaccel
 hwdownload
