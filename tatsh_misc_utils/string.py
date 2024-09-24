@@ -5,6 +5,7 @@ import os
 import re
 
 from .itertools import chunks
+from .system import IS_WINDOWS
 from .typing import StrPath
 
 __all__ = ('hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'strip_ansi',
@@ -51,6 +52,8 @@ def hexstr2bytes(s: str) -> bytes:
 
 
 def unix_path_to_wine(path: StrPath) -> str:
+    if IS_WINDOWS:
+        return str(path)
     try:
         path = Path(path).resolve(strict=True)
     except FileNotFoundError:

@@ -8,6 +8,7 @@ import subprocess as sp
 import typing
 
 from .string import unix_path_to_wine
+from .system import IS_WINDOWS
 from .typing import StrPath, UNIXStrPath, contains_type_path_like_str
 
 __all__ = ('NOT_ENOUGH_ARGUMENTS_EXIT_CODE', 'BatchOptions', 'BootOptions', 'DirOptions',
@@ -15,7 +16,7 @@ __all__ = ('NOT_ENOUGH_ARGUMENTS_EXIT_CODE', 'BatchOptions', 'BootOptions', 'Dir
            'SettingsOptions', 'UNIXStrPath', 'run_ultraiso')
 
 DEFAULT_WINE_PREFIX = Path.home() / '.local/share/wineprefixes/ultraiso'
-MIN_ARGUMENTS = 4
+MIN_ARGUMENTS = 4 if not IS_WINDOWS else 3
 NOT_ENOUGH_ARGUMENTS_EXIT_CODE = 99
 log = logging.getLogger(__name__)
 
@@ -126,9 +127,10 @@ class OperationOptions(TypedDict, total=False):
     """Create a list of files and directores in an ISO image."""
 
 
-def get_ultraiso_path(prefix: StrPath) -> UNIXStrPath | None:
-    for exe in (Path(prefix) / f'drive_c/Program Files{x}/UltraISO/UltraISO.exe'
-                for x in ('', ' (x86)')):
+def get_ultraiso_path(prefix: StrPath) -> StrPath | None:
+    program_files_paths = [f'Program Files{x}/UltraISO/UltraISO.exe' for x in ('', ' (x86)')]
+    prefix = Path(prefix) / 'drive_c' if not IS_WINDOWS else Path('C:/')
+    for exe in (prefix / x for x in program_files_paths):
         if exe.exists():
             return exe
     return None
@@ -160,17 +162,22 @@ def run_ultraiso(
 
     Despite always passing ``-silent`` to the application, windows may still appear.
 
-    For any option taking a file path, only pass UNIX file paths. They will be converted as needed.
+    On non-Windows, for any option taking a file path, only pass UNIX file paths. They will be
+    converted as needed.
     """
     if (actual_exe_path := get_ultraiso_path(prefix)) is None:
         raise FileNotFoundError
-    env = {'WINEPREFIX': str(prefix), 'HOME': os.environ['HOME']}
-    if 'DISPLAY' not in os.environ or 'XAUTHORITY' not in os.environ:
-        log.warning('UltraISO.exe will likely fail to run since DISPLAY or XAUTHORITY are not in '
-                    'the environment.')
-    env['DISPLAY'] = os.environ['DISPLAY']
-    env['XAUTHORITY'] = os.environ['XAUTHORITY']
-    sp_args: list[str] = ['wine', str(actual_exe_path), '-silent']
+    env = {}
+    if not IS_WINDOWS:
+        env = {'WINEPREFIX': str(prefix), 'HOME': os.environ['HOME']}
+        if 'DISPLAY' not in os.environ or 'XAUTHORITY' not in os.environ:
+            log.warning(
+                'UltraISO.exe will likely fail to run since DISPLAY or XAUTHORITY are not in '
+                'the environment.')
+        env['DISPLAY'] = os.environ.get('DISPLAY', '')
+        env['XAUTHORITY'] = os.environ.get('XAUTHORITY', '')
+    sp_args: list[str] = ['wine'] if not IS_WINDOWS else []
+    sp_args += [str(actual_exe_path), '-silent']
     for key, filename in (('-cmd', cmd), ('-in', input), ('-out', output)):
         if filename:
             assert_is_file(filename)
@@ -196,15 +203,18 @@ def run_ultraiso(
     if len(sp_args) < MIN_ARGUMENTS:
         log.error('Not enough arguments.')
         return NOT_ENOUGH_ARGUMENTS_EXIT_CODE, ''
-    log.debug('Command: env %s %s', quote(f'WINEPREFIX={prefix}'), ' '.join(
-        quote(x) for x in sp_args))
+    quoted_args = ' '.join(quote(x) for x in sp_args)
+    if not IS_WINDOWS:
+        log.debug('Command: env %s %s', quote(f'WINEPREFIX={prefix}'), quoted_args)
+    else:
+        log.debug('Command: %s', quoted_args)
     process = sp.run(sp_args, capture_output=True, env=env, text=True, check=False)
     stderr = process.stderr.strip()
     if process.returncode != 0 and stderr:
         log.error('stderr output:')
         for line in stderr.splitlines():
-            if ('winemenubuilder.exe' in line or 'fixme:' in line
-                    or 'wine: using fast synchronization.' in line):
+            if (not IS_WINDOWS and ('winemenubuilder.exe' in line or 'fixme:' in line
+                                    or 'wine: using fast synchronization.' in line)):
                 continue
             log.error(' -> %s', line)
             return process.returncode, ''

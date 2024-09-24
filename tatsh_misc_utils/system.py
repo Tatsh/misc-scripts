@@ -1,13 +1,14 @@
 from time import sleep
 import fcntl
 import os
-import platform
+import sys
 
 from .io import context_os_open
 from .typing import CDStatus
 
 CDROM_DRIVE_STATUS = 0x5326
-IS_LINUX = platform.uname().system == 'Linux'
+IS_LINUX = sys.platform == 'linux'
+IS_WINDOWS = sys.platform == 'win32' or sys.platform == 'cygwin'
 
 __all__ = ('IS_LINUX', 'wait_for_disc')
 

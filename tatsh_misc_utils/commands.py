@@ -337,7 +337,11 @@ def ultraiso_main(ahide: str | None = None,
                   udf: bool = False,
                   udfdvd: bool = False,
                   vernum: bool = False) -> None:
-    """CLI interface to UltraISO which runs via Wine."""
+    """
+    CLI interface to UltraISO.
+    
+    On non-Windows, runs UltraISO via Wine.
+    """
     kwargs = {'prefix': prefix} if prefix else {}
     logging.basicConfig(level=logging.ERROR)
     ret, err = run_ultraiso(add_dirs=dirs or [],
