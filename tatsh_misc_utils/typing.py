@@ -1,9 +1,11 @@
 from enum import IntEnum
 from os import PathLike
-from typing import Literal
+from typing import Annotated, Any, Literal
+import os
+import typing
 
 __all__ = ('CDStatus', 'DecodeErrorsOption', 'FileDescriptorOrPath', 'INCITS38Code',
-           'StrOrBytesPath', 'StrPath')
+           'StrOrBytesPath', 'StrPath', 'UNIXStrPath', 'contains_type_path_like_str')
 
 DecodeErrorsOption = Literal['ignore', 'replace', 'strict']
 INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'FM', 'GA',
@@ -15,6 +17,7 @@ StrOrBytesPath = str | bytes | PathLike[str] | PathLike[bytes]
 StrPath = str | PathLike[str]
 """String or ``PathLike[str]``."""
 FileDescriptorOrPath = int | StrOrBytesPath
+UNIXStrPath = Annotated[StrPath, 'unix']
 
 
 class CDStatus(IntEnum):
@@ -23,3 +26,7 @@ class CDStatus(IntEnum):
     NO_DISC = 1
     NO_INFO = 0
     TRAY_OPEN = 2
+
+
+def contains_type_path_like_str(type_hints: Any) -> bool:
+    return os.PathLike[str] in typing.get_args(type_hints)

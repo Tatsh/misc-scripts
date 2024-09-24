@@ -1,12 +1,14 @@
 from collections.abc import Iterator, Sequence
 from functools import cache
+from pathlib import Path
 import os
 import re
 
 from .itertools import chunks
+from .typing import StrPath
 
 __all__ = ('hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'strip_ansi',
-           'strip_ansi_if_no_colors', 'underscorize')
+           'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -46,3 +48,11 @@ def hexstr2bytes_generator(s: str) -> Iterator[int]:
 
 def hexstr2bytes(s: str) -> bytes:
     return bytes(hexstr2bytes_generator(s))
+
+
+def unix_path_to_wine(path: StrPath) -> str:
+    try:
+        path = Path(path).resolve(strict=True)
+    except FileNotFoundError:
+        path = Path.cwd() / path
+    return f'Z:{path}'.replace('/', '\\')

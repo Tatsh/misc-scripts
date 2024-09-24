@@ -78,6 +78,7 @@ clean-old-kernels-modules = "tatsh_misc_utils.commands:clean_old_kernels_and_mod
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
 netloc = "tatsh_misc_utils.commands:urldecode_main"
+ultraiso = "tatsh_misc_utils.commands:ultraiso_main"
 underscorize = "tatsh_misc_utils.commands:underscorize_main"
 unpack-0day = "tatsh_misc_utils.commands:unpack_0day_main"
 urldecode = "tatsh_misc_utils.commands:urldecode_main"
