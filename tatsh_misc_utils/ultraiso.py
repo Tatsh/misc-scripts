@@ -234,7 +234,8 @@ def run_ultraiso(
             'volset': volset,
             'compress': compress,
             'encrypt': encrypt,
-            'split': split
+            'split': split,
+            'pn': pn
     }.items() if i is not None):
         sp_args += [f'-{k}', str(i)]
     if len(sp_args) < MIN_ARGUMENTS:

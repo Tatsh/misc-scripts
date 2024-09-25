@@ -43,8 +43,8 @@ def generate_html_dir_tree(start_dir: StrPath,
                 class_ = 'file' if not isd else 'dir'
                 slash = '' if not isd else '/'
                 yield (
-                    f'<li class="{class_} mui--text-dark mui--text-body1"><a class="mui--text-dark" '
-                    f'href="./{entry.path}"><code>{escape(entry.name)}{slash}</code></a></li>')
+                    f'<li class="{class_} mui--text-dark mui--text-body1"><a class="mui--text-dark"'
+                    f' href="./{entry.path}"><code>{escape(entry.name)}{slash}</code></a></li>')
 
     start_dir = Path(start_dir).resolve(strict=True)
     with contextlib.chdir(start_dir):
