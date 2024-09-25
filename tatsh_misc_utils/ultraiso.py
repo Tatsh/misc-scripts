@@ -8,7 +8,7 @@ import subprocess as sp
 
 from .string import unix_path_to_wine
 from .system import IS_WINDOWS
-from .typing import StrPath, StrPathMustExist, UNIXStrPath
+from .typing import StrPath, StrPathMustExist
 
 __all__ = ('run_ultraiso',)
 
@@ -24,10 +24,6 @@ def get_ultraiso_path(prefix: StrPath) -> StrPath | None:
         if exe.exists():
             return exe
     return None
-
-
-def assert_is_file(path: UNIXStrPath) -> None:
-    assert Path(path).is_file()
 
 
 class InsufficientArguments(Exception):
@@ -98,7 +94,8 @@ def run_ultraiso(
     add_files : Iterable[StrPath] | None
         Files to add.
     cmd : StrPathMustExist | None
-        File to read command line arguments from.
+        File to read command line arguments from. If this argument is present and not ``None``, all
+        other arguments are ignored.
     appid : str | None
         Application ID.    
     preparer : str | None
@@ -183,61 +180,63 @@ def run_ultraiso(
         env['XAUTHORITY'] = os.environ.get('XAUTHORITY', '')
     sp_args: list[str] = ['wine'] if not IS_WINDOWS else []
     sp_args += [str(actual_exe_path), '-silent']
-    for key, filename in (('-cmd', cmd), ('-in', input), ('-out', output)):
-        if filename:
-            assert_is_file(filename)
-            sp_args += [key, unix_path_to_wine(filename)]
-    for file in (add_files or []):
-        sp_args += ['-file', unix_path_to_wine(file)]
-    for dir_ in (add_dirs or []):
-        sp_args += ['-directory', str(dir_)]
-    for k in (k for k, v in {
-            'bootinfotable': bootinfotable,
-            'hfs': hfs,
-            'ilong': ilong,
-            'imax': imax,
-            'jlong': jlong,
-            'joliet': joliet,
-            'lowercase': lowercase,
-            'optimize': optimize,
-            'rockridge': rockridge,
-            'udf': udf,
-            'udfdvd': udfdvd,
-            'vernum': vernum
-    }.items() if v):
-        sp_args += [f'-{k}']
-    for k, v in ((k, v) for k, v in {
-            'bootfile': bootfile,
-            'bin2iso': bin2iso,
-            'dmg2iso': dmg2iso,
-            'bin2isz': bin2isz
-    }.items() if v is not None):
-        sp_args += [f'-{k}', unix_path_to_wine(v)]
-    for k, v in ((k, v) for k, v in {
-            'appid': appid,
-            'preparer': preparer,
-            'publisher': publisher,
-            'sysid': sysid,
-            'volume': volume,
-            'chdir': chdir,
-            'newdir': newdir,
-            'rmdir': rmdir,
-            'ahide': ahide,
-            'hide': hide,
-            'password': password,
-            'extract': extract,
-            'get': get,
-            'list': list_,
-    }.items() if v is not None):
-        sp_args += [f'-{k}', str(v)]
-    for k, i in ((k, i) for k, i in {
-            'volset': volset,
-            'compress': compress,
-            'encrypt': encrypt,
-            'split': split,
-            'pn': pn
-    }.items() if i is not None):
-        sp_args += [f'-{k}', str(i)]
+    if cmd:
+        sp_args += ['-cmd', unix_path_to_wine(cmd)]
+    else:
+        for key, filename in (('-in', input), ('-out', output)):
+            if filename:
+                sp_args += [key, unix_path_to_wine(filename)]
+        for file in (add_files or []):
+            sp_args += ['-file', unix_path_to_wine(file)]
+        for dir_ in (add_dirs or []):
+            sp_args += ['-directory', str(dir_)]
+        for k in (k for k, v in {
+                'bootinfotable': bootinfotable,
+                'hfs': hfs,
+                'ilong': ilong,
+                'imax': imax,
+                'jlong': jlong,
+                'joliet': joliet,
+                'lowercase': lowercase,
+                'optimize': optimize,
+                'rockridge': rockridge,
+                'udf': udf,
+                'udfdvd': udfdvd,
+                'vernum': vernum
+        }.items() if v):
+            sp_args += [f'-{k}']
+        for k, v in ((k, v) for k, v in {
+                'bootfile': bootfile,
+                'bin2iso': bin2iso,
+                'dmg2iso': dmg2iso,
+                'bin2isz': bin2isz
+        }.items() if v is not None):
+            sp_args += [f'-{k}', unix_path_to_wine(v)]
+        for k, v in ((k, v) for k, v in {
+                'appid': appid,
+                'preparer': preparer,
+                'publisher': publisher,
+                'sysid': sysid,
+                'volume': volume,
+                'chdir': chdir,
+                'newdir': newdir,
+                'rmdir': rmdir,
+                'ahide': ahide,
+                'hide': hide,
+                'password': password,
+                'extract': extract,
+                'get': get,
+                'list': list_
+        }.items() if v is not None):
+            sp_args += [f'-{k}', str(v)]
+        for k, i in ((k, i) for k, i in {
+                'volset': volset,
+                'compress': compress,
+                'encrypt': encrypt,
+                'split': split,
+                'pn': pn
+        }.items() if i is not None):
+            sp_args += [f'-{k}', str(i)]
     if len(sp_args) < MIN_ARGUMENTS:
         raise InsufficientArguments
     quoted_args = ' '.join(quote(x) for x in sp_args)
