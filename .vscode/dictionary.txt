@@ -428,6 +428,7 @@ umpv
 underscorize
 undos
 unidecode
+uninhibit
 unrar
 urldecode
 urljoin

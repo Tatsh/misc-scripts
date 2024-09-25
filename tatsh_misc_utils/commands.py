@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from pathlib import Path
+from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
 import logging
@@ -17,7 +18,7 @@ from .gentoo import (
 )
 from .io import unpack_0day
 from .string import is_ascii, underscorize
-from .system import IS_WINDOWS, wait_for_disc
+from .system import IS_WINDOWS, inhibit_notifications, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
     InsufficientArguments,
@@ -382,3 +383,25 @@ def ultraiso_main(ahide: str | None = None,
                      **kwargs)
     except (InsufficientArguments, sp.CalledProcessError) as e:
         raise click.Abort from e
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug logging.')
+@click.option('-t',
+              '--sleep-time',
+              default=0,
+              type=int,
+              help='Sleep time in seconds to inhibit notifications for.')
+def inhibit_notifications_main(sleep_time: int = 60, *, debug: bool = False) -> None:
+    """
+    Disable notifications state for a time.
+
+    On exit, notifications will be enabled. This command does nothing if notifications are already
+    disabled.
+
+    This is an alternative to ``kde-inhibit``. Unlike ``kde-inhibit``, this tool may only sleep.
+    A sleep time of ``0`` effectively does nothing.
+    """
+    logging.basicConfig(level=logging.ERROR if not debug else logging.DEBUG)
+    if inhibit_notifications():
+        sleep(sleep_time)
