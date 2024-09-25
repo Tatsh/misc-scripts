@@ -3,11 +3,13 @@ from pathlib import Path
 from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
+import json
 import logging
 import subprocess as sp
 import sys
 
 import click
+import yaml
 
 from .adp import calculate_salary
 from .gentoo import (
@@ -405,3 +407,12 @@ def inhibit_notifications_main(sleep_time: int = 60, *, debug: bool = False) -> 
     logging.basicConfig(level=logging.ERROR if not debug else logging.DEBUG)
     if inhibit_notifications():
         sleep(sleep_time)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+@click.option('-d', '--default-flow-style', is_flag=True, help='Enable compact flow style.')
+@click.option('-i', '--indent', default=2, type=click.IntRange(2, 9), help='Indent width (spaces).')
+def json2yaml_main(file: TextIO, indent: int = 2, *, default_flow_style: bool = False) -> None:
+    """Convert JSON to YAML."""
+    click.echo(yaml.dump(json.load(file), indent=indent, default_flow_style=default_flow_style))
