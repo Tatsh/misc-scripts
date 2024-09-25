@@ -18,6 +18,7 @@ StrPath = str | PathLike[str]
 """String or ``PathLike[str]``."""
 FileDescriptorOrPath = int | StrOrBytesPath
 UNIXStrPath = Annotated[StrPath, 'unix']
+StrPathMustExist = Annotated[StrPath, 'must_exist']
 
 
 class CDStatus(IntEnum):

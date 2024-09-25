@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
 import logging
+import subprocess as sp
 import sys
 
 import click
@@ -16,19 +17,10 @@ from .gentoo import (
 )
 from .io import unpack_0day
 from .string import is_ascii, underscorize
-from .system import wait_for_disc
+from .system import IS_WINDOWS, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
-    NOT_ENOUGH_ARGUMENTS_EXIT_CODE,
-    BatchOptions,
-    BootOptions,
-    DirOptions,
-    FSOptions,
-    HideOptions,
-    ISZOptions,
-    InfoOptions,
-    OperationOptions,
-    SettingsOptions,
+    InsufficientArguments,
     run_ultraiso,
 )
 from .utils import TIMES_RE, add_cdda_times
@@ -266,7 +258,7 @@ def generate_html_dir_tree_main(path: str,
               help='Set ISZ password',
               prompt_required=True,
               hide_input=True)
-@click.option('--split', metavar='SIZE', help='Set segment size in byte')
+@click.option('--split', metavar='SIZE', help='Set segment size in bytes', type=int)
 @click.option('--list',
               'list_',
               metavar='FILENAME',
@@ -295,6 +287,7 @@ def generate_html_dir_tree_main(path: str,
 @click.option('--udfdvd',
               is_flag=True,
               help='Create UDF DVD image (this option will overwrite all other volume settings)')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug logging.')
 def ultraiso_main(ahide: str | None = None,
                   appid: str | None = None,
                   bin2iso: str | None = None,
@@ -336,54 +329,56 @@ def ultraiso_main(ahide: str | None = None,
                   rockridge: bool = False,
                   udf: bool = False,
                   udfdvd: bool = False,
-                  vernum: bool = False) -> None:
+                  vernum: bool = False,
+                  debug: bool = False) -> None:
     """
     CLI interface to UltraISO.
     
     On non-Windows, runs UltraISO via Wine.
     """
-    kwargs = {'prefix': prefix} if prefix else {}
-    logging.basicConfig(level=logging.ERROR)
-    ret, err = run_ultraiso(add_dirs=dirs or [],
-                            add_files=files or [],
-                            batch=BatchOptions(bin2iso=bin2iso, dmg2iso=dmg2iso),
-                            boot=BootOptions(bootfile=bootfile,
-                                             bootinfotable=bootinfotable,
-                                             optimize=optimize),
-                            cmd=cmd,
-                            dir=DirOptions(chdir=chdir, newdir=newdir, rmdir=rmdir),
-                            fs=FSOptions(hfs=hfs,
-                                         jlong=jlong,
-                                         joliet=joliet,
-                                         rockridge=rockridge,
-                                         udf=udf,
-                                         udfdvd=udfdvd),
-                            hide=HideOptions(ahide=ahide, hide=hide, pn=cast(Any, pn)),
-                            info=InfoOptions(appid=appid,
-                                             preparer=preparer,
-                                             publisher=publisher,
-                                             sysid=sysid,
-                                             volset=volset,
-                                             volume=volume),
-                            input=input_,
-                            isz=ISZOptions(bin2isz=bin2isz,
-                                           compress=cast(Any, compress),
-                                           encrypt=cast(Any, encrypt),
-                                           password=password,
-                                           split=split),
-                            output=output,
-                            ops=OperationOptions(extract=extract, get=get, list=list_),
-                            settings=SettingsOptions(ilong=ilong,
-                                                     imax=imax,
-                                                     lowercase=lowercase,
-                                                     vernum=vernum),
-                            **kwargs)
-    if ret != 0:
-        if ret == NOT_ENOUGH_ARGUMENTS_EXIT_CODE:
-            ctx = click.get_current_context()
-            click.echo(ctx.get_help())
-            ctx.exit()
-        else:
-            if err:
-                click.echo(err, file=sys.stderr)
-            raise click.Abort
+    kwargs = {'prefix': prefix} if prefix and not IS_WINDOWS else {}
+    logging.basicConfig(level=logging.ERROR if not debug else logging.DEBUG)
+    try:
+        run_ultraiso(add_dirs=dirs or [],
+                     add_files=files or [],
+                     bin2iso=bin2iso,
+                     dmg2iso=dmg2iso,
+                     bootfile=bootfile,
+                     bootinfotable=bootinfotable,
+                     optimize=optimize,
+                     cmd=cmd,
+                     chdir=chdir,
+                     newdir=newdir,
+                     rmdir=rmdir,
+                     hfs=hfs,
+                     jlong=jlong,
+                     joliet=joliet,
+                     rockridge=rockridge,
+                     udf=udf,
+                     udfdvd=udfdvd,
+                     ahide=ahide,
+                     hide=hide,
+                     pn=cast(Any, pn),
+                     appid=appid,
+                     preparer=preparer,
+                     publisher=publisher,
+                     sysid=sysid,
+                     volset=volset,
+                     volume=volume,
+                     input=input_,
+                     bin2isz=bin2isz,
+                     compress=cast(Any, compress),
+                     encrypt=cast(Any, encrypt),
+                     password=password,
+                     split=split,
+                     output=output,
+                     extract=extract,
+                     get=get,
+                     list_=list_,
+                     ilong=ilong,
+                     imax=imax,
+                     lowercase=lowercase,
+                     vernum=vernum,
+                     **kwargs)
+    except (InsufficientArguments, sp.CalledProcessError) as e:
+        raise click.Abort from e
