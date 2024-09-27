@@ -1,3 +1,4 @@
+"""Uncategorised utilities."""
 from collections.abc import Iterable
 from math import trunc
 import re

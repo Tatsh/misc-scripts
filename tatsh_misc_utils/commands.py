@@ -7,9 +7,12 @@ from urllib.parse import unquote_plus, urlparse
 import json
 import logging
 import plistlib
+import re
 import subprocess as sp
 import sys
+import webbrowser
 
+from git import Repo
 import click
 import yaml
 
@@ -473,3 +476,20 @@ def pl2json_main(file: BytesIO) -> None:
     except TypeError as e:
         click.echo('A non-JSON serialisable item is present in the file.', err=True)
         raise click.Abort from e
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('name', default='origin')
+def git_open_main(name: str = 'origin', username: str = 'git') -> None:
+    """Open assumed repository web representation (GitHub, GitLab, etc) based on the origin."""
+    url = Repo(search_parent_directories=True).remote(name).url
+    if re.search(r'^https?://', url):
+        webbrowser.open(url)
+        return
+    webbrowser.open(
+        re.sub(
+            r'\.git$', '',
+            re.sub(r'\.([a-z]+):',
+                   r'.\1/',
+                   re.sub(r'^(?:[a-z0-9A-Z]+@)?', 'https://', url, count=1),
+                   count=1)))
