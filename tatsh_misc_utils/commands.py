@@ -12,6 +12,7 @@ import subprocess as sp
 import sys
 import webbrowser
 
+from binaryornot.check import is_binary
 from git import Repo
 import click
 import yaml
@@ -493,3 +494,18 @@ def git_open_main(name: str = 'origin', username: str = 'git') -> None:
                    r'.\1/',
                    re.sub(r'^(?:[a-z0-9A-Z]+@)?', 'https://', url, count=1),
                    count=1)))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.Path(exists=True, dir_okay=False, resolve_path=True))
+def is_bin_main(file: str) -> None:
+    """
+    Check if a file has binary contents.
+
+    For this utility, 0 byte files do not count as binary.
+
+    Exit code 0 means the file probably contains binary content.
+    """
+    if Path(file).stat().st_size != 0 and is_binary(file):
+        return
+    raise click.exceptions.Exit(1)

@@ -37,6 +37,7 @@ bi
 biha
 bihi
 bika
+binaryornot
 bluetoothctl
 bootfile
 bootinfotable
@@ -202,6 +203,7 @@ inul
 ioctl
 is
 isatty
+isbin
 isdir
 isdst
 isfile
