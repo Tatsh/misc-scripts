@@ -5,6 +5,7 @@ from typing import cast
 import os
 import re
 
+from yt_dlp.utils import sanitize_filename
 import requests
 
 from .itertools import chunks
@@ -12,8 +13,8 @@ from .system import IS_WINDOWS
 from .typing import StrPath
 
 __all__ = ('generate_chrome_user_agent', 'get_latest_chrome_major_version', 'hexstr2bytes',
-           'hexstr2bytes_generator', 'is_ascii', 'strip_ansi', 'strip_ansi_if_no_colors',
-           'underscorize', 'unix_path_to_wine')
+           'hexstr2bytes_generator', 'is_ascii', 'sanitize', 'strip_ansi',
+           'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -78,3 +79,28 @@ def get_latest_chrome_major_version() -> str:
 def generate_chrome_user_agent(os: str = 'Windows NT 10.0; Win64; x64') -> str:
     return (f'Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) '
             f'Chrome/{get_latest_chrome_major_version()}.0.0.0 Safari/537.36')
+
+
+@lru_cache
+def sanitize(s: str, *, restricted: bool = True) -> str:
+    """
+    Transform a string to a 'sanitised' form.
+    
+    Parameters
+    ----------
+    s : str
+        String to transform.
+
+    restricted : bool
+        If ``True``, use a restricted form. This is suitable for filenames on Windows.
+
+    Returns
+    -------
+    str
+        Returns a transformed string, which will be at minimum ``'_'``.
+    """
+    return re.sub(
+        r'([a-z0-9])\-s\-', r'\1s-',
+        re.sub(r'\.-', '-',
+               re.sub(r'[_\-]+', '-',
+                      sanitize_filename(s, restricted=restricted).lower())))

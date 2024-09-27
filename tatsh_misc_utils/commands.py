@@ -19,7 +19,7 @@ from .gentoo import (
     clean_old_kernels_and_modules,
 )
 from .io import unpack_0day
-from .string import is_ascii, underscorize
+from .string import is_ascii, sanitize, underscorize
 from .system import IS_WINDOWS, inhibit_notifications, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
@@ -416,3 +416,15 @@ def inhibit_notifications_main(sleep_time: int = 60, *, debug: bool = False) -> 
 def json2yaml_main(file: TextIO, indent: int = 2, *, default_flow_style: bool = False) -> None:
     """Convert JSON to YAML."""
     click.echo(yaml.dump(json.load(file), indent=indent, default_flow_style=default_flow_style))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+@click.option('-R', '--no-restricted', is_flag=True, help='Do not use restricted character set.')
+def sanitize_main(file: TextIO, *, no_restricted: bool = False) -> None:
+    """
+    Transform a string to a 'sanitised' form.
+    
+    By default, a restricted character set safe for Windows filesnames is used. Disable with -R.
+    """
+    click.echo(sanitize(file.read(), restricted=not no_restricted))
