@@ -435,3 +435,11 @@ def sanitize_main(file: TextIO, *, no_restricted: bool = False) -> None:
 def unix2wine_main(filepath: str) -> None:
     """Convert a UNIX path to an absolute Wine path."""
     click.echo(unix_path_to_wine(filepath))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+def trim_main(file: TextIO) -> None:
+    """Trim lines in file."""
+    for line in file:
+        click.echo(line.strip())
