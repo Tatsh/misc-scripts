@@ -2,7 +2,11 @@ from time import sleep
 import fcntl
 import logging
 import os
+import re
+import subprocess as sp
 import sys
+
+import pexpect
 
 from .io import context_os_open
 from .typing import CDStatus
@@ -98,3 +102,5 @@ def uninhibit_notifications() -> None:
     if _key is not None:
         _NOTIFICATIONS_BUS.UnInhibit(_key)
         _key = None
+
+

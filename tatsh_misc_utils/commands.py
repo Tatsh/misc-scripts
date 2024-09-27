@@ -18,6 +18,7 @@ import webbrowser
 from binaryornot.check import is_binary
 from git import Repo
 import click
+import pexpect
 import xdg.BaseDirectory
 import yaml
 
@@ -30,7 +31,7 @@ from .gentoo import (
 )
 from .io import unpack_0day
 from .string import is_ascii, is_url, sanitize, underscorize, unix_path_to_wine
-from .system import IS_WINDOWS, inhibit_notifications, wait_for_disc
+from .system import IS_LINUX, IS_WINDOWS, inhibit_notifications, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
     InsufficientArguments,
@@ -553,3 +554,51 @@ def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = F
         log.debug('Command: %s', ' '.join(quote(x) for x in args))
         sp.run(args, check=True)
     return 0
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True)
+def connect_g603_main(*, debug: bool = False) -> None:
+    """
+    Connect a G603 Bluetooth mouse, disconnecting/removing first if necessary.
+    
+    This is useful for connecting the mouse back when it randomly decides not to re-pair, and you
+    have no other mouse but you can get to your terminal.
+    """
+    if not IS_LINUX:
+        click.echo('Only Linux is supported.', err=True)
+        raise click.Abort
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    log = logging.getLogger(__name__)
+    log.debug('Looking for existing entry.')
+    g603_line_re = r'^Device ([^ ]+) G603$'
+    for line in sp.run(('bluetoothctl', 'devices'), check=True, capture_output=True,
+                       text=True).stdout.splitlines():
+        if re.match(g603_line_re, line):
+            mac = line.split()[1]
+            log.debug('Removing entry with MAC address %s.', mac)
+            sp.run(('bluetoothctl', 'remove', mac), check=True, capture_output=not debug)
+    click.echo('Put the mouse in pairing mode. Sleeping for 10 seconds.')
+    sleep(10)
+    log.debug('Starting scan in the background.')
+    bt = pexpect.spawn('bluetoothctl', encoding='utf-8')
+    if debug:
+        bt.logfile = sys.stdout
+    bt.expect('# ')
+    log.debug('Sleeping for 3 seconds.')
+    bt.sendline('scan on')
+    sleep(3)
+    log.debug('Looking for G603 in range.')
+    bt.sendline('devices')
+    bt.expect('# ')
+    bt.terminate()
+    try:
+        mac = next(
+            dev.group(1) for x in bt.read().splitlines() if (dev := re.match(g603_line_re, x)))
+    except StopIteration as e:
+        click.echo('G603 not found.', err=True)
+        raise click.Abort from e
+    click.echo(f'Pairing with {mac}.')
+    sp.run(('bluetoothctl', 'pair', mac), check=True, capture_output=not debug)
+    click.echo(f'Trusting {mac}.')
+    sp.run(('bluetoothctl', 'trust', mac), check=True, capture_output=not debug)
