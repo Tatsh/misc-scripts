@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import cast
 import os
 import re
+import string
 
 from yt_dlp.utils import sanitize_filename
 import requests
@@ -12,7 +13,7 @@ from .itertools import chunks
 from .typing import StrPath
 
 __all__ = ('generate_chrome_user_agent', 'get_latest_chrome_major_version', 'hexstr2bytes',
-           'hexstr2bytes_generator', 'is_ascii', 'sanitize', 'strip_ansi',
+           'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'strip_ansi',
            'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
 ORD_MAX = 128
@@ -118,3 +119,16 @@ def sanitize(s: str, *, restricted: bool = True) -> str:
         re.sub(r'\.-', '-',
                re.sub(r'[_\-]+', '-',
                       sanitize_filename(s, restricted=restricted).lower())))
+
+
+def is_url(filename: str) -> bool:
+    """
+    Detect if ``filename`` is a URL.
+    
+    This is the same method mpv uses to decide this.
+    """
+    parts = filename.split('://', 1)
+    if len(parts) < 2:  # noqa: PLR2004
+        return False
+    # protocol prefix has no special characters => it's a URL
+    return all(x in f'{string.ascii_letters}{string.digits}_' for x in parts[0])

@@ -1,13 +1,16 @@
 from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
+from shlex import quote, split
 from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
+import errno
 import json
 import logging
 import plistlib
 import re
+import socket
 import subprocess as sp
 import sys
 import webbrowser
@@ -15,6 +18,7 @@ import webbrowser
 from binaryornot.check import is_binary
 from git import Repo
 import click
+import xdg.BaseDirectory
 import yaml
 
 from .adp import calculate_salary
@@ -25,7 +29,7 @@ from .gentoo import (
     clean_old_kernels_and_modules,
 )
 from .io import unpack_0day
-from .string import is_ascii, sanitize, underscorize, unix_path_to_wine
+from .string import is_ascii, is_url, sanitize, underscorize, unix_path_to_wine
 from .system import IS_WINDOWS, inhibit_notifications, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
@@ -36,6 +40,7 @@ from .utils import TIMES_RE, add_cdda_times
 from .www import generate_html_dir_tree, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
+_T = TypeVar('_T', bound=str)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -65,9 +70,6 @@ def wait_for_disc_main(drive_path: str, wait_time: float = 1.0) -> None:
 def adp_main(hours: int = 160, pay_rate: float = 70.0, state: INCITS38Code = 'FL') -> None:
     """Calculate US salary."""
     click.echo(str(calculate_salary(hours=hours, pay_rate=pay_rate, state=state)))
-
-
-_T = TypeVar('_T', bound=str)
 
 
 class CDDATimeStringParamType(click.ParamType):
@@ -509,3 +511,45 @@ def is_bin_main(file: str) -> None:
     if Path(file).stat().st_size != 0 and is_binary(file):
         return
     raise click.exceptions.Exit(1)
+
+
+@click.command(context_settings={**CONTEXT_SETTINGS, 'auto_envvar_prefix': 'UMPV'})
+@click.option('-d', '--debug', is_flag=True)
+@click.option('--mpv-command', default='mpv', help='mpv command including arguments.')
+@click.argument('files', nargs=-1)
+def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = False) -> int:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    log = logging.getLogger(__name__)
+    fixed_files = ((p if is_url(p) else str(Path(p).resolve(strict=True))) for p in files)
+    socket_path = str(Path(xdg.BaseDirectory.xdg_state_home) / 'umpv-socket')
+    sock = None
+    socket_connected = False
+    try:
+        sock = socket.socket(socket.AF_UNIX)
+        sock.connect(socket_path)
+        socket_connected = True
+    except OSError as e:
+        if e.errno == errno.ECONNREFUSED:
+            log.debug('Socket refused connection')
+            sock = None  # abandoned socket
+        elif e.errno == errno.ENOENT:
+            log.debug('Socket does not exist')
+            sock = None  # does not exist
+        else:
+            log.exception('Socket errno: %d', e.errno)
+            raise
+    if sock and socket_connected:
+        # Unhandled race condition: what if mpv is terminating right now?
+        for f in fixed_files:
+            # escape: \ \n "
+            g = f.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            log.debug('Loading file "%s"', f)
+            sock.send(f'raw loadfile "{g}"\n'.encode())
+    else:
+        log.debug('Starting new mpv instance')
+        # Let mpv recreate socket if it does not already exist
+        args = (*split(mpv_command), *(() if debug else ('--no-terminal',)), '--force-window',
+                f'--input-ipc-server={socket_path}', '--', *fixed_files)
+        log.debug('Command: %s', ' '.join(quote(x) for x in args))
+        sp.run(args, check=True)
+    return 0
