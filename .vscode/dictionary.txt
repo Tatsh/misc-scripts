@@ -163,6 +163,7 @@ getopts
 getroot
 getxattr
 gifflags
+gitpython
 globbed
 globbing
 gnudb
