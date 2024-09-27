@@ -443,3 +443,15 @@ def trim_main(file: TextIO) -> None:
     """Trim lines in file."""
     for line in file:
         click.echo(line.strip())
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+def ucwords_main(file: TextIO) -> None:
+    """
+    Run Python ``str.title()`` for lines in file.
+    
+    Named after PHP's function.
+    """
+    for line in file:
+        click.echo(line.title(), nl=False)
