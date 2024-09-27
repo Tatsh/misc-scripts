@@ -19,7 +19,7 @@ from .gentoo import (
     clean_old_kernels_and_modules,
 )
 from .io import unpack_0day
-from .string import is_ascii, sanitize, underscorize
+from .string import is_ascii, sanitize, underscorize, unix_path_to_wine
 from .system import IS_WINDOWS, inhibit_notifications, wait_for_disc
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
@@ -428,3 +428,10 @@ def sanitize_main(file: TextIO, *, no_restricted: bool = False) -> None:
     By default, a restricted character set safe for Windows filesnames is used. Disable with -R.
     """
     click.echo(sanitize(file.read(), restricted=not no_restricted))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filepath')
+def unix2wine_main(filepath: str) -> None:
+    """Convert a UNIX path to an absolute Wine path."""
+    click.echo(unix_path_to_wine(filepath))

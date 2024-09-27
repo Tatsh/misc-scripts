@@ -6,7 +6,7 @@ import logging
 import os
 import subprocess as sp
 
-from .string import unix_path_to_wine
+from .string import unix_path_to_wine as base_unix_path_to_wine
 from .system import IS_WINDOWS
 from .typing import StrPath, StrPathMustExist
 
@@ -15,6 +15,12 @@ __all__ = ('run_ultraiso',)
 DEFAULT_WINE_PREFIX = Path.home() / '.local/share/wineprefixes/ultraiso'
 MIN_ARGUMENTS = 4 if not IS_WINDOWS else 3
 log = logging.getLogger(__name__)
+
+
+def unix_path_to_wine(s: StrPath) -> str:
+    if IS_WINDOWS:
+        return str(s)
+    return base_unix_path_to_wine(s)
 
 
 def get_ultraiso_path(prefix: StrPath) -> StrPath | None:

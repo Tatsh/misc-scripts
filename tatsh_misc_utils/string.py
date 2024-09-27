@@ -9,7 +9,6 @@ from yt_dlp.utils import sanitize_filename
 import requests
 
 from .itertools import chunks
-from .system import IS_WINDOWS
 from .typing import StrPath
 
 __all__ = ('generate_chrome_user_agent', 'get_latest_chrome_major_version', 'hexstr2bytes',
@@ -57,8 +56,23 @@ def hexstr2bytes(s: str) -> bytes:
 
 
 def unix_path_to_wine(path: StrPath) -> str:
-    if IS_WINDOWS:
-        return str(path)
+    """
+    Convert a UNIX path to an absolute Wine path.
+
+    If the path does not exist, the output will be the current path and the path passed in combined.
+
+    The output path will begin at letter ``Z:``. Other drive letters are not supported.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path to convert.
+
+    Returns
+    -------
+    str
+        Window-style Wine absolute path.
+    """
     try:
         path = Path(path).resolve(strict=True)
     except FileNotFoundError:
