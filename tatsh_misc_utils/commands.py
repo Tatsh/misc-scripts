@@ -1,10 +1,12 @@
 from collections.abc import Sequence
+from io import BytesIO
 from pathlib import Path
 from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
 import json
 import logging
+import plistlib
 import subprocess as sp
 import sys
 
@@ -455,3 +457,19 @@ def ucwords_main(file: TextIO) -> None:
     """
     for line in file:
         click.echo(line.title(), nl=False)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('rb'), default=sys.stdin)
+def pl2json_main(file: BytesIO) -> None:
+    """
+    Convert a Property List file to JSON.
+    
+    This command does not do any type conversions. This means files containing <data> objects will
+    not work.
+    """
+    try:
+        click.echo(json.dumps(plistlib.load(file), sort_keys=True, allow_nan=False, indent=2))
+    except TypeError as e:
+        click.echo('A non-JSON serialisable item is present in the file.', err=True)
+        raise click.Abort from e

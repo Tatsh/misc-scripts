@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-{ plutil -convert json -o - "$1" | jq -S .; } 2> /dev/null ||
-    plutil -convert xml1 -o - "$1"
