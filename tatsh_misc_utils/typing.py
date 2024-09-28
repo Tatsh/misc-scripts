@@ -1,11 +1,12 @@
 from enum import IntEnum
 from os import PathLike
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, TypeVar
 import os
 import typing
 
 __all__ = ('CDStatus', 'DecodeErrorsOption', 'FileDescriptorOrPath', 'INCITS38Code',
-           'StrOrBytesPath', 'StrPath', 'UNIXStrPath', 'contains_type_path_like_str')
+           'StrOrBytesPath', 'StrPath', 'UNIXStrPath', 'assert_not_none',
+           'contains_type_path_like_str')
 
 DecodeErrorsOption = Literal['ignore', 'replace', 'strict']
 INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'FM', 'GA',
@@ -19,6 +20,7 @@ StrPath = str | PathLike[str]
 FileDescriptorOrPath = int | StrOrBytesPath
 UNIXStrPath = Annotated[StrPath, 'unix']
 StrPathMustExist = Annotated[StrPath, 'must_exist']
+_T = TypeVar('_T')
 
 
 class CDStatus(IntEnum):
@@ -31,3 +33,13 @@ class CDStatus(IntEnum):
 
 def contains_type_path_like_str(type_hints: Any) -> bool:
     return os.PathLike[str] in typing.get_args(type_hints)
+
+
+def assert_not_none(var: _T | None) -> _T:
+    """
+    Assert the ``var`` is not None and return it.
+    
+    This will remove ``| None`` from type ``_T``.
+    """
+    assert var is not None
+    return var
