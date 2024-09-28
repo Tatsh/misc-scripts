@@ -10,7 +10,7 @@ from yt_dlp.utils import sanitize_filename
 import requests
 
 from .itertools import chunks
-from .typing import StrPath
+from .typing import StrPath, assert_not_none
 
 __all__ = ('generate_chrome_user_agent', 'get_latest_chrome_major_version', 'hexstr2bytes',
            'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'strip_ansi',
@@ -132,3 +132,27 @@ def is_url(filename: str) -> bool:
         return False
     # protocol prefix has no special characters => it's a URL
     return all(x in f'{string.ascii_letters}{string.digits}_' for x in parts[0])
+
+
+def add_unidecode_custom_replacement(find: str, replace: str) -> None:
+    """
+    Add a custom replacement to the Unidecode library.
+
+    Call this before calling `unidecode()`.
+    
+    Note: Unidecode is GPL-only which makes anything calling into this significantly also GPL. If
+    you do not intend to release GPL code, then you must use a different library such as
+    `text-unidecode <https://github.com/kmike/text-unidecode>`_.
+    """
+    from unidecode import Cache, unidecode  # noqa: PLC0415
+    unidecode(find)  # Force it to load the module
+    codepoint = ord(find)
+    section = codepoint >> 8
+    position = codepoint % 256
+    new_section = cast(list[str | None],
+                       (Cache[section] if isinstance(Cache[section], list) else
+                        (list(assert_not_none(Cache[section])) if Cache[section] is not None else
+                         [None for _ in range(position + 1)])))  # convert to mutable type
+    assert len(new_section) > position
+    new_section[position] = replace
+    Cache[section] = new_section
