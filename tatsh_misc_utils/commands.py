@@ -30,8 +30,14 @@ from .gentoo import (
     clean_old_kernels_and_modules,
 )
 from .io import unpack_0day
+from .media import supported_audio_input_formats
 from .string import is_ascii, is_url, sanitize, underscorize, unix_path_to_wine
-from .system import IS_LINUX, IS_WINDOWS, inhibit_notifications, wait_for_disc
+from .system import (
+    IS_LINUX,
+    IS_WINDOWS,
+    inhibit_notifications,
+    wait_for_disc,
+)
 from .typing import DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
     InsufficientArguments,
@@ -602,3 +608,20 @@ def connect_g603_main(*, debug: bool = False) -> None:
     sp.run(('bluetoothctl', 'pair', mac), check=True, capture_output=not debug)
     click.echo(f'Trusting {mac}.')
     sp.run(('bluetoothctl', 'trust', mac), check=True, capture_output=not debug)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.argument('device')
+def supported_audio_input_formats_main(device: str, *, debug: bool = False) -> None:
+    """Get supported input formats and sample rates by invoking ffmpeg."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    if not IS_LINUX:
+        click.echo('Only Linux is supported.', err=True)
+        raise click.Abort
+    try:
+        for format_, rate in supported_audio_input_formats(device):
+            click.echo(f'{format_} @ {rate}')
+    except OSError as e:
+        click.echo('Likely invalid device name.', err=True)
+        raise click.Abort from e
