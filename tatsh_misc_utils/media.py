@@ -57,13 +57,13 @@ def supported_audio_input_formats(
             p = sp.run(('ffmpeg', '-hide_banner', '-loglevel', 'info', '-f', 'alsa', '-acodec',
                         f'pcm_{format_}', '-ar', str(rate), '-i', input_device),
                        text=True,
-                       capture_output=not debug,
+                       capture_output=True,
                        check=False)
             all_output = p.stdout.strip() + p.stderr.strip()
             if 'Device or resource busy' in all_output or 'No such device' in all_output:
                 raise OSError
             log.debug('Output: %s', all_output)
-            if 'cannot set sample format 0x' in all_output or f'{rates} Hz' not in all_output:
+            if 'cannot set sample format 0x' in all_output or f'{rate} Hz' not in all_output:
                 continue
             ret.append((format_, rate))
     return tuple(ret)
