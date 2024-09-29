@@ -187,16 +187,12 @@ def add_info_json_to_media_file(path: StrPath,
         log.warning('JSON path not found.')
         return
     match path.suffix.lower()[1:]:
-        case 'flac':
+        case 'flac' | 'mp3' | 'opus':
             flac_mp3_add_json()
         case 'm4a' | 'm4b' | 'm4p' | 'm4r' | 'm4v' | 'mp4':
             mp4box_add_json()
         case 'mkv':
             mkvpropedit_add_json()
-        case 'mp3':
-            flac_mp3_add_json()
-        case 'opus':
-            flac_mp3_add_json()
         case _:
             return
     json_path.unlink()
