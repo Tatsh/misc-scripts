@@ -34,7 +34,7 @@ from .gentoo import (
 )
 from .git import convert_git_ssh_url_to_https, get_github_default_branch
 from .io import unpack_0day
-from .media import supported_audio_input_formats
+from .media import add_info_json_to_media_file, supported_audio_input_formats
 from .string import (
     is_ascii,
     is_url,
@@ -105,7 +105,7 @@ class CDDATimeStringParamType(click.ParamType):
 @click.argument('times', nargs=-1, type=CDDATimeStringParamType())
 def add_cdda_times_main(times: tuple[str, ...]) -> None:
     """Add CDDA timestamps together.
-    
+
     A CDDA timestamp is 3 zero-prefixed integers MM:SS:FF, separated by colons. FF is the number of
     frames out of 75.
     """
@@ -194,7 +194,7 @@ def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
                                        quiet: bool = False) -> None:
     """
     Remove inactive kernels and modules.
-    
+
     By default, removes old Linux sources from /usr/src.
     """
     for item in clean_old_kernels_and_modules(path, modules_path, active_kernel_name):
@@ -361,7 +361,7 @@ def ultraiso_main(ahide: str | None = None,
                   debug: bool = False) -> None:
     """
     CLI interface to UltraISO.
-    
+
     On non-Windows, runs UltraISO via Wine.
     """
     kwargs = {'prefix': prefix} if prefix and not IS_WINDOWS else {}
@@ -449,7 +449,7 @@ def json2yaml_main(file: TextIO, indent: int = 2, *, default_flow_style: bool = 
 def sanitize_main(file: TextIO, *, no_restricted: bool = False) -> None:
     """
     Transform a string to a 'sanitised' form.
-    
+
     By default, a restricted character set safe for Windows filesnames is used. Disable with -R.
     """
     click.echo(sanitize(file.read(), restricted=not no_restricted))
@@ -475,7 +475,7 @@ def trim_main(file: TextIO) -> None:
 def ucwords_main(file: TextIO) -> None:
     """
     Run Python ``str.title()`` for lines in file.
-    
+
     Named after PHP's function.
     """
     for line in file:
@@ -487,7 +487,7 @@ def ucwords_main(file: TextIO) -> None:
 def pl2json_main(file: BytesIO) -> None:
     """
     Convert a Property List file to JSON.
-    
+
     This command does not do any type conversions. This means files containing <data> objects will
     not work.
     """
@@ -513,7 +513,7 @@ def git_checkout_default_branch_main(base_url: str,
                                      debug: bool = False) -> None:
     """
     Checkout to the default branch.
-    
+
     For repositories whose origin is on GitHub only.
 
     To set a token, ``keyring set tmu-github-api "${USER}"``. The token must have
@@ -552,7 +552,7 @@ def git_rebase_default_branch_main(base_url: str,
                                    remote: bool = False) -> None:
     """
     Rebase the current head with the default branch.
-    
+
     For repositories whose origin is on GitHub only.
 
     To set a token, ``keyring set tmu-github-api "${USER}"``. The token must have
@@ -644,7 +644,7 @@ def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = F
 def connect_g603_main(*, debug: bool = False) -> None:
     """
     Connect a G603 Bluetooth mouse, disconnecting/removing first if necessary.
-    
+
     This is useful for connecting the mouse back when it randomly decides not to re-pair, and you
     have no other mouse but you can get to your terminal.
     """
@@ -693,12 +693,18 @@ def connect_g603_main(*, debug: bool = False) -> None:
 def supported_audio_input_formats_main(device: str, *, debug: bool = False) -> None:
     """Get supported input formats and sample rates by invoking ffmpeg."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    if not IS_LINUX:
-        click.echo('Only Linux is supported.', err=True)
-        raise click.Abort
     try:
         for format_, rate in supported_audio_input_formats(device):
             click.echo(f'{format_} @ {rate}')
     except OSError as e:
         click.echo('Likely invalid device name.', err=True)
         raise click.Abort from e
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+def add_info_json_main(filename: tuple[str], *, debug: bool = False) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    for f in filename:
+        add_info_json_to_media_file(f, debug=debug)

@@ -171,6 +171,7 @@ globbing
 gnudb
 gnupg
 gnupghome
+gpac
 groupdict
 handle
 hashlib
