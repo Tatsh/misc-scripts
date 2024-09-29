@@ -115,6 +115,12 @@ def id3ted_add_json(filename: str, json_filename: str) -> bool:
 
 
 def mkvpropedit_add_json(filename: str, json_filename: str) -> bool:
+    p = sp.run(('mkvmerge', '--identify', filename), capture_output=True, check=True, text=True)
+    if any(
+            re.match((r"^Attachment ID \d+: type 'application/json', size \d+ bytes, "
+                      "file name 'info.json'"), line) for line in p.stdout.splitlines()):
+        return True
+
     cmd = mkvpropedit_write_command(filename, json_filename)
     quiet_subprocess_check_call(cmd)
     with open(json_filename, 'rb') as f:
