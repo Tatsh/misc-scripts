@@ -4,6 +4,7 @@ from datetime import datetime
 from os import utime
 from pathlib import Path
 from shutil import copyfile
+from typing import Any
 import contextlib
 import json
 import logging
@@ -150,7 +151,7 @@ def add_info_json_to_media_file(path: StrPath,
             lines = Path(ffm.name).read_text(encoding='utf-8').splitlines(keepends=True)
             escaped = re.sub(r'([=;#\\\n])', r'\\\1', json_path.read_text())
             is_mp3 = path.suffix == '.mp3'
-            key = 'TXXX=info_json\=' if is_mp3 else 'info_json='
+            key = r'TXXX=info_json\=' if is_mp3 else 'info_json='
             lines.insert(1, f'{key}{escaped}\n')
             with (tempfile.NamedTemporaryFile(suffix='.ffmetadata',
                                               encoding='utf-8',
@@ -199,3 +200,53 @@ def add_info_json_to_media_file(path: StrPath,
         case _:
             return
     json_path.unlink()
+
+
+def ffprobe(path: StrPath) -> Any:
+    """Run ``ffprobe`` and decode its JSON output."""
+    return json.loads(
+        sp.run(('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams',
+                str(path)),
+               text=True,
+               capture_output=True,
+               check=True).stdout.strip())
+
+
+def get_info_json(path: StrPath, *, raw: bool = False) -> Any:
+    """
+    Get ``info.json`` content in ``path``.
+
+    Parameters
+    ----------
+    path : StrPath
+        Path to FLAC, MP3, MP4, or Opus media file.
+
+    raw : bool
+        If raw, do not decode.
+
+    Returns
+    -------
+    Any
+        The JSON data decoded. Currently not typed.
+    """
+    path = Path(path)
+    match path.suffix.lower()[1:]:
+        case 'flac':
+            out = ffprobe(path)['format']['tags']['info_json']
+        case 'm4a' | 'm4b' | 'm4p' | 'm4r' | 'm4v' | 'mp4':
+            out = sp.run(('MP4Box', '-dump-item', '1:path=/dev/stdout', str(path)),
+                         check=True,
+                         capture_output=True,
+                         text=True).stdout.strip()
+        case 'mkv':
+            out = sp.run(('mkvextract', str(path), 'attachments', '1:/dev/stdout'),
+                         check=True,
+                         capture_output=True,
+                         text=True).stdout.strip().splitlines()[1]
+        case 'mp3':
+            out = ffprobe(path)['format']['tags']['TXXX'].replace('info_json=', '', 1)
+        case 'opus':
+            out = ffprobe(path)['streams'][0]['tags']['info_json']
+        case _:
+            raise NotImplementedError
+    return out if raw else json.loads(out)

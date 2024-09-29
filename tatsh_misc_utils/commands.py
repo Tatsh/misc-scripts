@@ -34,7 +34,7 @@ from .gentoo import (
 )
 from .git import convert_git_ssh_url_to_https, get_github_default_branch
 from .io import unpack_0day
-from .media import add_info_json_to_media_file, supported_audio_input_formats
+from .media import add_info_json_to_media_file, get_info_json, supported_audio_input_formats
 from .string import (
     is_ascii,
     is_url,
@@ -708,3 +708,18 @@ def add_info_json_main(filename: tuple[str], *, debug: bool = False) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     for f in filename:
         add_info_json_to_media_file(f, debug=debug)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+def display_info_json_main(filename: str, *, debug: bool = False) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    try:
+        click.echo(get_info_json(filename, raw=True))
+    except NotImplementedError as e:
+        raise click.Abort from e
+    except sp.CalledProcessError as e:
+        click.echo(e.stdout)
+        click.echo(e.stderr)
+        raise click.Abort from e
