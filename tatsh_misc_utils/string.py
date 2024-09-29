@@ -168,12 +168,3 @@ def add_unidecode_custom_replacement(find: str, replace: str) -> None:
     new_section[position] = replace
     Cache[section] = new_section
 
-
-def convert_git_ssh_url_to_https(url: str) -> str:
-    """Convert a Git SSH URI to HTTPS."""
-    return re.sub(
-        r'\.git$', '',
-        re.sub(r'\.([a-z]+):',
-               r'.\1/',
-               re.sub(r'^(?:[a-z0-9A-Z]+@)?', 'https://', url, count=1),
-               count=1))

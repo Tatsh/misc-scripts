@@ -32,10 +32,10 @@ from .gentoo import (
     DEFAULT_MODULES_PATH,
     clean_old_kernels_and_modules,
 )
+from .git import convert_git_ssh_url_to_https, get_github_default_branch
 from .io import unpack_0day
 from .media import supported_audio_input_formats
 from .string import (
-    convert_git_ssh_url_to_https,
     is_ascii,
     is_url,
     sanitize,
@@ -516,19 +516,59 @@ def git_checkout_default_branch_main(base_url: str,
     
     For repositories whose origin is on GitHub only.
 
-    To set a token, ``keyring set github-api-co-default-branch "${USER}"``. The token must have
+    To set a token, ``keyring set tmu-github-api "${USER}"``. The token must have
     access to the public_repo or repo scope.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    token = keyring.get_password('github-api-co-default-branch', username)
+    token = keyring.get_password('tmu-github-api', username)
     if not token:
         click.echo('No token.', err=True)
         raise click.Abort
     repo = Repo(search_parent_directories=True)
-    default_branch = github.Github(token, base_url=base_url).get_repo(
-        urlparse(convert_git_ssh_url_to_https(
-            repo.remote(origin_name).url)).path[1:]).default_branch
+    default_branch = get_github_default_branch(repo=repo,
+                                               base_url=base_url,
+                                               token=token,
+                                               origin_name=origin_name)
     next(b for b in repo.heads if b.name == default_branch).checkout()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('origin_name', metavar='ORIGIN_NAME', default='origin')
+@click.option('-b',
+              '--base-url',
+              default=github.Consts.DEFAULT_BASE_URL,
+              help='Base URL for enterprise.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-u', '--username', default=getpass.getuser(), help='Username (passed to keyring).')
+@click.option('-r',
+              '--remote',
+              is_flag=True,
+              help='Rebase with the origin copy of the default branch.')
+def git_rebase_default_branch_main(base_url: str,
+                                   username: str,
+                                   origin_name: str = 'origin',
+                                   *,
+                                   debug: bool = False,
+                                   remote: bool = False) -> None:
+    """
+    Rebase the current head with the default branch.
+    
+    For repositories whose origin is on GitHub only.
+
+    To set a token, ``keyring set tmu-github-api "${USER}"``. The token must have
+    access to the public_repo or repo scope.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    token = keyring.get_password('tmu-github-api', username)
+    if not token:
+        click.echo('No token.', err=True)
+        raise click.Abort
+    repo = Repo(search_parent_directories=True)
+    default_branch = get_github_default_branch(repo=repo,
+                                               base_url=base_url,
+                                               token=token,
+                                               origin_name=origin_name)
+    repo.git.rebase(f'{origin_name}/{default_branch}' if remote else default_branch)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

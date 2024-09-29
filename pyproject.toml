@@ -83,6 +83,7 @@ clean-old-kernels-modules = "tatsh_misc_utils.commands:clean_old_kernels_and_mod
 connect-g603 = "tatsh_misc_utils.commands:connect_g603_main"
 git-co-default-branch = "tatsh_misc_utils.commands:git_checkout_default_branch_main"
 git-checkout-default-branch = "tatsh_misc_utils.commands:git_checkout_default_branch_main"
+git-rebase-default-branch = "tatsh_misc_utils.commands:git_rebase_default_branch_main"
 git-open = "tatsh_misc_utils.commands:git_open_main"
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
 inhibit-notifications = "tatsh_misc_utils.commands:inhibit_notifications_main"
