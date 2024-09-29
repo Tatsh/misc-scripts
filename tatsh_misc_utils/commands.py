@@ -6,6 +6,7 @@ from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
 import errno
+import getpass
 import json
 import logging
 import plistlib
@@ -18,6 +19,8 @@ import webbrowser
 from binaryornot.check import is_binary
 from git import Repo
 import click
+import github
+import keyring
 import pexpect
 import xdg.BaseDirectory
 import yaml
@@ -31,7 +34,14 @@ from .gentoo import (
 )
 from .io import unpack_0day
 from .media import supported_audio_input_formats
-from .string import is_ascii, is_url, sanitize, underscorize, unix_path_to_wine
+from .string import (
+    convert_git_ssh_url_to_https,
+    is_ascii,
+    is_url,
+    sanitize,
+    underscorize,
+    unix_path_to_wine,
+)
 from .system import (
     IS_LINUX,
     IS_WINDOWS,
@@ -489,20 +499,47 @@ def pl2json_main(file: BytesIO) -> None:
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('origin_name', metavar='ORIGIN_NAME', default='origin')
+@click.option('-b',
+              '--base-url',
+              default=github.Consts.DEFAULT_BASE_URL,
+              help='Base URL for enterprise.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-u', '--username', default=getpass.getuser(), help='Username (passed to keyring).')
+def git_checkout_default_branch_main(base_url: str,
+                                     username: str,
+                                     origin_name: str = 'origin',
+                                     *,
+                                     debug: bool = False) -> None:
+    """
+    Checkout to the default branch.
+    
+    For repositories whose origin is on GitHub only.
+
+    To set a token, ``keyring set github-api-co-default-branch "${USER}"``. The token must have
+    access to the public_repo or repo scope.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    token = keyring.get_password('github-api-co-default-branch', username)
+    if not token:
+        click.echo('No token.', err=True)
+        raise click.Abort
+    repo = Repo(search_parent_directories=True)
+    default_branch = github.Github(token, base_url=base_url).get_repo(
+        urlparse(convert_git_ssh_url_to_https(
+            repo.remote(origin_name).url)).path[1:]).default_branch
+    next(b for b in repo.heads if b.name == default_branch).checkout()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('name', default='origin')
-def git_open_main(name: str = 'origin', username: str = 'git') -> None:
+def git_open_main(name: str = 'origin') -> None:
     """Open assumed repository web representation (GitHub, GitLab, etc) based on the origin."""
     url = Repo(search_parent_directories=True).remote(name).url
     if re.search(r'^https?://', url):
         webbrowser.open(url)
         return
-    webbrowser.open(
-        re.sub(
-            r'\.git$', '',
-            re.sub(r'\.([a-z]+):',
-                   r'.\1/',
-                   re.sub(r'^(?:[a-z0-9A-Z]+@)?', 'https://', url, count=1),
-                   count=1)))
+    webbrowser.open(convert_git_ssh_url_to_https(url))
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

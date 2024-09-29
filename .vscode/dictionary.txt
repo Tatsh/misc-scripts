@@ -72,6 +72,7 @@ cond
 configparser
 conftest
 constqp
+consts
 contextlib
 copyfile
 copyfileobj
