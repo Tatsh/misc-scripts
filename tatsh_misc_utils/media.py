@@ -14,8 +14,8 @@ import tempfile
 
 from .typing import StrPath
 
-__all__ = ('add_info_json_to_media_file', 'is_audio_input_format_supported',
-           'supported_audio_input_formats')
+__all__ = ('add_info_json_to_media_file', 'ffprobe', 'get_info_json',
+           'is_audio_input_format_supported', 'supported_audio_input_formats')
 
 log = logging.getLogger(__name__)
 
