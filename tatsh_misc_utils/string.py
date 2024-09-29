@@ -12,20 +12,9 @@ import requests
 from .itertools import chunks
 from .typing import StrPath, assert_not_none
 
-__all__ = (
-    'convert_git_ssh_url_to_https',
-    'generate_chrome_user_agent',
-    'get_latest_chrome_major_version',
-    'hexstr2bytes',
-    'hexstr2bytes_generator',
-    'is_ascii',
-    'is_url',
-    'sanitize',
-    'strip_ansi',
-    'strip_ansi_if_no_colors',
-    'underscorize',
-    'unix_path_to_wine',
-)
+__all__ = ('generate_chrome_user_agent', 'get_latest_chrome_major_version', 'hexstr2bytes',
+           'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'strip_ansi',
+           'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -167,4 +156,3 @@ def add_unidecode_custom_replacement(find: str, replace: str) -> None:
     assert len(new_section) > position
     new_section[position] = replace
     Cache[section] = new_section
-
