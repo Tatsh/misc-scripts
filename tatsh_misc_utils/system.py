@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 from time import sleep
+from typing import Any
 import fcntl
 import logging
 import os
@@ -12,7 +15,8 @@ try:
 except ImportError:
     SessionBus = None
 
-__all__ = ('IS_LINUX', 'inhibit_notifications', 'uninhibit_notifications', 'wait_for_disc')
+__all__ = ('IS_LINUX', 'find_bluetooth_device_info_by_name', 'inhibit_notifications',
+           'uninhibit_notifications', 'wait_for_disc')
 
 CDROM_DRIVE_STATUS = 0x5326
 IS_LINUX = sys.platform == 'linux'
@@ -98,3 +102,36 @@ def uninhibit_notifications() -> None:
     if _key is not None:
         _NOTIFICATIONS_BUS.UnInhibit(_key)
         _key = None
+
+
+def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:
+    """
+    Get Bluetooth device information from D-Bus (bluez) by name.
+    
+    Note that not all devices present a name.
+
+    Parameters
+    ----------
+    name : str
+        Name of the device. Case sensitive.
+
+    Returns
+    -------
+    tuple[str, dict[str, Any]]]
+        Returns the D-Bus object path and a dictionary representing the ``org.bluez.Device1``
+        properties.
+
+    Raises
+    ------
+    KeyError
+        If no device is found.
+    """
+    if not IS_LINUX:
+        raise NotImplementedError
+    from pydbus import SystemBus  # noqa: PLC0415
+    bluez = SystemBus().get('org.bluez', '/')
+    for k, v in bluez['org.freedesktop.DBus.ObjectManager'].GetManagedObjects().items():
+        if ('org.bluez.Device1' in v and 'Name' in v['org.bluez.Device1']
+                and v['org.bluez.Device1']['Name'] == name):
+            return k, v['org.bluez.Device1']
+    raise KeyError(name)

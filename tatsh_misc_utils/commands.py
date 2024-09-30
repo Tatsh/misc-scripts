@@ -5,6 +5,7 @@ from shlex import quote, split
 from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
+import contextlib
 import errno
 import getpass
 import json
@@ -21,7 +22,6 @@ from git import Repo
 import click
 import github
 import keyring
-import pexpect
 import xdg.BaseDirectory
 import yaml
 
@@ -45,6 +45,7 @@ from .string import (
 from .system import (
     IS_LINUX,
     IS_WINDOWS,
+    find_bluetooth_device_info_by_name,
     inhibit_notifications,
     wait_for_disc,
 )
@@ -641,9 +642,15 @@ def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = F
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-d', '--debug', is_flag=True)
-def connect_g603_main(*, debug: bool = False) -> None:
+@click.option('--device',
+              'device_name',
+              default='hci0',
+              help='Bluetooth device (defaults to hci0).')
+def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None:
     """
     Connect a G603 Bluetooth mouse, disconnecting/removing first if necessary.
+
+    For Linux only.
 
     This is useful for connecting the mouse back when it randomly decides not to re-pair, and you
     have no other mouse but you can get to your terminal.
@@ -651,40 +658,62 @@ def connect_g603_main(*, debug: bool = False) -> None:
     if not IS_LINUX:
         click.echo('Only Linux is supported.', err=True)
         raise click.Abort
+    from gi.overrides.GLib import GError, Variant  # noqa: PLC0415
+    from gi.repository import GLib  # noqa: PLC0415
+    from pydbus import SystemBus  # noqa: PLC0415
+    loop = GLib.MainLoop()
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     log = logging.getLogger(__name__)
-    log.debug('Looking for existing entry.')
-    g603_line_re = r'^Device ([^ ]+) G603$'
-    for line in sp.run(('bluetoothctl', 'devices'), check=True, capture_output=True,
-                       text=True).stdout.splitlines():
-        if re.match(g603_line_re, line):
-            mac = line.split()[1]
-            log.debug('Removing entry with MAC address %s.', mac)
-            sp.run(('bluetoothctl', 'remove', mac), check=True, capture_output=not debug)
-    click.echo('Put the mouse in pairing mode. Sleeping for 10 seconds.')
-    sleep(10)
-    log.debug('Starting scan in the background.')
-    bt = pexpect.spawn('bluetoothctl', encoding='utf-8')
-    if debug:
-        bt.logfile = sys.stdout
-    bt.expect('# ')
-    log.debug('Sleeping for 3 seconds.')
-    bt.sendline('scan on')
-    sleep(3)
-    log.debug('Looking for G603 in range.')
-    bt.sendline('devices')
-    bt.expect('# ')
-    bt.terminate()
+    bus = SystemBus()
+    adapter = bus.get('org.bluez', f'/org/bluez/{device_name}')
+
+    def on_properties_changed(_: Any, __: Any, object_path: str, ___: Any, ____: Any,
+                              props: Variant) -> None:
+        dev_iface, values, *_ = props
+        if dev_iface == 'org.bluez.Adapter1' and values.get('Discovering'):
+            log.debug('Scan on.')
+        elif (dev_iface == 'org.bluez.Device1'
+              and (m := re.match(fr'/org/bluez/{device_name}/dev_(.*)', object_path))):
+            mac = m.group(1).replace('_', ':')
+            for k in ('ServicesResolved', 'Connected'):
+                if k in values and not values[k]:
+                    log.debug('Device %s was disconnected.', mac)
+                    return
+            try:
+                device = bus.get('org.bluez', object_path)
+                if device.Name != 'G603':
+                    log.debug('Ignoring device %s (MAC: %s).', device.Name, mac)
+                    return
+            except (GError, KeyError) as e:
+                log.debug('Caught error with device %s: %s', mac, str(e))
+                return
+            if values.get('Paired'):
+                log.debug('Quitting.')
+                loop.quit()
+                return
+            if 'RSSI' in values:
+                click.echo(f'Pairing with {mac}.')
+                device['org.bluez.Device1'].Pair()
+            else:
+                log.debug('Unhandled property changes: interface=%s, values=%s, mac=%s', dev_iface,
+                          values, mac)
+
+    # PropertiesChanged.connect()/.PropertiesChanged = ... will not catch the device node events
+    bus.con.signal_subscribe(None, 'org.freedesktop.DBus.Properties', 'PropertiesChanged', None,
+                             None, 0, on_properties_changed)
+    log.debug('Looking for existing devices.')
+    with contextlib.suppress(KeyError):
+        while res := find_bluetooth_device_info_by_name('G603'):
+            object_path, info = res
+            log.debug('Removing device with MAC address %s.', info['Address'])
+            adapter.RemoveDevice(object_path)
+    click.echo('Put the mouse in pairing mode and be very patient.')
+    log.debug('Starting scan.')
+    adapter.StartDiscovery()
     try:
-        mac = next(
-            dev.group(1) for x in bt.read().splitlines() if (dev := re.match(g603_line_re, x)))
-    except StopIteration as e:
-        click.echo('G603 not found.', err=True)
-        raise click.Abort from e
-    click.echo(f'Pairing with {mac}.')
-    sp.run(('bluetoothctl', 'pair', mac), check=True, capture_output=not debug)
-    click.echo(f'Trusting {mac}.')
-    sp.run(('bluetoothctl', 'trust', mac), check=True, capture_output=not debug)
+        loop.run()
+    except KeyboardInterrupt:
+        loop.quit()
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

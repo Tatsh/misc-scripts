@@ -39,6 +39,7 @@ bihi
 bika
 binaryornot
 bluetoothctl
+bluez
 bootfile
 bootinfotable
 burnfree
@@ -365,6 +366,7 @@ rmtree
 roboto
 rockridge
 ropeproject
+rssi
 rstrip
 rstuvwxyz
 safemv
