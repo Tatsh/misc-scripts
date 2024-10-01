@@ -1,3 +1,3 @@
-from .bus import SessionBus
+from .bus import SessionBus, SystemBus
 
-__all__ = ('SessionBus',)
+__all__ = ('SessionBus', 'SystemBus')

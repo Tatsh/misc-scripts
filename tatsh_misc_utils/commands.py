@@ -669,7 +669,8 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
 
     def on_properties_changed(_: Any, __: Any, object_path: str, ___: Any, ____: Any,
                               props: Variant) -> None:
-        dev_iface, values, *_ = props
+        dev_iface = props[0]
+        values = props[1]
         if dev_iface == 'org.bluez.Adapter1' and values.get('Discovering'):
             log.debug('Scan on.')
         elif (dev_iface == 'org.bluez.Device1'

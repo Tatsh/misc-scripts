@@ -10,11 +10,6 @@ import sys
 from .io import context_os_open
 from .typing import CDStatus
 
-try:
-    from pydbus import SessionBus
-except ImportError:
-    SessionBus = None
-
 __all__ = ('IS_LINUX', 'find_bluetooth_device_info_by_name', 'inhibit_notifications',
            'uninhibit_notifications', 'wait_for_disc')
 
@@ -41,8 +36,6 @@ def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bo
 
 
 _key: int | None = None
-_NOTIFICATIONS_BUS = (SessionBus().get('org.freedesktop.Notifications',
-                                       '/org/freedesktop/Notifications') if SessionBus else None)
 
 
 def inhibit_notifications(name: str = __name__, reason: str = 'No reason specified.') -> bool:
@@ -70,12 +63,13 @@ def inhibit_notifications(name: str = __name__, reason: str = 'No reason specifi
         If D-Bus connection is not available (which can be caused by not having pydbus installed).
     """
     global _key  # noqa: PLW0603
-    if not _NOTIFICATIONS_BUS:
-        raise ConnectionError
-    if _NOTIFICATIONS_BUS.Inhibited:
+    from pydbus import SessionBus  # noqa: PLC0415
+    notifications = SessionBus().get('org.freedesktop.Notifications',
+                                     '/org/freedesktop/Notifications')
+    if notifications.Inhibited:
         return False
     log.debug('Disabling notifications.')
-    _key = _NOTIFICATIONS_BUS.Inhibit(name, reason, {})
+    _key = notifications.Inhibit(name, reason, {})
     return True
 
 
@@ -95,12 +89,15 @@ def uninhibit_notifications() -> None:
         If D-Bus connection is not available (which can be caused by not having pydbus installed).
     """
     global _key  # noqa: PLW0603
-    if not _NOTIFICATIONS_BUS:
+    from pydbus import SessionBus  # noqa: PLC0415
+    notifications = SessionBus().get('org.freedesktop.Notifications',
+                                     '/org/freedesktop/Notifications')
+    if not notifications:
         raise ConnectionError
-    if not _NOTIFICATIONS_BUS.Inhibited:
+    if not notifications.Inhibited:
         return
     if _key is not None:
-        _NOTIFICATIONS_BUS.UnInhibit(_key)
+        notifications.UnInhibit(_key)
         _key = None
 
 
