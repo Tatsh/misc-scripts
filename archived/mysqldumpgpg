@@ -88,8 +88,7 @@ def main() -> int:
         for uid in k['uids']:
             if recipients[0] in uid:
                 fingerprints.add(k['fingerprint'])
-    m = mysql.connect(  # type: ignore[no-untyped-call]
-        user=user, db='information_schema', host=args.host)
+    m = mysql.connect(user=user, db='information_schema', host=args.host)
     c = m.cursor()
     c.execute('SHOW DATABASES')
     db_names = sorted(x[0] for x in c.fetchall())
