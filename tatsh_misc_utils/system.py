@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from time import sleep
 from typing import Any
 import fcntl
@@ -8,9 +9,10 @@ import os
 import sys
 
 from .io import context_os_open
-from .typing import CDStatus
+from .string import slugify
+from .typing import CDStatus, StrPath
 
-__all__ = ('IS_LINUX', 'find_bluetooth_device_info_by_name', 'inhibit_notifications',
+__all__ = ('IS_LINUX', 'find_bluetooth_device_info_by_name', 'inhibit_notifications', 'slug_rename',
            'uninhibit_notifications', 'wait_for_disc')
 
 CDROM_DRIVE_STATUS = 0x5326
@@ -132,3 +134,9 @@ def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:
                 and v['org.bluez.Device1']['Name'] == name):
             return k, v['org.bluez.Device1']
     raise KeyError(name)
+
+
+def slug_rename(path: StrPath, *, no_lower: bool = False) -> StrPath:
+    path = Path(path).resolve(strict=True)
+    parent = path.parent
+    return path.rename(parent / slugify(path.name, no_lower=no_lower))

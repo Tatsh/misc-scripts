@@ -45,6 +45,7 @@ from .string import (
     is_ascii,
     is_url,
     sanitize,
+    slugify,
     underscorize,
     unix_path_to_wine,
 )
@@ -53,6 +54,7 @@ from .system import (
     IS_WINDOWS,
     find_bluetooth_device_info_by_name,
     inhibit_notifications,
+    slug_rename,
     wait_for_disc,
 )
 from .typing import DecodeErrorsOption, INCITS38Code
@@ -788,3 +790,24 @@ def audio2vid_main(audio_filename: str,
 @click.argument('file', type=click.File('r'), default=sys.stdin)
 def fullwidth2ascii_main(file: TextIO) -> None:
     click.echo(fullwidth_to_ascii(file.read()), nl=False)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+@click.option('--no-lower', is_flag=True, help='Disable lowercase.')
+def slugify_main(file: TextIO, *, no_lower: bool = False) -> None:
+    click.echo(slugify(file.read(), no_lower=no_lower))
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filenames', nargs=-1)
+@click.option('--no-lower', is_flag=True, help='Disable lowercase.')
+@click.option('-v', '--verbose', is_flag=True, help='Enable verbose output.')
+def slug_rename_main(filenames: tuple[str, ...],
+                     *,
+                     no_lower: bool = False,
+                     verbose: bool = False) -> None:
+    for name in filenames:
+        target = slug_rename(name, no_lower=no_lower)
+        if verbose:
+            click.echo(f'{name} -> {target}')

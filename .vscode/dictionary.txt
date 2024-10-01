@@ -153,6 +153,7 @@ frozenset
 fuckery
 fullscreen
 fulltimestudent
+fullwidth
 funcs
 functools
 furb
@@ -343,6 +344,7 @@ pycache
 pychoco
 pydbus
 pydocstyle
+pygithub
 pylance
 pylint
 pyright

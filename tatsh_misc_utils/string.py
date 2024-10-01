@@ -13,8 +13,8 @@ from .itertools import chunks
 from .typing import StrPath, assert_not_none
 
 __all__ = ('fullwidth_to_ascii', 'generate_chrome_user_agent', 'get_latest_chrome_major_version',
-           'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'strip_ansi',
-           'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
+           'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'slugify',
+           'strip_ansi', 'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -271,3 +271,8 @@ def fullwidth_to_ascii(s: str) -> str:
     for find, replace in FULLWIDTH_MAP:
         s = s.replace(find, replace)
     return s
+
+
+def slugify(s: str, *, no_lower: bool = False) -> str:
+    """Slug string generator."""
+    return re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', s if no_lower else s.lower()).strip())
