@@ -62,7 +62,7 @@ from .ultraiso import (
     InsufficientArguments,
     run_ultraiso,
 )
-from .utils import TIMES_RE, add_cdda_times
+from .utils import TIMES_RE, WineWindowsVersion, add_cdda_times, create_wine_prefix
 from .www import generate_html_dir_tree, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
@@ -811,3 +811,60 @@ def slug_rename_main(filenames: tuple[str, ...],
         target = slug_rename(name, no_lower=no_lower)
         if verbose:
             click.echo(f'{name} -> {target}')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('prefix_name')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-r', '--prefix-root', type=click.Path(), help='Prefix root.')
+@click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
+@click.option(
+    '-V',
+    '--windows-version',
+    default='xp',
+    type=click.Choice(WineWindowsVersion.__args__),  # type: ignore[attr-defined]
+    help='Windows version.')
+@click.option('--vd',
+              metavar='SIZE',
+              nargs=1,
+              default='off',
+              help='Virtual desktop size, e.g. 1024x768.')
+@click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe')
+@click.option('--32', '_32bit', help='Use 32-bit prefix.', is_flag=True)
+def mkwineprefix_main(
+    prefix_name: str,
+    prefix_root: str,
+    vd: str = 'off',
+    windows_version: WineWindowsVersion = 'xp',
+    *,
+    _32bit: bool = False,
+    debug: bool = False,
+    no_xdg: bool = False,
+    sandbox: bool = False,
+) -> None:
+    """
+    Create a Wine prefix with custom settings.
+    
+    This should be used with eval: eval $(mkwineprefix ...)
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    try:
+        target = create_wine_prefix(prefix_name,
+                                    _32bit=_32bit,
+                                    debug=debug,
+                                    no_xdg=no_xdg,
+                                    prefix_root=prefix_root,
+                                    sandbox=sandbox,
+                                    vd=vd,
+                                    windows_version=windows_version)
+    except FileExistsError as e:
+        raise click.Abort from e
+    wineprefix_env = quote(f'WINEPREFIX={target}')
+    click.echo(f"""Run `export WINEPREFIX={target}` before running wine or use env:
+
+env {wineprefix_env} wine ...
+
+If you ran this with eval, your shell is ready.""",
+               file=sys.stderr)
+    click.echo(f'export {wineprefix_env}')
+    print(f'export PS1="{prefix_name}🍷$PS1"')
