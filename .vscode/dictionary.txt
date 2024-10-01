@@ -247,6 +247,7 @@ maahu
 maaka
 machfile
 macos
+magick
 mai
 makedirs
 makeself

@@ -34,7 +34,12 @@ from .gentoo import (
 )
 from .git import convert_git_ssh_url_to_https, get_github_default_branch
 from .io import unpack_0day
-from .media import add_info_json_to_media_file, get_info_json, supported_audio_input_formats
+from .media import (
+    add_info_json_to_media_file,
+    create_static_text_video,
+    get_info_json,
+    supported_audio_input_formats,
+)
 from .string import (
     is_ascii,
     is_url,
@@ -753,3 +758,26 @@ def display_info_json_main(filename: str, *, debug: bool = False) -> None:
         click.echo(e.stdout)
         click.echo(e.stderr)
         raise click.Abort from e
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-f', '--font', default='Roboto', help='Font to use.')
+@click.option('-n', '--nvenc', is_flag=True, help='Use NVENC.')
+@click.option('-V', '--videotoolbox', is_flag=True, help='Use VideoToolbox.')
+@click.argument('audio_filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('text')
+def audio2vid_main(audio_filename: str,
+                   text: str,
+                   font: str = 'Roboto',
+                   *,
+                   debug: bool = False,
+                   nvenc: bool = False,
+                   videotoolbox: bool = False) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    create_static_text_video(audio_filename,
+                             text,
+                             font,
+                             nvenc=nvenc,
+                             videotoolbox=videotoolbox,
+                             debug=debug)

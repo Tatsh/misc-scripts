@@ -246,3 +246,61 @@ def get_info_json(path: StrPath, *, raw: bool = False) -> Any:
         case _:
             raise NotImplementedError
     return out if raw else json.loads(out)
+
+
+def create_static_text_video(audio_file: StrPath,
+                             text: str,
+                             font: str = 'Roboto',
+                             *,
+                             debug: bool = False,
+                             nvenc: bool = False,
+                             videotoolbox: bool = False) -> None:
+    """
+    Create a video file consisting of static text in the centre with the audio file passed in.
+
+    Requires ImageMagick and ffmpeg.
+
+    Parameters
+    ----------
+    audio_file : StrPath
+        Path to audio file.
+
+    text : str
+        Text to show.
+
+    nvenc : bool
+        Use NVENC.
+
+    virtualbox : bool
+        Use VideoToolbox.
+    """
+    if nvenc and videotoolbox:
+        msg = 'nvenc and videotoolbox parameters are exclusive. Only one can be set to True.'
+        raise ValueError(msg)
+    audio_file = Path(audio_file)
+    out = f'{audio_file.parent}/{audio_file.stem}-audio.mkv'
+    with tempfile.NamedTemporaryFile(suffix='.png', delete=False, dir=Path.cwd()) as tf:
+        try:
+            sp.run(('magick', '-font', font, '-size', '1920x1080', 'xc:black', '-fill', 'white',
+                    '-pointsize', '50', '-draw', f"gravity Center text 0,0 '{text}'", tf.name),
+                   check=True,
+                   capture_output=not debug)
+        except sp.CalledProcessError:
+            Path(tf.name).unlink()
+            raise
+    args_start: tuple[str,
+                      ...] = ('ffmpeg', '-loglevel', 'warning', '-hide_banner', '-y', '-loop', '1',
+                              '-i', tf.name, '-i', str(audio_file), '-shortest', '-acodec', 'copy')
+    if nvenc:
+        args_start += ('-vcodec', 'h264_nvenc', '-profile:v', 'high', '-level', '1', '-preset',
+                       'llhq', '-coder:v', 'cabac', '-b:v', '1M')
+    elif videotoolbox:
+        args_start += ('-vcodec', 'hevc_videotoolbox', '-profile:v', 'main', '-level', '1', '-b:v',
+                       '0.5M')
+    else:
+        args_start += ('-vcodec', 'libx265', '-crf', '20', '-level', '1', '-profile:v', 'main')
+    log.debug('Output: %s', out)
+    sp.run((*args_start, '-pix_fmt', 'yuv420p', '-b:v', '1M', '-maxrate:v', '1M', out),
+           check=True,
+           capture_output=not debug)
+    Path(tf.name).unlink()
