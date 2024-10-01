@@ -41,6 +41,7 @@ from .media import (
     supported_audio_input_formats,
 )
 from .string import (
+    fullwidth_to_ascii,
     is_ascii,
     is_url,
     sanitize,
@@ -781,3 +782,9 @@ def audio2vid_main(audio_filename: str,
                              nvenc=nvenc,
                              videotoolbox=videotoolbox,
                              debug=debug)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('file', type=click.File('r'), default=sys.stdin)
+def fullwidth2ascii_main(file: TextIO) -> None:
+    click.echo(fullwidth_to_ascii(file.read()), nl=False)
