@@ -33,7 +33,11 @@ from .gentoo import (
     DEFAULT_MODULES_PATH,
     clean_old_kernels_and_modules,
 )
-from .git import convert_git_ssh_url_to_https, get_github_default_branch
+from .git import (
+    convert_git_ssh_url_to_https,
+    get_github_default_branch,
+    merge_dependabot_pull_requests,
+)
 from .io import unpack_0day
 from .media import (
     add_info_json_to_media_file,
@@ -890,3 +894,35 @@ def mvid_rename_main(filenames: tuple[str, ...], *, debug: bool = False) -> None
             send2trash(path)
         except Exception as e:  # noqa: BLE001
             log.debug('Exception with file %s: %s', path, e)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-a',
+              '--affiliation',
+              default='owner',
+              help='Affiliation. See REST API documentation for more information.')
+@click.option('-b',
+              '--base-url',
+              default=github.Consts.DEFAULT_BASE_URL,
+              help='Base URL for enterprise.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('--delay', type=float, default=120, help='Delay in seconds between attempts.')
+@click.option('-u', '--username', default=getpass.getuser(), help='Username.')
+def merge_dependabot_prs_main(base_url: str,
+                              username: str,
+                              affiliation: str = 'owner',
+                              delay: int = 120,
+                              *,
+                              debug: bool = False) -> None:
+    """Merge pull requests made by Dependabot on GitHub."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    if not (token := keyring.get_password('tmu-github-api', username)):
+        click.echo('No token.', err=True)
+        raise click.Abort
+    while True:
+        try:
+            merge_dependabot_pull_requests(affiliation=affiliation, base_url=base_url, token=token)
+            break
+        except RuntimeError:
+            click.echo(f'Sleeping for {delay} seconds.')
+            sleep(delay)
