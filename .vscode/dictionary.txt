@@ -285,6 +285,7 @@ msapplication
 msgs
 msys
 msystem
+mvid
 mypy
 mysqlclient
 mysqldump

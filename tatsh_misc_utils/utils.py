@@ -3,13 +3,11 @@ from collections.abc import Iterable
 from math import trunc
 from os import environ
 from pathlib import Path
-from shutil import which
+from shutil import rmtree, which
 from typing import Literal
 import logging
 import re
 import subprocess as sp
-
-from git import rmtree
 
 from .typing import StrPath
 

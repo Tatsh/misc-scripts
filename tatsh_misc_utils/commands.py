@@ -19,6 +19,7 @@ import webbrowser
 
 from binaryornot.check import is_binary
 from git import Repo
+from send2trash import send2trash
 import click
 import github
 import keyring
@@ -867,4 +868,25 @@ env {wineprefix_env} wine ...
 If you ran this with eval, your shell is ready.""",
                file=sys.stderr)
     click.echo(f'export {wineprefix_env}')
-    print(f'export PS1="{prefix_name}🍷$PS1"')
+    click.echo(f'export PS1="{prefix_name}🍷$PS1"')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filenames', nargs=-1)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def mvid_rename_main(filenames: tuple[str, ...], *, debug: bool = False) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    log = logging.getLogger(__name__)
+    for filename in filenames:
+        path = Path(filename).resolve(strict=True)
+        if not path.is_dir():
+            log.debug('Ignored: %s', path)
+            continue
+        try:
+            src = path / f'{path.name.lower()}.mkv'
+            target = (path / f'../{path.name}.mkv').resolve()
+            log.debug('%s -> %s', src, target)
+            src.rename(target)
+            send2trash(path)
+        except Exception as e:  # noqa: BLE001
+            log.debug('Exception with file %s: %s', path, e)
