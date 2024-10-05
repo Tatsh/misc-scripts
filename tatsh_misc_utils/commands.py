@@ -19,6 +19,7 @@ import webbrowser
 
 from binaryornot.check import is_binary
 from git import Repo
+from paramiko import SSHClient
 from send2trash import send2trash
 import click
 import github
@@ -67,7 +68,13 @@ from .ultraiso import (
     InsufficientArguments,
     run_ultraiso,
 )
-from .utils import TIMES_RE, WineWindowsVersion, add_cdda_times, create_wine_prefix
+from .utils import (
+    TIMES_RE,
+    WineWindowsVersion,
+    add_cdda_times,
+    create_wine_prefix,
+    secure_move_path,
+)
 from .www import generate_html_dir_tree, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
@@ -926,3 +933,57 @@ def merge_dependabot_prs_main(base_url: str,
         except RuntimeError:
             click.echo(f'Sleeping for {delay} seconds.')
             sleep(delay)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filenames', type=click.Path(exists=True), nargs=-1)
+@click.argument('target')
+@click.option('-C', 'compress', is_flag=True, help='Enable compression.')
+@click.option('-P', '--port', type=int, default=22, help='Port.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-i', '--key', 'key_filename', type=click.File('r'), help='Private key.')
+@click.option('-t', '--timeout', type=float, default=2, help='Timeout in seconds.')
+@click.option(
+    '-p',
+    'preserve',
+    is_flag=True,
+    help='Preserves modification times, access times, and file mode bits from the source file.')
+@click.option('-y',
+              '--dry-run',
+              is_flag=True,
+              help='Do not copy anything. Use with -d for testing.')
+def smv_main(filenames: str,
+             target: str,
+             key_filename: str,
+             port: int = 22,
+             timeout: float = 2,
+             *,
+             compress: bool = False,
+             debug: bool = False,
+             dry_run: bool = False,
+             preserve: bool = False) -> None:
+    """
+    Secure move.
+
+    This is similar to scp but deletes the file or directory after successful copy.
+
+    Always test with the --dry-run/-y option.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    username = target.split('@')[0] if '@' in target else None
+    hostname = target.split(':')[0]
+    target_dir_or_filename = target.split(':')[1]
+    with SSHClient() as client:
+        client.load_system_host_keys()
+        client.connect(hostname,
+                       port,
+                       username,
+                       compress=compress,
+                       key_filename=key_filename,
+                       timeout=timeout)
+        for filename in filenames:
+            secure_move_path(client,
+                             filename,
+                             target_dir_or_filename,
+                             dry_run=dry_run,
+                             preserve_stats=preserve)

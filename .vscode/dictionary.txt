@@ -318,6 +318,7 @@ outpath
 pabrv
 palettegen
 paletteuse
+paramiko
 paren
 parms
 pathlib

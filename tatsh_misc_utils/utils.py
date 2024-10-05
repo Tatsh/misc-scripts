@@ -6,12 +6,15 @@ from pathlib import Path
 from shutil import rmtree, which
 from typing import Literal
 import logging
+import os
 import re
 import subprocess as sp
 
+from paramiko import SFTPClient, SSHClient
+
 from .typing import StrPath
 
-__all__ = ('WineWindowsVersion', 'add_cdda_times', 'create_wine_prefix')
+__all__ = ('WineWindowsVersion', 'add_cdda_times', 'create_wine_prefix', 'secure_move_path')
 
 ZERO_TO_59 = '|'.join(f'{x:02d}' for x in range(60))
 ZERO_TO_74 = '|'.join(f'{x:02d}' for x in range(75))
@@ -115,3 +118,95 @@ def create_wine_prefix(prefix_name: str,
         log.debug('STDERR: %s', e.stderr)
         log.debug('STDOUT: %s', e.stdout)
     return target
+
+
+def secure_move_path(client: SSHClient,
+                     filename: StrPath,
+                     remote_target: str,
+                     *,
+                     dry_run: bool = False,
+                     preserve_stats: bool = False,
+                     write_into: bool = False) -> None:
+    log.debug('Source: "%s", remote target: "%s"', filename, remote_target)
+
+    def mkdir_ignore_existing(sftp: SFTPClient, td: str, times: tuple[float, float]) -> None:
+        if not write_into:
+            log.debug('MKDIR "%s"', td)
+            if not dry_run:
+                sftp.mkdir(td)
+                if preserve_stats:
+                    sftp.utime(td, times)
+            return
+        try:
+            sftp.stat(td)
+        except FileNotFoundError:
+            log.debug('MKDIR "%s"', td)
+            if not dry_run:
+                sftp.mkdir(td)
+                if preserve_stats:
+                    sftp.utime(td, times)
+
+    path = Path(filename)
+    _, stdout, __ = client.exec_command('echo "${HOME}"')
+    remote_target = remote_target.replace('~', stdout.read().decode().strip())
+    with client.open_sftp() as sftp:
+        if path.is_file():
+            if not dry_run:
+                sftp.put(filename, remote_target)
+                if preserve_stats:
+                    local_s = Path(filename).stat()
+                    sftp.utime(remote_target, (local_s.st_atime, local_s.st_mtime))
+            log.debug('Deleting local file "%s".', path)
+            if not dry_run:
+                path.unlink()
+        else:
+            dirs_made = set()
+            pf = Path(filename)
+            pf_stat = pf.stat()
+            bn_filename = pf.name
+            dn_prefix = str(pf).replace(bn_filename, '')
+            mkdir_ignore_existing(sftp, remote_target, (pf_stat.st_atime, pf_stat.st_mtime))
+            for root, dirs, files in os.walk(filename, followlinks=True):
+                p_root = Path(root)
+                remote_target_dir = f'{remote_target}/{bn_filename}'
+                if p_root.is_dir() and remote_target_dir not in dirs_made:
+                    p_root_stat = p_root.stat()
+                    mkdir_ignore_existing(sftp, remote_target_dir,
+                                          (p_root_stat.st_atime, p_root_stat.st_mtime))
+                    dirs_made.add(remote_target_dir)
+                for name in sorted(dirs):
+                    p_root_stat = (p_root / name).stat()
+                    dp = str(p_root / name).replace(dn_prefix, '')
+                    remote_target_dir = f'{remote_target}/{dp}'
+                    if remote_target_dir not in dirs_made:
+                        mkdir_ignore_existing(sftp, remote_target_dir,
+                                              (p_root_stat.st_atime, p_root_stat.st_mtime))
+                        dirs_made.add(remote_target_dir)
+                for name in sorted(files):
+                    src = p_root / name
+                    dp = str(p_root / name).replace(dn_prefix, '')
+                    log.debug('PUT "%s" "%s/%s"', src, remote_target, dp)
+                    if not dry_run:
+                        sftp.put(src, f'{remote_target}/{dp}')
+                        if preserve_stats:
+                            local_s = Path(src).stat()
+                            sftp.utime(f'{remote_target}/{dp}',
+                                       (local_s.st_atime, local_s.st_mtime))
+                    log.debug('Deleting local file "%s".', src)
+                    if not dry_run:
+                        src.unlink()
+            deleted_dirs: set[StrPath] = set()
+            for root, dirs, _ in os.walk(filename, followlinks=True, topdown=False):
+                p_root = Path(root)
+                for name in dirs:
+                    prn = p_root / name
+                    if prn not in deleted_dirs:
+                        log.debug('Deleting local subdirectory "%s".', prn)
+                        if not dry_run:
+                            prn.rmdir()
+                        deleted_dirs.add(prn)
+                if p_root not in deleted_dirs:
+                    log.debug('Deleting local root directory "%s".', p_root)
+                    if not dry_run:
+                        p_root.rmdir()
+                    deleted_dirs.add(p_root)
