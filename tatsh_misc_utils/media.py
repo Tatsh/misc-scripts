@@ -354,7 +354,7 @@ class CDROMTOCHeader(ctypes.Structure):
     ]
 
 
-def get_cd_disc_id(drive: str) -> int:
+def get_cd_disc_id(drive: str) -> str:
     if not IS_LINUX:
         raise OSError
 
@@ -391,7 +391,9 @@ def get_cd_disc_id(drive: str) -> int:
         checksum += cddb_sum((entry.cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
     total_time: int = ((toc_entries[-1].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES) - (
         (toc_entries[0].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
-    return (checksum % 0xff) << 24 | total_time << 8 | last
+    return (f'{(checksum % 0xff) << 24 | total_time << 8 | last:08x} {last} '
+            f'{" ".join(f'{x.cdte_addr.lba + CD_MSF_OFFSET}' for x in toc_entries[:-1])} '
+            f'{(toc_entries[-1].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES}')
 
 
 def cddb_query(disc_id: str,
@@ -411,7 +413,7 @@ def cddb_query(disc_id: str,
     hello = {'hello': f'{username} {this_host} {app} {version}', 'proto': '6'}
     server = f'http://{host}/~cddb/cddb.cgi'
     params = {'cmd': f'cddb query {disc_id}', **hello}
-    r = requests.get(server, params=params, timeout=timeout)
+    r = requests.get(server, params=params, timeout=timeout, headers={'user-agent': hello['hello']})
     r.raise_for_status()
     lines = r.text.splitlines()
     first_line = lines[0].split(' ', 4)
@@ -440,7 +442,6 @@ def cddb_query(disc_id: str,
                 case _:
                     if _.startswith('TTITLE'):
                         tracks[assert_not_none(re.match(r'^TTITLE([^=]+).*', _)).group(1)] = value
-    else:
         raise ValueError(first_line[0])
     assert disc_genre is not None
     assert disc_year is not None
