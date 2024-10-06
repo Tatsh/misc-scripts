@@ -46,6 +46,7 @@ from .git import (
 from .io import unpack_0day
 from .media import (
     add_info_json_to_media_file,
+    cddb_query,
     create_static_text_video,
     get_info_json,
     supported_audio_input_formats,
@@ -1102,3 +1103,18 @@ Version=1.0
             sp.run((kdialog, '--title', 'Successfully uploaded', '--msgbox', url), check=False)
         elif not no_browser:
             webbrowser.open(url)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('args', nargs=-1)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-H', '--host', help='CDDB hostname.', metavar='HOST')
+def cddb_query_main(args: tuple[str, ...], host: str | None = None, *, debug: bool = False) -> None:
+    """
+    Display a CDDB result in a simple JSON format.
+    
+    Does not handle if result is not an exact match.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    click.echo(json.dumps(cddb_query(' '.join(args), host=host)._asdict(), indent=2,
+                          sort_keys=True))

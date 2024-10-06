@@ -4,7 +4,7 @@ from datetime import datetime
 from os import utime
 from pathlib import Path
 from shutil import copyfile
-from typing import Any, ClassVar
+from typing import Any, ClassVar, NamedTuple
 import contextlib
 import ctypes
 import getpass
@@ -24,8 +24,9 @@ from .io import context_os_open
 from .system import IS_LINUX
 from .typing import StrPath, assert_not_none
 
-__all__ = ('add_info_json_to_media_file', 'ffprobe', 'get_info_json',
-           'is_audio_input_format_supported', 'supported_audio_input_formats')
+__all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'cddb_query', 'ffprobe',
+           'get_cd_disc_id', 'get_info_json', 'is_audio_input_format_supported',
+           'supported_audio_input_formats')
 
 log = logging.getLogger(__name__)
 
@@ -325,11 +326,9 @@ CDROM_LEADOUT = 0xAA
 
 
 class CDROMMSF0(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
-        ('minute', ctypes.c_ubyte),
-        ('second', ctypes.c_ubyte),
-        ('frame', ctypes.c_ubyte),
-    ]
+    _fields_: ClassVar[list[tuple[str, Any]]] = [('minute', ctypes.c_ubyte),
+                                                 ('second', ctypes.c_ubyte),
+                                                 ('frame', ctypes.c_ubyte)]
 
 
 class CDROMAddress(ctypes.Union):
@@ -338,20 +337,15 @@ class CDROMAddress(ctypes.Union):
 
 class CDROMTOCEntry(ctypes.Structure):
     _fields_: ClassVar[list[tuple[str, Any] | tuple[str, Any, int]]] = [
-        ('cdte_track', ctypes.c_ubyte),
-        ('cdte_adr', ctypes.c_ubyte, 4),
-        ('cdte_ctrl', ctypes.c_ubyte, 4),
-        ('cdte_format', ctypes.c_ubyte),
-        ('cdte_addr', CDROMAddress),
-        ('cdte_datamode', ctypes.c_ubyte),
+        ('cdte_track', ctypes.c_ubyte), ('cdte_adr', ctypes.c_ubyte, 4),
+        ('cdte_ctrl', ctypes.c_ubyte, 4), ('cdte_format', ctypes.c_ubyte),
+        ('cdte_addr', CDROMAddress), ('cdte_datamode', ctypes.c_ubyte)
     ]
 
 
 class CDROMTOCHeader(ctypes.Structure):
-    _fields_: ClassVar[list[tuple[str, Any]]] = [
-        ('cdth_trk0', ctypes.c_ubyte),
-        ('cdth_trk1', ctypes.c_ubyte),
-    ]
+    _fields_: ClassVar[list[tuple[str, Any]]] = [('cdth_trk0', ctypes.c_ubyte),
+                                                 ('cdth_trk1', ctypes.c_ubyte)]
 
 
 def get_cd_disc_id(drive: str) -> str:
@@ -391,9 +385,19 @@ def get_cd_disc_id(drive: str) -> str:
         checksum += cddb_sum((entry.cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
     total_time: int = ((toc_entries[-1].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES) - (
         (toc_entries[0].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
+    # This expression inside f'{}' causes a Yapf parsing error
+    entries = ' '.join(f'{x.cdte_addr.lba + CD_MSF_OFFSET}' for x in toc_entries[:-1])
     return (f'{(checksum % 0xff) << 24 | total_time << 8 | last:08x} {last} '
-            f'{" ".join(f'{x.cdte_addr.lba + CD_MSF_OFFSET}' for x in toc_entries[:-1])} '
+            f'{entries} '
             f'{(toc_entries[-1].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES}')
+
+
+class CDDBQueryResult(NamedTuple):
+    artist: str
+    album: str
+    year: int
+    genre: str
+    tracks: tuple[str, ...]
 
 
 def cddb_query(disc_id: str,
@@ -402,7 +406,39 @@ def cddb_query(disc_id: str,
                host: str | None = None,
                timeout: float = 5,
                username: str | None = None,
-               version: str = '0.0.1') -> tuple[str, str, int, str, list[str]]:
+               version: str = '0.0.1') -> CDDBQueryResult:
+    """
+    Run a query against a CDDB host.
+    
+    Defaults to host in Keyring under the ``gnudb`` key and current user name.
+
+    It is advised to ``except`` typical
+    `Requests exceptions https://requests.readthedocs.io/en/latest/`_ when calling this.
+
+    Parameters
+    ----------
+    app: str
+        App name.
+    host: str
+        Hostname to query.
+    timeout: float
+        HTTP timeout.
+    username: str
+        Username for keyring and for the ``hello`` parameter to the CDDB server.
+    version : str
+        Application version.
+
+    Returns
+    -------
+    CDDBQueryResult
+        Tuple with artist, album, year, genre, and tracks.
+    
+    Raises
+    ------
+    ValueError
+        If the server response code is not ``'200'`` or ``'210'`` (these are CDDB codes **not**
+        HTTP status codes.)
+    """
     username = username or getpass.getuser()
     if not username:
         raise ValueError(username)
@@ -416,35 +452,40 @@ def cddb_query(disc_id: str,
     r = requests.get(server, params=params, timeout=timeout, headers={'user-agent': hello['hello']})
     r.raise_for_status()
     lines = r.text.splitlines()
-    first_line = lines[0].split(' ', 4)
+    first_line = lines[0].split(' ', 3)
+    disc_genre = disc_year = None
     if len(lines) == 1 and first_line[0] == '200':
         _, category, __, artist_title = first_line
-        artist, disc_title = artist_title.split(' / ', 2)
-        r = requests.get(server,
-                         params={
-                             'cmd': f'cddb read {category} {disc_id}',
-                             **hello
-                         },
-                         timeout=timeout)
-        r.raise_for_status()
-        tracks = {}
-        disc_genre = None
-        disc_year = None
-        for line in r.text.splitlines()[1:]:
-            field_name, value = line.split('=', 2)
-            match field_name:
-                case 'DTITLE':
-                    disc_title = value
-                case 'DYEAR':
-                    disc_year = int(value)
-                case 'DGENRE':
-                    disc_genre = value
-                case _:
-                    if _.startswith('TTITLE'):
-                        tracks[assert_not_none(re.match(r'^TTITLE([^=]+).*', _)).group(1)] = value
+    elif first_line[0] == '210':
+        # Take first result
+        category, _, artist_title = lines[1].split(' ', 2)
+    else:
         raise ValueError(first_line[0])
+    artist, disc_title = artist_title.split(' / ', 1)
+    r = requests.get(server,
+                     params={
+                         'cmd': f'cddb read {category} {disc_id}',
+                         **hello
+                     },
+                     timeout=timeout)
+    r.raise_for_status()
+    tracks = {}
+    disc_genre = None
+    disc_year = None
+    for line in (x.strip() for x in r.text.splitlines()[1:]
+                 if x.strip() and x[0] not in {'.', '#'}):
+        field_name, value = line.split('=', 1)
+        match field_name:
+            case 'DTITLE':
+                artist, disc_title = value.split(' / ', 1)
+            case 'DYEAR':
+                disc_year = int(value)
+            case 'DGENRE':
+                disc_genre = value
+            case key:
+                if key.startswith('TTITLE'):
+                    tracks[assert_not_none(re.match(r'^TTITLE([^=]+).*', key)).group(1)] = value
     assert disc_genre is not None
     assert disc_year is not None
-    return artist, disc_title, disc_year, disc_genre, [
-        x[1] for x in sorted(tracks.items(), key=operator.itemgetter(0))
-    ]
+    return CDDBQueryResult(artist, disc_title, disc_year, disc_genre,
+                           tuple(x[1] for x in sorted(tracks.items(), key=operator.itemgetter(0))))
