@@ -166,6 +166,7 @@ reportPropertyTypeMismatch = "error"
 reportShadowedImports = "error"
 reportUninitializedInstanceVariable = "error"
 reportUnnecessaryTypeIgnoreComment = "none"
+stubPath = "./.stubs"
 typeCheckingMode = "off"
 useLibraryCodeForTypes = false
 
