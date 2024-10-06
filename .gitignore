@@ -1,8 +1,9 @@
 .*~
 .directory
 .pnp.*
-/.mypy_cache/
+/.*_cache/
 /.vscode/.ropeproject/objectdb
 /.vscode/tags
 /.yarn/install-state.gz
-/node_modules/
+node_modules/
+__pycache__

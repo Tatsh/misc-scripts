@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from io import BytesIO
 from pathlib import Path
 from shlex import quote, split
+from shutil import which
 from time import sleep
 from typing import Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
@@ -20,10 +21,13 @@ import webbrowser
 from binaryornot.check import is_binary
 from git import Repo
 from paramiko import SSHClient
+from requests import HTTPError
 from send2trash import send2trash
 import click
 import github
 import keyring
+import pyperclip
+import requests
 import xdg.BaseDirectory
 import yaml
 
@@ -75,7 +79,7 @@ from .utils import (
     create_wine_prefix,
     secure_move_path,
 )
-from .www import generate_html_dir_tree, where_from
+from .www import generate_html_dir_tree, upload_to_imgbb, where_from
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 _T = TypeVar('_T', bound=str)
@@ -987,3 +991,115 @@ def smv_main(filenames: str,
                              target_dir_or_filename,
                              dry_run=dry_run,
                              preserve_stats=preserve)
+
+
+def _upload_to_imgbb_xdg_install(context: click.Context, _: Any, value: str) -> None:
+    prefix = str(Path('~/.local').expanduser()) if (value == '-' or not value) else value
+    apps = Path(f'{prefix}/share/applications')
+    apps.mkdir(parents=True, exist_ok=True)
+    (apps / 'upload-to-imgbb.desktop').write_text("""[Desktop Entry]
+Categories=Graphics;2DGraphics;RasterGraphics;
+Exec=upload-to-imgbb %U
+Icon=imgbb
+Keywords=graphic;design;
+MimeType=image/avif;image/gif;image/jpeg;image/png;image/webp
+Name=Upload to ImgBB
+StartupNotify=false
+Terminal=false
+TryExec=upload-to-imgbb
+Type=Application
+Version=1.0
+""")
+    r = requests.get('https://simgbb.com/images/favicon.png', timeout=5)
+    icons_dir = Path(f'{prefix}/share/icons/hicolor/300x300')
+    icons_dir.mkdir(parents=True, exist_ok=True)
+    (icons_dir / 'imgbb.png').write_bytes(r.content)
+    sp.run(('update-desktop-database', '-v', str(apps)), check=True)
+    context.exit()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.option('--api-key', help='API key.', metavar='KEY')
+@click.option('--keyring-username', help='Keyring username override.', metavar='USERNAME')
+@click.option('--no-browser', is_flag=True, help='Do not copy URL to clipboard.')
+@click.option('--no-clipboard', is_flag=True, help='Do not copy URL to clipboard.')
+@click.option('--no-gui', is_flag=True, help='Disable GUI interactions.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-t',
+              '--timeout',
+              type=float,
+              default=5,
+              help='Timeout in seconds.',
+              metavar='TIMEOUT')
+@click.option('--xdg-install',
+              default='-',
+              metavar='PATH',
+              help=('Install .desktop file. Argument is the installation prefix such as /usr. Use '
+                    '- to install to user XDG directory.'))
+def upload_to_imgbb_main(filenames: tuple[str, ...],
+                         api_key: str | None = None,
+                         keyring_username: str | None = None,
+                         timeout: float = 5,
+                         xdg_install: str = '-',
+                         *,
+                         debug: bool = False,
+                         no_browser: bool = False,
+                         no_clipboard: bool = False,
+                         no_gui: bool = False) -> None:
+    """
+    Upload image to ImgBB.
+    
+    Get an API key at https://api.imgbb.com/ and set it with `keyring set imgbb "${USER}"`.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    if xdg_install:
+        prefix = str(Path('~/.local').expanduser()) if (xdg_install == '-'
+                                                        or not xdg_install) else xdg_install
+        apps = Path(f'{prefix}/share/applications')
+        apps.mkdir(parents=True, exist_ok=True)
+        (apps / 'upload-to-imgbb.desktop').write_text("""[Desktop Entry]
+Categories=Graphics;2DGraphics;RasterGraphics;
+Exec=upload-to-imgbb %U
+Icon=imgbb
+Keywords=graphic;design;
+MimeType=image/avif;image/gif;image/jpeg;image/png;image/webp
+Name=Upload to ImgBB
+StartupNotify=false
+Terminal=false
+TryExec=upload-to-imgbb
+Type=Application
+Version=1.0
+    """)
+        r = requests.get('https://simgbb.com/images/favicon.png', timeout=5)
+        icons_dir = Path(f'{prefix}/share/icons/hicolor/300x300')
+        icons_dir.mkdir(parents=True, exist_ok=True)
+        (icons_dir / 'imgbb.png').write_bytes(r.content)
+        sp.run(('update-desktop-database', '-v', str(apps)), check=True, capture_output=not debug)
+        return
+    kdialog = which('kdialog')
+    show_gui = not no_gui and len(filenames) == 1 and kdialog
+    try:
+        for name in filenames:
+            r = upload_to_imgbb(name,
+                                api_key=api_key,
+                                keyring_username=keyring_username,
+                                timeout=timeout)
+            if not show_gui:
+                click.echo(r.json()['data']['url'])
+    except HTTPError as e:
+        if show_gui:
+            assert kdialog is not None
+            sp.run((kdialog, '--sorry', 'Failed to upload!'), check=False)
+        click.echo('Failed to upload. Check API key!', err=True)
+        raise click.Abort from e
+    if r:
+        url: str = r.json()['data']['url']
+        if not no_clipboard:
+            pyperclip.copy(url)
+        if show_gui:
+            click.echo(url)
+            assert kdialog is not None
+            sp.run((kdialog, '--title', 'Successfully uploaded', '--msgbox', url), check=False)
+        elif not no_browser:
+            webbrowser.open(url)

@@ -200,6 +200,7 @@ ilayya
 ilong
 imax
 imessage
+imgbb
 iname
 incits
 inlinevar
@@ -221,6 +222,7 @@ jinja
 jlong
 joinpath
 kakasi
+kdialog
 khtml
 killall
 kwargs
@@ -282,6 +284,7 @@ mozcookie
 mplayer
 mprotect
 msapplication
+msgbox
 msgs
 msys
 msystem
@@ -349,6 +352,7 @@ pydocstyle
 pygithub
 pylance
 pylint
+pyperclip
 pyright
 pytest
 pyxdg

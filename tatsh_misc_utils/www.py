@@ -1,4 +1,5 @@
 from collections.abc import Iterator, Sequence
+from getpass import getuser
 from html import escape
 from itertools import chain
 from os import getxattr, scandir
@@ -6,6 +7,9 @@ from pathlib import Path
 from typing import cast
 import contextlib
 import plistlib
+
+import keyring
+import requests
 
 from .string import hexstr2bytes
 from .system import IS_LINUX
@@ -83,3 +87,22 @@ ul {{
 </div>
 </body>
 </html>"""
+
+
+def upload_to_imgbb(path: StrPath,
+                    *,
+                    api_key: str | None = None,
+                    keyring_username: str | None = None,
+                    timeout: float = 5) -> requests.Response:
+    """
+    Upload an image to ImgBB.
+    
+    Get an API key at https://api.imgbb.com/ and set it with ``keyring set imgbb keyring_username``.
+    """
+    r = requests.post(
+        'https://api.imgbb.com/1/upload',
+        files={'image': Path(path).resolve(strict=True).read_bytes()},
+        params={'key': api_key or keyring.get_password('imgbb', keyring_username or getuser())},
+        timeout=timeout)
+    r.raise_for_status()
+    return r
