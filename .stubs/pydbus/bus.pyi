@@ -20,6 +20,9 @@ DBusOrgFreedesktopDBusObjectManagerManagedObjectsDict = TypedDict(
 
 
 class DBusOrgFreedesktopDBusObjectManager:
+    x: int
+    y: int
+
     @staticmethod
     def GetManagedObjects() -> DBusOrgFreedesktopDBusObjectManagerManagedObjectsDict:  # noqa: N802
         ...

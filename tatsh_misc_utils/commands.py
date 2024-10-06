@@ -1033,7 +1033,7 @@ Version=1.0
               help='Timeout in seconds.',
               metavar='TIMEOUT')
 @click.option('--xdg-install',
-              default='-',
+              default=None,
               metavar='PATH',
               help=('Install .desktop file. Argument is the installation prefix such as /usr. Use '
                     '- to install to user XDG directory.'))
@@ -1041,7 +1041,7 @@ def upload_to_imgbb_main(filenames: tuple[str, ...],
                          api_key: str | None = None,
                          keyring_username: str | None = None,
                          timeout: float = 5,
-                         xdg_install: str = '-',
+                         xdg_install: str | None = None,
                          *,
                          debug: bool = False,
                          no_browser: bool = False,
@@ -1054,8 +1054,7 @@ def upload_to_imgbb_main(filenames: tuple[str, ...],
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     if xdg_install:
-        prefix = str(Path('~/.local').expanduser()) if (xdg_install == '-'
-                                                        or not xdg_install) else xdg_install
+        prefix = str(Path('~/.local').expanduser()) if xdg_install == '-' else xdg_install
         apps = Path(f'{prefix}/share/applications')
         apps.mkdir(parents=True, exist_ok=True)
         (apps / 'upload-to-imgbb.desktop').write_text("""[Desktop Entry]
