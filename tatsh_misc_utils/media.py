@@ -4,15 +4,25 @@ from datetime import datetime
 from os import utime
 from pathlib import Path
 from shutil import copyfile
-from typing import Any
+from typing import Any, ClassVar
 import contextlib
+import ctypes
+import getpass
 import json
 import logging
+import operator
+import os
 import re
+import socket
 import subprocess as sp
 import tempfile
 
-from .typing import StrPath
+import keyring
+import requests
+
+from .io import context_os_open
+from .system import IS_LINUX
+from .typing import StrPath, assert_not_none
 
 __all__ = ('add_info_json_to_media_file', 'ffprobe', 'get_info_json',
            'is_audio_input_format_supported', 'supported_audio_input_formats')
@@ -304,3 +314,136 @@ def create_static_text_video(audio_file: StrPath,
            check=True,
            capture_output=not debug)
     Path(tf.name).unlink()
+
+
+CDROMREADTOCHDR = 0x5305
+CDROMREADTOCENTRY = 0x5306
+CDROM_LBA = 1
+CD_MSF_OFFSET = 150
+CD_FRAMES = 75
+CDROM_LEADOUT = 0xAA
+
+
+class CDROMMSF0(ctypes.Structure):
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ('minute', ctypes.c_ubyte),
+        ('second', ctypes.c_ubyte),
+        ('frame', ctypes.c_ubyte),
+    ]
+
+
+class CDROMAddress(ctypes.Union):
+    _fields_: ClassVar[list[tuple[str, Any]]] = [('msf', CDROMMSF0), ('lba', ctypes.c_int)]
+
+
+class CDROMTOCEntry(ctypes.Structure):
+    _fields_: ClassVar[list[tuple[str, Any] | tuple[str, Any, int]]] = [
+        ('cdte_track', ctypes.c_ubyte),
+        ('cdte_adr', ctypes.c_ubyte, 4),
+        ('cdte_ctrl', ctypes.c_ubyte, 4),
+        ('cdte_format', ctypes.c_ubyte),
+        ('cdte_addr', CDROMAddress),
+        ('cdte_datamode', ctypes.c_ubyte),
+    ]
+
+
+class CDROMTOCHeader(ctypes.Structure):
+    _fields_: ClassVar[list[tuple[str, Any]]] = [
+        ('cdth_trk0', ctypes.c_ubyte),
+        ('cdth_trk1', ctypes.c_ubyte),
+    ]
+
+
+def get_cd_disc_id(drive: str) -> int:
+    if not IS_LINUX:
+        raise OSError
+
+    def cddb_sum(n: int) -> int:
+        # a number like 2344 becomes 2+3+4+4 (13)
+        ret = 0
+        while n > 0:
+            ret += n % 10
+            n //= 10
+        return ret
+
+    with context_os_open(drive, os.O_RDONLY | os.O_NONBLOCK) as fd:
+        libc = ctypes.CDLL('libc.so.6', use_errno=True)
+        toc_header = CDROMTOCHeader()
+        if libc.ioctl(fd, CDROMREADTOCHDR, ctypes.byref(toc_header)) < 0:
+            raise OSError(ctypes.get_errno())
+        last: int = toc_header.cdth_trk1
+        toc_entries = []
+        for i in range(last):
+            buf = CDROMTOCEntry()
+            buf.cdte_track = i + 1
+            buf.cdte_format = CDROM_LBA
+            toc_entries.append(buf)
+            if libc.ioctl(fd, CDROMREADTOCENTRY, ctypes.byref(buf)):
+                raise OSError(ctypes.get_errno())
+        buf = CDROMTOCEntry()
+        buf.cdte_track = CDROM_LEADOUT
+        buf.cdte_format = CDROM_LBA
+        toc_entries.append(buf)
+        if libc.ioctl(fd, CDROMREADTOCENTRY, ctypes.byref(buf)) < 0:
+            raise OSError(ctypes.get_errno())
+    checksum = 0
+    for entry in toc_entries[:-1]:
+        checksum += cddb_sum((entry.cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
+    total_time: int = ((toc_entries[-1].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES) - (
+        (toc_entries[0].cdte_addr.lba + CD_MSF_OFFSET) // CD_FRAMES)
+    return (checksum % 0xff) << 24 | total_time << 8 | last
+
+
+def cddb_query(disc_id: str,
+               *,
+               app: str = 'tatsh_misc_utils cddb_query',
+               host: str | None = None,
+               timeout: float = 5,
+               username: str | None = None,
+               version: str = '0.0.1') -> tuple[str, str, int, str, list[str]]:
+    username = username or getpass.getuser()
+    if not username:
+        raise ValueError(username)
+    host = host or keyring.get_password('gnudb', username)
+    if not host:
+        raise ValueError(host)
+    this_host = socket.gethostname()
+    hello = {'hello': f'{username} {this_host} {app} {version}', 'proto': '6'}
+    server = f'http://{host}/~cddb/cddb.cgi'
+    params = {'cmd': f'cddb query {disc_id}', **hello}
+    r = requests.get(server, params=params, timeout=timeout)
+    r.raise_for_status()
+    lines = r.text.splitlines()
+    first_line = lines[0].split(' ', 4)
+    if len(lines) == 1 and first_line[0] == '200':
+        _, category, __, artist_title = first_line
+        artist, disc_title = artist_title.split(' / ', 2)
+        r = requests.get(server,
+                         params={
+                             'cmd': f'cddb read {category} {disc_id}',
+                             **hello
+                         },
+                         timeout=timeout)
+        r.raise_for_status()
+        tracks = {}
+        disc_genre = None
+        disc_year = None
+        for line in r.text.splitlines()[1:]:
+            field_name, value = line.split('=', 2)
+            match field_name:
+                case 'DTITLE':
+                    disc_title = value
+                case 'DYEAR':
+                    disc_year = int(value)
+                case 'DGENRE':
+                    disc_genre = value
+                case _:
+                    if _.startswith('TTITLE'):
+                        tracks[assert_not_none(re.match(r'^TTITLE([^=]+).*', _)).group(1)] = value
+    else:
+        raise ValueError(first_line[0])
+    assert disc_genre is not None
+    assert disc_year is not None
+    return artist, disc_title, disc_year, disc_genre, [
+        x[1] for x in sorted(tracks.items(), key=operator.itemgetter(0))
+    ]

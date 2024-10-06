@@ -89,8 +89,8 @@ def run_ultraiso(
     On non-Windows, for any option taking a file path, only pass UNIX file paths. They will be
     converted as needed.
 
-    Parmeters
-    ---------
+    Parameters
+    ----------
     input : StrPathMustExist | None
         Input image.
     output : StrPath | None

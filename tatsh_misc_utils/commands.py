@@ -475,7 +475,7 @@ def sanitize_main(file: TextIO, *, no_restricted: bool = False) -> None:
     """
     Transform a string to a 'sanitised' form.
 
-    By default, a restricted character set safe for Windows filesnames is used. Disable with -R.
+    By default, a restricted character set safe for Windows filenames is used. Disable with -R.
     """
     click.echo(sanitize(file.read(), restricted=not no_restricted))
 
