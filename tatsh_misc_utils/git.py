@@ -58,7 +58,7 @@ def merge_dependabot_pull_requests(
                 affiliation=affiliation, sort='full_name')  # type: ignore[call-arg]
             if not x.archived and uses_dependabot(x)):
         log.info('Repository: %s', repo.name)
-        for num in (x.number for x in repo.get_pulls() if x.user.login == 'dependabot'):
+        for num in (x.number for x in repo.get_pulls() if x.user.login == 'dependabot[bot]'):
             try:
                 pull = repo.get_pull(num)
                 if not pull.merge(merge_method='rebase').merged:
