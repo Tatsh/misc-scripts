@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-if command -v sw_vers &> /dev/null && [ -n "$1" ]; then
-    [ -z "$2" ] && id=$(security find-identity -v -s 'Mac Developer' |
-        grep -F '1)' | cut '-d"' -f2)
-    codesign -s "$id" -fv "$1"
-fi
