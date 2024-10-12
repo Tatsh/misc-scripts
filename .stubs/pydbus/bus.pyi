@@ -15,8 +15,7 @@ DBusOrgFreedesktopDBusObjectManagerManagedObjectsDict = TypedDict(
     {
         '/org/bluez': OrgBluezDict,
         '/org/bluez/hci0': OrgBluesHci0Dict
-    },
-    total=False)
+    })
 
 
 class DBusOrgFreedesktopDBusObjectManager:
@@ -24,7 +23,7 @@ class DBusOrgFreedesktopDBusObjectManager:
     y: int
 
     @staticmethod
-    def GetManagedObjects() -> DBusOrgFreedesktopDBusObjectManagerManagedObjectsDict:  # noqa: N802
+    def GetManagedObjects() -> dict[str, Any]:  # noqa: N802
         ...
 
 
