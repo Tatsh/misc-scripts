@@ -6,6 +6,7 @@ from typing import Any
 import fcntl
 import logging
 import os
+import plistlib
 import sys
 
 from .io import context_os_open
@@ -140,3 +141,29 @@ def slug_rename(path: StrPath, *, no_lower: bool = False) -> StrPath:
     path = Path(path).resolve(strict=True)
     parent = path.parent
     return path.rename(parent / slugify(path.name, no_lower=no_lower))
+
+
+def patch_macos_bundle_info_plist(bundle: StrPath, **data: Any) -> None:
+    """
+    Patch a macOS/iOS/etc bundle's ``Info.plist`` file.
+
+    Example
+    -------
+    .. code-block :: python
+
+        # Force Retina support
+        patch_macos_bundle_info_plist('App.app', {'NSHighResolutionCapable': True})
+
+    Parameters
+    ----------
+    bundle : StrPath
+        Path to the bundle.
+    data : dict[str, Any]
+        Data to merge in.
+    """
+    info_plist = Path(bundle).resolve(strict=True) / 'Contents' / 'Info.plist'
+    with info_plist.open('rb') as f:
+        file_data: dict[str, Any] = plistlib.load(f)
+    with info_plist.open('wb') as f:
+        plistlib.dump(file_data | data, f, sort_keys=False)
+    info_plist.touch()

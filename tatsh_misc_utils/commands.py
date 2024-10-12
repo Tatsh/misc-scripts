@@ -66,6 +66,7 @@ from .system import (
     IS_WINDOWS,
     find_bluetooth_device_info_by_name,
     inhibit_notifications,
+    patch_macos_bundle_info_plist,
     slug_rename,
     wait_for_disc,
 )
@@ -1292,3 +1293,25 @@ def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = Fa
     if delete_paths:
         for path in paths:
             send2trash(path)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('bundle', type=click.Path(dir_okay=True, file_okay=False))
+@click.option('-E',
+              '--env-var',
+              'env_vars',
+              help='Environment variable to set.',
+              multiple=True,
+              type=(str, str))
+@click.option('-r', '--retina', type=int, help='For macOS apps, force Retina support.')
+def patch_bundle_main(bundle: str,
+                      env_vars: tuple[tuple[str, str], ...],
+                      *,
+                      retina: bool = False) -> None:
+    """Patch a macOS/iOS/etc bundle's Info.plist file."""
+    data: dict[str, Any] = {}
+    if env_vars:
+        data['LSEnvironment'] = dict(env_vars)
+    if retina:
+        data['NSHighResolutionCapable'] = True
+    patch_macos_bundle_info_plist(bundle, **data)
