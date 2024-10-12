@@ -43,7 +43,7 @@ from .git import (
     get_github_default_branch,
     merge_dependabot_pull_requests,
 )
-from .io import unpack_0day, unpack_ebook
+from .io import extract_gog, unpack_0day, unpack_ebook
 from .media import (
     add_info_json_to_media_file,
     cddb_query,
@@ -1282,7 +1282,7 @@ def flacted_main(files: tuple[str, ...],
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('paths', nargs=-1)
+@click.argument('paths', type=click.Path(exists=True, file_okay=False), nargs=-1)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-D', '--delete-paths', help='Delete paths after extraction.', is_flag=True)
 def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = False) -> None:
@@ -1315,3 +1315,17 @@ def patch_bundle_main(bundle: str,
     if retina:
         data['NSHighResolutionCapable'] = True
     patch_macos_bundle_info_plist(bundle, **data)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-o',
+              '--output-dir',
+              default='.',
+              type=click.Path(exists=True, file_okay=False),
+              help='Output directory.')
+def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> None:
+    """Extract a Linux gog.com archive."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    extract_gog(filename, output_dir)

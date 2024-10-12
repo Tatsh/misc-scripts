@@ -187,6 +187,7 @@ globbing
 gnudb
 gnupg
 gnupghome
+gogextract
 gpac
 groupdict
 handle

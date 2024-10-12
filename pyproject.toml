@@ -101,6 +101,7 @@ git-checkout-default-branch = "tatsh_misc_utils.commands:git_checkout_default_br
 git-co-default-branch = "tatsh_misc_utils.commands:git_checkout_default_branch_main"
 git-open = "tatsh_misc_utils.commands:git_open_main"
 git-rebase-default-branch = "tatsh_misc_utils.commands:git_rebase_default_branch_main"
+gogextract = "tatsh_misc_utils.commands:gogextract_main"
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
 inhibit-notifications = "tatsh_misc_utils.commands:inhibit_notifications_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
