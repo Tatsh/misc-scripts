@@ -120,7 +120,7 @@ def extract_gog(filename: str, output_dir: StrPath) -> None:
     with input_path.open('rb') as game_bin:
         output_dir.mkdir(parents=True)
         # Read the first 10kb so we can determine the script line number
-        beginning = game_bin.read(10240).decode('utf-8', errors='ignore')
+        beginning = game_bin.read(10240).decode(errors='ignore')
         offset_match = GOG_OFFSET_RE.search(beginning)
         if not offset_match:
             raise ValueError
