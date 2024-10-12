@@ -276,3 +276,12 @@ def fullwidth_to_ascii(s: str) -> str:
 def slugify(s: str, *, no_lower: bool = False) -> str:
     """Slug string generator."""
     return re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', s if no_lower else s.lower()).strip())
+
+
+@cache
+def is_roman_numeral(string: str) -> bool:
+    """Check if a string is a Roman numeral."""
+    if not string:
+        return False
+    return re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
+                    re.IGNORECASE) is not None
