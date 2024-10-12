@@ -1173,3 +1173,108 @@ def ripcd_main(drive: str = '/dev/sr0',
     except (sp.CalledProcessError, requests.RequestException, ValueError) as e:
         click.echo(str(e), err=True)
         raise click.Abort from e
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('files', nargs=-1)
+@click.option('-A', '--album', help='Album.')
+@click.option('-D',
+              '--delete-all-before',
+              is_flag=True,
+              help='Delete all existing tags before processing.')
+@click.option('-T', '--track', type=int, help='Track number.')
+@click.option('-a', '--artist', help='Track artist.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-g', '--genre', help='Genre.')
+@click.option('-p', '--picture', help='Cover artwork to attach.')
+@click.option('-t', '--title', help='Track title.')
+@click.option('-y', '--year', type=int, help='Year.')
+def flacted_main(files: tuple[str, ...],
+                 album: str | None = None,
+                 artist: str | None = None,
+                 genre: str | None = None,
+                 picture: str | None = None,
+                 title: str | None = None,
+                 track: int | None = None,
+                 year: int | None = None,
+                 *,
+                 debug: bool = False,
+                 delete_all_before: bool = False) -> None:
+    """Front-end to metaflac to set common tags."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+
+    def metaflac(*args: Any, **kwargs: Any) -> sp.CompletedProcess[str]:
+        return sp.run(('metaflac', *cast(tuple[str, ...], args)),
+                      capture_output=not debug,
+                      **kwargs,
+                      check=True,
+                      text=True)
+
+    invoked_as = Path(sys.argv[0]).name
+    if invoked_as != 'flacted' and len(files) > 0:
+        tag_requested = invoked_as.split('-')[1].lower()
+        possible: tuple[str, ...] = (tag_requested.title(), tag_requested.upper(), tag_requested)
+        if tag_requested.lower() == 'year':
+            possible += ('Date', 'DATE', 'date')
+        unfiltered_files = files
+        filtered_files = []
+        for file in unfiltered_files:
+            with contextlib.suppress(FileNotFoundError):
+                filtered_files.append(str(Path(file).resolve(strict=True)))
+        show_filename = len(files) > 1
+        for filename in files:
+            for tag in possible:
+                val = metaflac(f'--show-tag={tag}', filename).stdout.strip()
+                try:
+                    val = val[len(tag) + 1:].splitlines()[0].strip()
+                except IndexError:
+                    val = ''
+                if val:
+                    if tag_requested == 'track':
+                        try:
+                            val_int: int | None = int(val)
+                        except TypeError:
+                            val = ''
+                            val_int = None
+                        if val_int:
+                            val = f'{val_int:02d}'
+                    if show_filename:
+                        click.echo(f'{filename}: {val}')
+                    else:
+                        click.echo(f'{val}')
+                    break
+        return
+    min_args = 3
+    metaflac_args = ['--preserve-modtime', '--no-utf8-convert']
+    clean_up_args = metaflac_args.copy()
+    destroy = delete_all_before
+    clean_up_args.append('--remove-all-tags')
+    clean_up_args.extend(files)
+    for key, value in {
+            'album': album,
+            'artist': artist,
+            'genre': genre,
+            'title': title,
+            'track': track,
+            'year': year
+    }.items():
+        if not value:
+            continue
+        value_ = value.strip() if isinstance(value, str) else value
+        match key:
+            case 'year':
+                flac_tag = 'Date'
+            case 'track':
+                flac_tag = 'Tracknumber'
+            case _:
+                flac_tag = f'{key[0].upper()}{key[1:]}'
+        metaflac_args.append(f'--set-tag={flac_tag}={value_}')
+    if picture:
+        metaflac_args.append(f'--import-picture-from={picture}')
+    if len(metaflac_args) < min_args:
+        click.echo('Not doing anything', err=True)
+        raise click.Abort
+    if destroy:
+        metaflac(*clean_up_args)
+    metaflac_args.extend(files)
+    metaflac(*metaflac_args)
