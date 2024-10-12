@@ -43,7 +43,7 @@ from .git import (
     get_github_default_branch,
     merge_dependabot_pull_requests,
 )
-from .io import unpack_0day
+from .io import unpack_0day, unpack_ebook
 from .media import (
     add_info_json_to_media_file,
     cddb_query,
@@ -1278,3 +1278,17 @@ def flacted_main(files: tuple[str, ...],
         metaflac(*clean_up_args)
     metaflac_args.extend(files)
     metaflac(*metaflac_args)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('paths', nargs=-1)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-D', '--delete-paths', help='Delete paths after extraction.', is_flag=True)
+def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = False) -> None:
+    """Extract ebooks from RARs within Zip files."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    for path in paths:
+        unpack_ebook(path)
+    if delete_paths:
+        for path in paths:
+            send2trash(path)
