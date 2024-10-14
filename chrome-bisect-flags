@@ -1,14 +1,14 @@
 #!/usr/bin/env python
-from argparse import Namespace
 from collections.abc import Sequence
 from copy import deepcopy
-from os.path import expanduser
+from pathlib import Path
 from time import sleep
-from typing import TypedDict, cast
-import argparse
+from typing import TypedDict
 import json
 import subprocess as sp
 import sys
+
+import click
 
 
 class LocalStateBrowser(TypedDict):
@@ -19,35 +19,45 @@ class LocalState(TypedDict):
     browser: LocalStateBrowser
 
 
+try:
+    DEFAULT_LOCAL_STATE_PATH: str | None = str(
+        Path('~/.config/google-chrome/Local State').expanduser().resolve(strict=True))
+except FileNotFoundError:
+    DEFAULT_LOCAL_STATE_PATH = None
+FLAGS_MIN_LENGTH = 2
+
+
 def start_test(flags: Sequence[str], local_state: LocalState, subprocess_name: str, ls_path: str,
                sleep_time: float) -> tuple[bool, str | None]:
     """
+    Test apparatus.
+
     Returns ``True`` if:
     - there are no more flags (problem flag not found)
     - if there is only one flag left (problem flag possibly found)
-    - if the problematic flag exists within the passed in flags.
+    - if the problematic flag exists within the passed in flags
     """
     len_flags = len(flags)
     if len_flags == 0:
-        print('Could not find the problem flag', file=sys.stderr)
+        click.echo('Could not find the problem flag.', err=True))
         return True, None
-    print('Testing flags:')
+    click.echo('Testing flags:')
     for flag in flags:
-        print(f'- {flag}')
+        click.echo(f'- {flag}')
     local_state['browser']['enabled_labs_experiments'] = flags
-    with open(ls_path, 'w+', encoding='utf-8') as f:
+    with Path(ls_path).open('w+', encoding='utf-8') as f:
         json.dump(local_state, f, allow_nan=False)
-    input('Start browser and test for the issue, then press enter')
+    click.confirm('Start browser and test for the issue, then press enter', show_default=False)
     sp.run(('killall', subprocess_name), capture_output=True, check=False)
     sleep(sleep_time)
-    at_fault = input('Did the problem occur? ').lower().startswith('y')
+    at_fault = click.confirm('Did the problem occur?')
     return at_fault, flags[0] if at_fault and len_flags == 1 else None
 
 
 def do_test(flags: Sequence[str], ls_path: str, subprocess_name: str, sleep_time: float,
             local_state: LocalState) -> str | None:
     len_flags = len(flags)
-    if len_flags < 2:
+    if len_flags < FLAGS_MIN_LENGTH:
         return flags[0] if len_flags == 1 else None
     done, bad_flag = start_test(flags[:len_flags // 2], deepcopy(local_state), subprocess_name,
                                 ls_path, sleep_time)
@@ -62,57 +72,51 @@ def do_test(flags: Sequence[str], ls_path: str, subprocess_name: str, sleep_time
     return None
 
 
-class Args(Namespace):
-    local_state_path: str
-    subprocess_name: str
-    sleep_time: float
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description='Determine which flag is causing an issue in '
-                                     'Chrome or any Chromium-based browser.')
-    parser.add_argument('local_state_path',
-                        metavar='LOCAL_STATE_PATH',
-                        nargs='?',
-                        help='Path to a "Local State" file',
-                        default=expanduser('~/.config/google-chrome/Local State'))
-    parser.add_argument('-s',
-                        '--subprocess-name',
-                        default='chrome',
-                        help='Chromium-based browser subprocess name such as "chrome"')
-    parser.add_argument(
-        '--sleep-time',
-        default=0.5,
-        type=float,
-        help='Time to sleep after attempting to kill the browser processes in seconds.')
-    args = cast(Args, parser.parse_args())
-    print(f'Using "{args.local_state_path}"', file=sys.stderr)
-    with open(args.local_state_path, encoding='utf-8') as f:
+@click.command()
+@click.argument('local_state_path',
+                type=click.Path(dir_okay=False, exists=True),
+                metavar='LOCAL_STATE_PATH',
+                default=DEFAULT_LOCAL_STATE_PATH)
+@click.option('-s',
+              '--subprocess-name',
+              default='chrome',
+              help='Chromium-based browser subprocess name such as "chrome"')
+@click.option('--sleep-time',
+              default=0.5,
+              type=float,
+              help='Time to sleep after attempting to kill the browser processes in seconds.')
+def main(local_state_path: str, subprocess_name: str = 'chrome', sleep_time: float = 0.5) -> None:
+    """
+    Determine which flag is causing an issue in Chrome or any Chromium-based browser.
+    
+    Only supports removing flags (setting back to default) and not setting them to 'safe' values.
+    """
+    p_ls = Path(local_state_path)
+    click.echo(f'Using "{local_state_path}"', err=True)
+    with p_ls.open(encoding='utf-8') as f:
         local_state_data = json.load(f)
         flags = local_state_data['browser']['enabled_labs_experiments']
         len_flags = len(flags)
         if len_flags == 0:
-            print('Nothing to test', file=sys.stderr)
-            return 1
+            click.echo('Nothing to test.', err=True)
+            raise click.Abort
     bad_flag = None
     try:
-        input('Exit the browser and press any key')
-        bad_flag = do_test(flags, args.local_state_path, args.subprocess_name, args.sleep_time,
-                           local_state_data)
-    except Exception:
-        return 1
+        click.confirm('Exit the browser and press enter', show_default=False)
+        bad_flag = do_test(flags, local_state_path, subprocess_name, sleep_time, local_state_data)
+    except KeyboardInterrupt as e:
+        raise click.Abort from e
     finally:
         if bad_flag:
             local_state_data['browser']['enabled_labs_experiments'] = [
                 x for x in local_state_data['browser']['enabled_labs_experiments'] if x != bad_flag
             ]
-        with open(args.local_state_path, 'w+', encoding='utf-8') as f:
+        with p_ls.open('w+', encoding='utf-8') as f:
             json.dump(local_state_data, f, sort_keys=True, indent=2, allow_nan=False)
         if not bad_flag:
-            print('Restored original "Local State"', file=sys.stderr)
+            click.echo('Restored original "Local State".', err=True)
         else:
-            print(f'Saved "Local State" with "{bad_flag}" removed', file=sys.stderr)
-    return 0
+            click.echo(f'Saved "Local State" with "{bad_flag}" removed.', err=True)
 
 
 if __name__ == '__main__':
