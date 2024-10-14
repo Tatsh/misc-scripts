@@ -1612,17 +1612,6 @@ files = [
 six = ">=1.5"
 
 [[package]]
-name = "python-gnupg"
-version = "0.5.3"
-description = "A wrapper for the Gnu Privacy Guard (GPG or GnuPG)"
-optional = false
-python-versions = "*"
-files = [
-    {file = "python-gnupg-0.5.3.tar.gz", hash = "sha256:290d8ddb9cd63df96cfe9284b9b265f19fd6e145e5582dc58fd7271f026d0a47"},
-    {file = "python_gnupg-0.5.3-py2.py3-none-any.whl", hash = "sha256:2f8a4c6f63766feca6cc1416408f8b84e1b914fe7b54514e570fc5cbe92e9248"},
-]
-
-[[package]]
 name = "python-magic"
 version = "0.4.27"
 description = "File type identification using libmagic"
@@ -2548,4 +2537,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "8471e49df77df40e9ec317fabfe25258bfd792eac35099d5263be7a5b49916ec"
+content-hash = "acac1090188329dc6f1bd20c4dec1c5b21f99acf58b3ef16f64d1872c9342436"

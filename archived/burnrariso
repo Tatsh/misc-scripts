@@ -11,8 +11,6 @@ import os
 import subprocess as sp
 import sys
 
-import argcomplete
-
 
 @lru_cache
 def setup_logging_stdout(name: str | None = None, verbose: bool = False) -> logging.Logger:
@@ -115,12 +113,12 @@ def unrar_cdrecord_pipe(rar_filename: str,
     if verbose:
         cdrecord_args += ('-v',)
     log.debug('Command: %s | %s', ' '.join(unrar_args), ' '.join(cdrecord_args))
-    with sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True) as first:
-        with sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True) as second:
-            assert first.stdout is not None
-            first.stdout.close()
-            second.wait()
-            first.wait()
+    with (sp.Popen(unrar_args, stdout=sp.PIPE, close_fds=True) as
+          first, sp.Popen(cdrecord_args, stdin=first.stdout, close_fds=True) as second):
+        assert first.stdout is not None
+        first.stdout.close()
+        second.wait()
+        first.wait()
     return first.returncode == 0 and second.returncode == 0
 
 
