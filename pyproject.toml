@@ -88,6 +88,7 @@ add-info-json = "tatsh_misc_utils.commands:add_info_json_main"
 adp = "tatsh_misc_utils.commands:adp_main"
 audio2vid = "tatsh_misc_utils.commands:audio2vid_main"
 cddb-query = "tatsh_misc_utils.commands:cddb_query_main"
+check-bookmarks-html =  "tatsh_misc_utils.commands:check_bookmarks_html_main"
 clean-old-kernels-modules = "tatsh_misc_utils.commands:clean_old_kernels_and_modules_main"
 connect-g603 = "tatsh_misc_utils.commands:connect_g603_main"
 flac-album = "tatsh_misc_utils.commands:flacted_main"
@@ -169,6 +170,7 @@ testspaths = ["tests"]
 [tool.pyright]
 deprecateTypingAliases = true
 enableExperimentalFeatures = true
+include = ["./tatsh_misc_utils", "./tests"]
 pythonPlatform = "Linux"
 pythonVersion = "3.12"
 reportCallInDefaultInitializer = "warning"

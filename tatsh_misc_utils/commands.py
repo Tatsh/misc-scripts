@@ -82,7 +82,12 @@ from .utils import (
     create_wine_prefix,
     secure_move_path,
 )
-from .www import generate_html_dir_tree, upload_to_imgbb, where_from
+from .www import (
+    check_bookmarks_html_urls,
+    generate_html_dir_tree,
+    upload_to_imgbb,
+    where_from,
+)
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 _T = TypeVar('_T', bound=str)
@@ -686,7 +691,7 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
         click.echo('Only Linux is supported.', err=True)
         raise click.Abort
     from gi.overrides.GLib import GError, Variant  # noqa: PLC0415
-    from gi.repository import GLib  # noqa: PLC0415
+    from gi.repository import GLib  # type: ignore[unused-ignore] # noqa: PLC0415
     from pydbus import SystemBus  # noqa: PLC0415
     loop = GLib.MainLoop()
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
@@ -1329,3 +1334,15 @@ def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> N
     """Extract a Linux gog.com archive."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     extract_gog(filename, output_dir)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-o', '--output-file', type=click.File('w'), default=sys.stdout)
+def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool = False) -> None:
+    """Check for URLs that are not valid anymore (status 404) and redirections."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    _, changed, not_found = check_bookmarks_html_urls(Path(filename).read_text(encoding='utf-8'))
+    click.echo(f'{len(changed)} URLS changed.')
+    click.echo(f'{len(not_found)} URLS resulted in 404 response.')
