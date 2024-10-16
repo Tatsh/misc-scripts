@@ -66,7 +66,11 @@ def inhibit_notifications(name: str = __name__, reason: str = 'No reason specifi
         If D-Bus connection is not available (which can be caused by not having pydbus installed).
     """
     global _key  # noqa: PLW0603
-    from pydbus import SessionBus  # noqa: PLC0415
+    try:
+        from pydbus import SessionBus  # noqa: PLC0415
+    except (ImportError, ModuleNotFoundError):
+        log.exception('Cannot import pydbus.', stack_info=False)
+        return False
     notifications = SessionBus().get('org.freedesktop.Notifications',
                                      '/org/freedesktop/Notifications')
     if notifications.Inhibited:
@@ -92,7 +96,11 @@ def uninhibit_notifications() -> None:
         If D-Bus connection is not available (which can be caused by not having pydbus installed).
     """
     global _key  # noqa: PLW0603
-    from pydbus import SessionBus  # noqa: PLC0415
+    try:
+        from pydbus import SessionBus  # noqa: PLC0415
+    except (ImportError, ModuleNotFoundError):
+        log.exception('Cannot import pydbus.', stack_info=False)
+        return
     notifications = SessionBus().get('org.freedesktop.Notifications',
                                      '/org/freedesktop/Notifications')
     if not notifications:

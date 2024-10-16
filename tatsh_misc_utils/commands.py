@@ -18,7 +18,7 @@ import subprocess as sp
 import sys
 import webbrowser
 
-from binaryornot.check import is_binary
+from binaryornot.helpers import is_binary_string
 from git import Repo
 from paramiko import SSHClient
 from requests import HTTPError
@@ -443,6 +443,9 @@ def ultraiso_main(ahide: str | None = None,
                      **kwargs)
     except (InsufficientArguments, sp.CalledProcessError) as e:
         raise click.Abort from e
+    except FileNotFoundError as e:
+        click.echo('Is UltraISO installed?')
+        raise click.Abort from e
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -616,8 +619,8 @@ def git_open_main(name: str = 'origin') -> None:
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('file', type=click.Path(exists=True, dir_okay=False, resolve_path=True))
-def is_bin_main(file: str) -> None:
+@click.argument('file', type=click.File('rb'), default=sys.stdin)
+def is_bin_main(file: BytesIO) -> None:
     """
     Check if a file has binary contents.
 
@@ -625,7 +628,8 @@ def is_bin_main(file: str) -> None:
 
     Exit code 0 means the file probably contains binary content.
     """
-    if Path(file).stat().st_size != 0 and is_binary(file):
+    if ((file.name and (p := Path(file.name)) and p.exists() and p.stat().st_size == 0)
+            and is_binary_string(file)):
         return
     raise click.exceptions.Exit(1)
 
