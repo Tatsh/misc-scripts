@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from time import sleep
 from typing import Any
-import fcntl
 import logging
 import os
 import plistlib
@@ -24,6 +23,7 @@ log = logging.getLogger(__name__)
 
 def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bool | None:
     """For Linux only."""
+    import fcntl  # noqa: PLC0415
     with context_os_open(drive_path, os.O_RDONLY | os.O_NONBLOCK) as f:
         s = -1
         try:

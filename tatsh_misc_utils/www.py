@@ -5,7 +5,7 @@ from getpass import getuser
 from html import escape
 from http import HTTPStatus
 from itertools import chain
-from os import getxattr, scandir
+from os import scandir
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NotRequired, TypedDict, cast
 import contextlib
@@ -36,6 +36,7 @@ KEY_WHERE_FROMS = 'com.apple.metadata:kMDItemWhereFroms'
 
 
 def where_from(file: FileDescriptorOrPath, *, webpage: bool = False) -> str | None:
+    from os import getxattr  # noqa: PLC0415
     index = 1 if webpage else 0
     attr_value = getxattr(file, KEY_ORIGIN_URL if IS_LINUX else KEY_WHERE_FROMS).decode()
     if not IS_LINUX:
