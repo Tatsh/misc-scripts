@@ -629,7 +629,7 @@ def is_bin_main(file: BytesIO) -> None:
     Exit code 0 means the file probably contains binary content.
     """
     if ((file.name and (p := Path(file.name)) and p.exists() and p.stat().st_size == 0)
-            and is_binary_string(file)):
+            and is_binary_string(file.read(1024))):
         return
     raise click.exceptions.Exit(1)
 
@@ -872,7 +872,7 @@ def mkwineprefix_main(
 ) -> None:
     """
     Create a Wine prefix with custom settings.
-    
+
     This should be used with eval: eval $(mkwineprefix ...)
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
@@ -1061,7 +1061,7 @@ def upload_to_imgbb_main(filenames: tuple[str, ...],
                          no_gui: bool = False) -> None:
     """
     Upload image to ImgBB.
-    
+
     Get an API key at https://api.imgbb.com/ and set it with `keyring set imgbb "${USER}"`.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
@@ -1123,7 +1123,7 @@ Version=1.0
 def cddb_query_main(args: tuple[str, ...], host: str | None = None, *, debug: bool = False) -> None:
     """
     Display a CDDB result in a simple JSON format.
-    
+
     Does not handle if result is not an exact match.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
@@ -1165,7 +1165,7 @@ def ripcd_main(drive: str = '/dev/sr0',
                debug: bool = False) -> None:
     """
     Rip an audio disc to FLAC files.
-    
+
     Requires cdparanoia and flac to be in PATH.
 
     For Linux only.
