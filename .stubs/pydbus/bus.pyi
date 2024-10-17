@@ -17,7 +17,6 @@ DBusOrgFreedesktopDBusObjectManagerManagedObjectsDict = TypedDict(
         '/org/bluez/hci0': OrgBluesHci0Dict
     })
 
-
 class DBusOrgFreedesktopDBusObjectManager:
     x: int
     y: int
@@ -26,13 +25,11 @@ class DBusOrgFreedesktopDBusObjectManager:
     def GetManagedObjects() -> dict[str, Any]:  # noqa: N802
         ...
 
-
 class Bluez:
     def __getitem__(
             self, key: Literal['org.freedesktop.DBus.ObjectManager']
     ) -> DBusOrgFreedesktopDBusObjectManager:
         ...
-
 
 class Notifications:
     Inhibited: bool
@@ -42,7 +39,6 @@ class Notifications:
 
     def Inhibit(self, name: str, reason: str, unk1: Any) -> int | None:  # noqa: N802
         ...
-
 
 class Bus:
     con: DBusConnection
@@ -60,10 +56,8 @@ class Bus:
     def get(self, domain: str, path: str) -> Any:
         ...
 
-
 def SessionBus() -> Bus:  # noqa: N802
     ...
-
 
 def SystemBus() -> Bus:  # noqa: N802
     ...

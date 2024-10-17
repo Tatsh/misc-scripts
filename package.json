@@ -14,10 +14,9 @@
     "check-formatting": "prettier -c './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && poetry run yapf -rd .",
     "check-spelling": "cspell --no-progress './**/*'  './**/.*'",
     "format": "prettier -w './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' && poetry run yapf -ri .",
-    "mypy": "bash .run-mypy",
+    "mypy": "poetry run mypy",
     "qa": "yarn mypy && yarn ruff && yarn shellcheck && yarn check-spelling && yarn check-formatting",
-    "ruff": "bash .run-ruff",
-    "shellcheck": "bash .run-shellcheck"
+    "ruff": "poetry run ruff check --fix"
   },
   "version": "0.2.0"
 }

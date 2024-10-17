@@ -1,9 +1,7 @@
 from typing import Any, Literal, overload
 
-
 class GError(Exception):
     ...
-
 
 class Variant:
     @overload

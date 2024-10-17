@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001
 from collections.abc import Iterator, Sequence
 from functools import cache, lru_cache
 from pathlib import Path
@@ -24,9 +25,9 @@ STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
 def strip_ansi(o: str) -> str:
     """
     Remove ANSI escape sequences from `o`.
-     
+
     As defined by ECMA-048 in http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-048.
-    
+
     Taken from https://github.com/ewen-lbh/python-strip-ansi/ due to installation issues with
     Poetry.
     """
@@ -100,7 +101,7 @@ def generate_chrome_user_agent(os: str = 'Windows NT 10.0; Win64; x64') -> str:
 def sanitize(s: str, *, restricted: bool = True) -> str:
     """
     Transform a string to a 'sanitised' form.
-    
+
     Parameters
     ----------
     s : str
@@ -124,7 +125,7 @@ def sanitize(s: str, *, restricted: bool = True) -> str:
 def is_url(filename: str) -> bool:
     """
     Detect if ``filename`` is a URL.
-    
+
     This is the same method mpv uses to decide this.
     """
     parts = filename.split('://', 1)
@@ -139,7 +140,7 @@ def add_unidecode_custom_replacement(find: str, replace: str) -> None:
     Add a custom replacement to the Unidecode library.
 
     Call this before calling `unidecode()`.
-    
+
     Note: Unidecode is GPL-only which makes anything calling into this significantly also GPL. If
     you do not intend to release GPL code, then you must use a different library such as
     `text-unidecode <https://github.com/kmike/text-unidecode>`_.
