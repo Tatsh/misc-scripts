@@ -1,21 +1,26 @@
 {
   "author": "Andrew Udvare <audvare@gmail.com>",
   "devDependencies": {
-    "cspell": "^8.14.2",
+    "cspell": "^8.15.3",
     "prettier": "^3.3.3",
-    "prettier-plugin-ini": "^1.2.0",
+    "prettier-plugin-ini": "^1.3.0",
     "prettier-plugin-toml": "^2.0.1"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-toml"
+    ]
   },
   "license": "MIT",
   "name": "misc-scripts",
   "packageManager": "yarn@4.5.0",
   "repository": "git@github.com:Tatsh/misc-scripts.git",
   "scripts": {
-    "check-formatting": "prettier -c './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' ./.prettierrc ./.style.yapf && poetry run yapf -rd .",
+    "check-formatting": "prettier -c './**/*.json' './**/*.md' './**/*.toml' './**/*.yml' && poetry run yapf -rd .",
     "check-spelling": "cspell --no-progress './**/*'  './**/.*'",
-    "format": "prettier -w './**/*.cfg' './**/*.ini' './**/*.md' './**/*.toml' './**/*.yml' && poetry run yapf -ri .",
+    "format": "prettier -w './**/*.json' './**/*.md' './**/*.toml' './**/*.yml' && poetry run yapf -ri .",
     "mypy": "poetry run mypy",
-    "qa": "yarn mypy && yarn ruff && yarn shellcheck && yarn check-spelling && yarn check-formatting",
+    "qa": "yarn mypy . && yarn ruff . && yarn check-spelling && yarn check-formatting",
     "ruff": "poetry run ruff check --fix"
   },
   "version": "0.2.0"

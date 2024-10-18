@@ -111,7 +111,7 @@ def upload_to_imgbb(path: StrPath,
                     timeout: float = 5) -> requests.Response:
     """
     Upload an image to ImgBB.
-    
+
     Get an API key at https://api.imgbb.com/ and set it with ``keyring set imgbb keyring_username``.
     """
     r = requests.post(
@@ -220,8 +220,8 @@ def check_bookmarks_html_urls(
         html_content: str) -> tuple[BookmarksDataset, BookmarksDataset, BookmarksDataset]:
     """
     Check a browser's (exported) bookmarks.html's URLs.
-     
-    Checks for URLs that are not valid anymore (status ``404``) or have changed (statuses ``301``
+
+    Checks for URLs that are not valid any more (status ``404``) or have changed (statuses ``301``
     and ``302``).
     """
     # After html5lib fixes it, the structure is:

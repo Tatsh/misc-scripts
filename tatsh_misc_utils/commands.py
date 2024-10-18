@@ -1345,7 +1345,7 @@ def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> N
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-o', '--output-file', type=click.File('w'), default=sys.stdout)
 def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool = False) -> None:
-    """Check for URLs that are not valid anymore (status 404) and redirections."""
+    """Check for URLs that are not valid any more (status 404) and redirections."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     _, changed, not_found = check_bookmarks_html_urls(Path(filename).read_text(encoding='utf-8'))
     click.echo(f'{len(changed)} URLS changed.')

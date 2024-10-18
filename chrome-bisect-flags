@@ -39,7 +39,7 @@ def start_test(flags: Sequence[str], local_state: LocalState, subprocess_name: s
     """
     len_flags = len(flags)
     if len_flags == 0:
-        click.echo('Could not find the problem flag.', err=True))
+        click.echo('Could not find the problem flag.', err=True)
         return True, None
     click.echo('Testing flags:')
     for flag in flags:
@@ -88,7 +88,7 @@ def do_test(flags: Sequence[str], ls_path: str, subprocess_name: str, sleep_time
 def main(local_state_path: str, subprocess_name: str = 'chrome', sleep_time: float = 0.5) -> None:
     """
     Determine which flag is causing an issue in Chrome or any Chromium-based browser.
-    
+
     Only supports removing flags (setting back to default) and not setting them to 'safe' values.
     """
     p_ls = Path(local_state_path)

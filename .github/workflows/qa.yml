@@ -28,10 +28,10 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - '3.11'
-          - '3.12'
+          - "3.11"
+          - "3.12"
 name: QA
-'on':
+"on":
   pull_request:
     branches:
       - master
