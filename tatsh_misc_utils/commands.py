@@ -1355,58 +1355,90 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('front_dir', type=click.Path(exists=True, dir_okay=True))
-@click.argument('back_dir', type=click.Path(exists=True, dir_okay=True))
+@click.argument('rear_dir', type=click.Path(exists=True, dir_okay=True))
 @click.argument('output_dir', type=click.Path(dir_okay=True), default='.')
-@click.option('--back-crop', default='1920:1020:0:0', help='Crop string for the back camera view.')
-@click.option('--back-view-divisor', default=2.5, type=float, help='Scaling divisor for back view.')
 @click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
 @click.option('--hwaccel', help='-hwaccel string for ffmpeg.', default='auto')
 @click.option('--level', help='Level (HEVC).', type=int, default=5)
 @click.option('--no-hwaccel', help='Disable hardware decoding.', is_flag=True)
+@click.option('--no-rear-crop', is_flag=True, help='Disable rear video cropping.')
+@click.option('--no-setpts', is_flag=True, help='Disable use of setpts.')
 @click.option('--preset', help='Output preset (various codecs).', default='p5')
+@click.option('--rear-crop', default='1920:1020:0:0', help='Crop string for the rear camera view.')
+@click.option('--rear-view-scale-divisor',
+              default=2.5,
+              type=float,
+              help='Scaling divisor for rear view.')
 @click.option('--setpts',
               help='setpts= string. Defaults to speeding video by 4x.',
               default='0.25*PTS')
 @click.option('--tier', help='Tier (HEVC).', default='high')
 @click.option('--time-format',
+              metavar='FORMAT',
               help='Time format to parse from video files.',
               default='%Y%m%d%H%M%S')
-@click.option('--video-bitrate', default='0k', help='Video bitrate.')
+@click.option('--video-bitrate', default='0k', help='Video bitrate.', metavar='BITRATE')
 @click.option('--video-decoder',
               default='hevc_cuvid',
-              help='Video decoder (for hardware decoding only).')
-@click.option('--video-encoder', default='hevc_nvenc', help='Video encoder.')
-@click.option('--video-max-bitrate', default='15M', help='Maximum video bitrate.')
+              help='Video decoder (for hardware decoding only).',
+              metavar='DECODER')
+@click.option('--video-encoder', default='hevc_nvenc', help='Video encoder.', metavar='ENCODER')
+@click.option('--video-max-bitrate',
+              default='15M',
+              help='Maximum video bitrate.',
+              metavar='BITRATE')
+@click.option('-M',
+              '--match-regexp',
+              help='Regular expression to find the date string.',
+              default=r'^(\d+)_.*',
+              metavar='RE')
 @click.option('-O', '--no-overwrite', is_flag=True, help='Do not overwrite existing files.')
 @click.option('-T', '--temp-dir', help='Temporary directory for processing.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-def encode_dashcam_main(
-    front_dir: str,
-    back_dir: str,
-    output_dir: str,
-    back_crop: str = '1920:1020:0:0',
-    back_view_divisor: float = 2.5,
-    clip_length: int = 3,
-    hwaccel: str = 'auto',
-    level: int = 5,
-    preset: str = 'p5',
-    setpts: str = '0.25*PTS',
-    temp_dir: str | None = None,
-    tier: str = 'high',
-    time_format: str = '%Y%m%d%H%M%S',
-    video_bitrate: str = '0k',
-    video_decoder: str = 'hevc_cuvid',
-    video_encoder: str = 'hevc_nvenc',
-    video_max_bitrate: str = '15M',
-    *,
-    debug: bool = False,
-    no_hwaccel: bool = False,
-    no_overwrite: bool = False,
-) -> None:
+def encode_dashcam_main(front_dir: str,
+                        rear_dir: str,
+                        output_dir: str,
+                        clip_length: int = 3,
+                        hwaccel: str = 'auto',
+                        level: int = 5,
+                        match_regexp: str = r'^(\d+)_.*',
+                        preset: str = 'p5',
+                        rear_crop: str = '1920:1020:0:0',
+                        rear_view_scale_divisor: float = 2.5,
+                        setpts: str = '0.25*PTS',
+                        temp_dir: str | None = None,
+                        tier: str = 'high',
+                        time_format: str = '%Y%m%d%H%M%S',
+                        video_bitrate: str = '0k',
+                        video_decoder: str = 'hevc_cuvid',
+                        video_encoder: str = 'hevc_nvenc',
+                        video_max_bitrate: str = '15M',
+                        *,
+                        debug: bool = False,
+                        no_hwaccel: bool = False,
+                        no_overwrite: bool = False,
+                        no_rear_crop: bool = False,
+                        no_setpts: bool = False) -> None:
     """
-    Batch encode dashcam footage, merging back and front footage.
+    Batch encode dashcam footage, merging rear and front camera footage.
     
     This command's defaults are intended for use with Red Tiger dashcam output and file structure.
+
+    The rear camera view will be placed in the bottom right of the video scaled by dividing the
+    width and height by the --rear-view-scale-divisor value specified. It will also be cropped using
+    the --rear-crop value unless --no-rear-crop is passed.
+    
+    Files are automatically grouped using the regular expression passed with -M/--match-regexp. This
+    RE must contain at least one group and only the first group will be considered. Make dubious use
+    of non-capturing groups if necessary. The captured group string is expected to be usable with
+    the time format specified with --time-format (see strptime documentation at
+    https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime).
+    
+    In many cases, the camera leaves behind stray rear camera files (usually no more than one per
+    group and always a video without a matching front video file the end). These are automatically
+    ignored if possible.
+
+    Original files' whose content is successfully converted are sent to the wastebin.
 
     Example use:
     
@@ -1414,16 +1446,17 @@ def encode_dashcam_main(
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     archive_dashcam_footage(front_dir,
-                            back_dir,
+                            rear_dir,
                             output_dir,
-                            back_crop=back_crop,
-                            back_view_divisor=back_view_divisor,
                             clip_length=clip_length,
-                            hwaccel='' if no_hwaccel else hwaccel,
+                            hwaccel=None if no_hwaccel else hwaccel,
                             level=level,
+                            match_re=match_regexp,
                             overwrite=not no_overwrite,
                             preset=preset,
-                            setpts=setpts,
+                            rear_crop=None if no_rear_crop else rear_crop,
+                            rear_view_scale_divisor=rear_view_scale_divisor,
+                            setpts=None if no_setpts else setpts,
                             temp_dir=temp_dir,
                             tier=tier,
                             time_format=time_format,

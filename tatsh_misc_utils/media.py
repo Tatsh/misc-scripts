@@ -598,6 +598,7 @@ def rip_cdda_to_flac(drive: str,
 
 def group_files(items: Iterable[str],
                 clip_length: int = 3,
+                match_re: str = r'^(\d+)_.*',
                 time_format: str = '%Y%m%d%H%M%S') -> list[list[Path]]:
     items_sorted = sorted(items)
     groups: list[list[Path]] = []
@@ -605,7 +606,9 @@ def group_files(items: Iterable[str],
     groups.append(group)
     for item in items_sorted[1:]:
         p = Path(item).resolve(strict=True)
-        this_dt = datetime.strptime(Path(item).name.split('_')[0], time_format)  # noqa: DTZ007
+        this_dt = datetime.strptime(  # noqa: DTZ007
+            assert_not_none(re.match(match_re,
+                                     Path(item).name)).group(1), time_format)
         last_dt = datetime.strptime(  # noqa: DTZ007
             Path(group[-1]).name.split('_')[0], time_format)
         diff = (this_dt - last_dt).total_seconds() // 60
@@ -619,48 +622,132 @@ def group_files(items: Iterable[str],
     return groups
 
 
-def archive_dashcam_footage(
-    front_dir: StrPath,
-    back_dir: StrPath,
-    output_dir: StrPath,
-    *,
-    back_crop: str | None = '1920:1020:0:0',
-    back_view_divisor: float | None = 2.5,
-    clip_length: int = 3,
-    hwaccel: str = 'auto',
-    level: int = 5,
-    overwrite: bool = True,
-    preset: str = 'p5',
-    setpts: str = '0.25*PTS',
-    temp_dir: StrPath | None = None,
-    tier: str = 'high',
-    time_format: str = '%Y%m%d%H%M%S',
-    video_bitrate: str = '0k',
-    video_decoder: str = 'hevc_cuvid',
-    video_encoder: str = 'hevc_nvenc',
-    video_max_bitrate: str = '15M',
-) -> None:
+def archive_dashcam_footage(front_dir: StrPath,
+                            rear_dir: StrPath,
+                            output_dir: StrPath,
+                            *,
+                            clip_length: int = 3,
+                            hwaccel: str | None = 'auto',
+                            level: int | None = 5,
+                            overwrite: bool = True,
+                            match_re: str = r'^(\d+)_.*',
+                            preset: str | None = 'p5',
+                            rear_crop: str | None = '1920:1020:0:0',
+                            rear_view_scale_divisor: float | None = 2.5,
+                            setpts: str | None = '0.25*PTS',
+                            temp_dir: StrPath | None = None,
+                            tier: str | None = 'high',
+                            time_format: str = '%Y%m%d%H%M%S',
+                            video_bitrate: str | None = '0k',
+                            video_decoder: str | None = 'hevc_cuvid',
+                            video_encoder: str = 'hevc_nvenc',
+                            video_max_bitrate: str | None = '15M') -> None:
+    """
+    Batch encode dashcam footage, merging rear and front camera footage.
+
+    This functions's defaults are intended for use with Red Tiger dashcam output and file structure.
+
+    The rear camera view will be placed in the bottom right of the video scaled by dividing the
+    width and height by the ``rear_view_scale_divisor`` value specified. It will also be cropped
+    using the ``rear_crop`` value unless it is ``None``.
+
+    Files are automatically grouped using the regular expression passed with ``match_re``. This
+    RE must contain at least one group and only the first group will be considered. Make dubious use
+    of non-capturing groups if necessary. The captured group string is expected to be usable with
+    the time format specified with ``time_format`` (see strptime documentation at
+    https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime).
+
+    In many cases, the camera leaves behind stray rear camera files (usually no more than one per
+    group and always a video without a matching front video file the end). These are automatically
+    ignored if possible.
+
+    Original files' whose content is successfully converted are sent to the wastebin.
+
+    Example:
+
+    .. code::python
+
+        archive_dashcam_footage('Movie_F', 'Movie_R', Path.home() / 'output')
+
+    Parameters
+    ----------
+    front_dir : StrPath
+        Directory containing front footage.
+    rear_dir : StrPath
+        Directory containing rear footage.
+    output_dir : StrPath
+        Will be created if it does not exist including parents.
+    clip_length : int
+        Clip length in minutes.
+    hwaccel : str | None
+        String passed to ffmpeg's ``-hwaccel`` option.
+    level : int | None
+        Level (HEVC).
+    overwrite : bool
+        Overwrite existing files.
+    match_re : str
+        Regular expression used for finding the timestamp in a filename. Must contain at least one
+        group and only the first group is considered.
+    preset : str | None
+        Preset (various codecs).
+    rear_crop : str | None
+        Crop string for the rear video. See `ffmpeg crop filter`_ for more information.
+    rear_view_scale_divisor : float
+        Scaling divisor for rear view.
+    setpts : str | None
+        Change the PTS. See `ffmpeg setpts filter`_ for more information. The default is to increase
+        the speed of the video up by 4x.
+    temp_dir : StrPath | None
+        Temporary directory root.
+    tier : str | None
+        Tier (HEVC).
+    time_format : str
+        Time format string. See `strptime() Format Codes`_ for more information.
+        for more information.
+    video_bitrate : str | None
+        Video bitrate string.
+    video_decoder : str | None
+        Video decoder.
+    video_encoder : str
+        Video encoder.
+    video_max_bitrate : str | None
+        Maximum video bitrate.
+
+    Raises
+    ------
+    FileExistsError
+        If an output file exists and ``overwrite`` is not ``True``.
+    ValueError
+        ``zip()`` is used to group pairs of file groups and the front and rear videos. Strict mode
+        is used and as such length counts must always match, unless a workaround is known. If a
+        workaround cannot be used, this exception will be raised from ``zip()``.
+
+    .. ffmpeg crop filter: https://ffmpeg.org/ffmpeg-filters.html#crop
+    .. ffmpeg setpts filter: https://ffmpeg.org/ffmpeg-filters.html#setpts_002c-asetpts
+    .. strptime() Format Codes: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes
+    """
     front_dir = Path(front_dir)
-    back_dir = Path(back_dir)
+    rear_dir = Path(rear_dir)
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     # Do not sort the dicts
     input_options: list[str] = list(
-        chain(*((k, *((str(v),) if not isinstance(v, bool) else ())) for k, v in {
+        chain(*((k, *((str(v),) if not isinstance(v, bool) and v is not None else ())) for k, v in {
             '-y': overwrite,
             '-hwaccel': hwaccel,
             **({
                 '-c:v': video_decoder
             } if hwaccel else {})
         }.items() if v)))
-    crop_str = f'crop={back_crop},' if back_crop else ''
-    setpts_str = f',setpts={setpts}'
+    crop_str = f'crop={rear_crop},' if rear_crop else ''
+    setpts_str = f',setpts={setpts}' if setpts else ''
     output_options = list(
-        chain(*((k, *((str(v),) if not isinstance(v, bool) else ())) for k, v in {
+        chain(*((k, *((str(v),) if not isinstance(v, bool) and v is not None else ())) for k, v in {
             '-an': True,
-            '-filter_complex': (f'[0]{crop_str}'
-                                f'scale=iw/{back_view_divisor}:ih/{back_view_divisor} [pip]; '
-                                f'[1][pip]overlay=main_w-overlay_w:main_h-overlay_h{setpts_str}'),
+            '-filter_complex': (
+                f'[0]{crop_str}'
+                f'scale=iw/{rear_view_scale_divisor}:ih/{rear_view_scale_divisor} [pip]; '
+                f'[1][pip]overlay=main_w-overlay_w:main_h-overlay_h{setpts_str}'),
             '-b:v': video_bitrate,
             '-maxrate:v': video_max_bitrate,
             '-vcodec': video_encoder,
@@ -669,11 +756,10 @@ def archive_dashcam_footage(
             '-tier': tier,
             '-f': 'matroska'
         }.items() if v)))
-
-    back_groups = group_files((str(back_dir / x) for x in os.listdir(back_dir)), clip_length,
-                              time_format)
+    back_groups = group_files((str(rear_dir / x) for x in os.listdir(rear_dir)), clip_length,
+                              match_re, time_format)
     front_groups = group_files((str(front_dir / x) for x in os.listdir(front_dir)), clip_length,
-                               time_format)
+                               match_re, time_format)
     back_groups_len = len(back_groups)
     front_groups_len = len(front_groups)
     log.debug('Back group count: %d', back_groups_len)
@@ -725,9 +811,11 @@ def archive_dashcam_footage(
                     to_be_merged.append(tf_fixed)
                     temp_concat.write(f"file '{tf_fixed}'\n")
             temp_concat.flush()
+            full_output_path = output_dir / front_group[0].with_suffix('.mkv').name
+            if not overwrite and full_output_path.exists():
+                raise FileExistsError(str(full_output_path))
             cmd = ('ffmpeg', '-hide_banner', *(('-y',) if overwrite else ()), '-f', 'concat',
-                   '-safe', '0', '-i', temp_concat.name, '-c', 'copy',
-                   str(output_dir / front_group[0].with_suffix('.mkv').name))
+                   '-safe', '0', '-i', temp_concat.name, '-c', 'copy', str(full_output_path))
             log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, check=True, capture_output=True)
             for path in to_be_merged:
