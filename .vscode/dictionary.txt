@@ -96,6 +96,7 @@ crossorigin
 cscript
 cuvid
 cygpath
+dashcam
 datafile
 datamode
 dataoffset

@@ -1,8 +1,10 @@
 """Media-related utility functions."""
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
+from itertools import chain
 from os import utime
 from pathlib import Path
+from shlex import quote
 from shutil import copyfile
 from typing import Any, ClassVar, NamedTuple
 import contextlib
@@ -24,9 +26,9 @@ from .io import context_os_open
 from .system import IS_LINUX
 from .typing import StrPath, assert_not_none
 
-__all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'cddb_query', 'ffprobe',
-           'get_cd_disc_id', 'get_info_json', 'is_audio_input_format_supported', 'rip_cdda_to_flac',
-           'supported_audio_input_formats')
+__all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'archive_dashcam_footage',
+           'cddb_query', 'ffprobe', 'get_cd_disc_id', 'get_info_json',
+           'is_audio_input_format_supported', 'rip_cdda_to_flac', 'supported_audio_input_formats')
 
 log = logging.getLogger(__name__)
 
@@ -591,3 +593,109 @@ def rip_cdda_to_flac(drive: str,
              f'--tag=GENRE={result.genre}', f'--tag=TITLE={track}', f'--tag=TRACKNUMBER={i:02d}',
              f'--tag=YEAR={result.year:04d}', str(wav)),
             check=True)
+
+
+def group_files(items: Iterable[str],
+                clip_length: int = 3,
+                time_format: str = '%Y%m%d%H%M%S') -> list[list[Path]]:
+    groups: list[list[Path]] = []
+    group: list[Path] = []
+    groups.append(group)
+    for item in sorted(items):
+        if not group:
+            group.append(Path(item).resolve(strict=True))
+            continue
+        this_dt = datetime.strptime(Path(item).name.split('_')[0], time_format)  # noqa: DTZ007
+        last_dt = datetime.strptime(  # noqa: DTZ007
+            Path(group[-1]).name.split('_')[0], time_format)
+        if ((this_dt - last_dt).total_seconds() // 60) == clip_length:
+            group.append(Path(item).resolve(strict=True))
+        else:
+            group = []
+            groups.append(group)
+    return groups
+
+
+def archive_dashcam_footage(
+    front_dir: StrPath,
+    back_dir: StrPath,
+    output_dir: StrPath,
+    *,
+    back_crop: str | None = '1920:1020:0:0',
+    back_view_divisor: float | None = 2.5,
+    clip_length: int = 3,
+    hwaccel: str = 'auto',
+    level: int = 5,
+    overwrite: bool = True,
+    preset: str = 'p5',
+    setpts: str = '0.25*PTS',
+    temp_dir: StrPath | None = None,
+    tier: str = 'high',
+    time_format: str = '%Y%m%d%H%M%S',
+    video_bitrate: str = '0k',
+    video_decoder: str = 'hevc_cuvid',
+    video_encoder: str = 'hevc_nvenc',
+    video_max_bitrate: str = '14M',
+) -> None:
+    front_dir = Path(front_dir)
+    back_dir = Path(back_dir)
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    # Do not sort the dicts
+    input_options: list[str] = list(
+        chain(*((k, *((str(v),) if not isinstance(v, bool) else ())) for k, v in {
+            '-y': overwrite,
+            '-hwaccel': hwaccel,
+            **({
+                '-c:v': video_decoder
+            } if hwaccel else {})
+        }.items() if v)))
+    crop_str = f'crop={back_crop},' if back_crop else ''
+    setpts_str = f',setpts={setpts}'
+    output_options = list(
+        chain(*((k, *((str(v),) if not isinstance(v, bool) else ())) for k, v in {
+            '-an': True,
+            '-filter_complex': (f'[0]{crop_str}'
+                                f'scale=iw/{back_view_divisor}:ih/{back_view_divisor} [pip]; '
+                                f'[1][pip]overlay=main_w-overlay_w:main_h-overlay_h{setpts_str}'),
+            '-b:v': video_bitrate,
+            '-maxrate:v': video_max_bitrate,
+            '-vcodec': video_encoder,
+            '-preset': preset,
+            '-level': level,
+            '-tier': tier,
+            '-f': 'matroska'
+        }.items() if v)))
+    to_be_merged: list[Path] = []
+    for back_group, front_group in zip(
+            group_files((str(back_dir / x) for x in os.listdir(back_dir)), clip_length,
+                        time_format),
+            group_files((str(front_dir / x) for x in os.listdir(front_dir)), clip_length,
+                        time_format),
+            strict=True):
+        with tempfile.NamedTemporaryFile('w',
+                                         dir=temp_dir,
+                                         encoding='utf-8',
+                                         prefix='concat-',
+                                         suffix='.txt') as temp_concat:
+            for i, (back_file, front_file) in enumerate(zip(back_group, front_group, strict=True)):
+                cmd = ('ffmpeg', '-hide_banner', *input_options, '-i', str(back_file), '-i',
+                       str(front_file), *output_options, '-')
+                log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+                with tempfile.NamedTemporaryFile(delete=False,
+                                                 delete_on_close=False,
+                                                 dir=temp_dir,
+                                                 prefix=f'{i:04d}-',
+                                                 suffix='.mkv') as tf:
+                    sp.run(cmd, stdout=tf, check=True)
+                    tf_fixed = Path(tf.name).resolve(strict=True)
+                    to_be_merged.append(tf_fixed)
+                    temp_concat.write(f"file '{tf_fixed}'\n")
+            temp_concat.flush()
+            cmd = ('ffmpeg', '-hide_banner', *(('-y',) if overwrite else ()), '-f', 'concat',
+                   '-safe', '0', '-i', temp_concat.name, '-c', 'copy',
+                   str(output_dir / front_group[0].with_suffix('.mkv').name))
+            log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, check=True)
+            for path in to_be_merged:
+                path.unlink(missing_ok=True)

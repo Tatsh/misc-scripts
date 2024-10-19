@@ -46,6 +46,7 @@ from .git import (
 from .io import extract_gog, unpack_0day, unpack_ebook
 from .media import (
     add_info_json_to_media_file,
+    archive_dashcam_footage,
     cddb_query,
     create_static_text_video,
     get_info_json,
@@ -1350,3 +1351,81 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
     _, changed, not_found = check_bookmarks_html_urls(Path(filename).read_text(encoding='utf-8'))
     click.echo(f'{len(changed)} URLS changed.')
     click.echo(f'{len(not_found)} URLS resulted in 404 response.')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('front_dir', type=click.Path(exists=True, dir_okay=True))
+@click.argument('back_dir', type=click.Path(exists=True, dir_okay=True))
+@click.argument('output_dir', type=click.Path(dir_okay=True), default=('.'))
+@click.option('--back-crop', default='1920:1020:0:0', help='Crop string for the back camera view.')
+@click.option('--back-view-divisor', default=2.5, type=float, help='Scaling divisor for back view.')
+@click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
+@click.option('--hwaccel', help='-hwaccel string for ffmpeg.', default='auto')
+@click.option('--level', help='Level (HEVC).', type=int, default=5)
+@click.option('--preset', help='Output preset (various codecs).', default='p5')
+@click.option('--setpts',
+              help='setpts= string. Defaults to speeding video by 4x.',
+              default='0.25*PTS')
+@click.option('--tier', help='Tier (HEVC).', default='high')
+@click.option('--time-format',
+              help='Time format to parse from video files.',
+              default='%Y%m%d%H%M%S')
+@click.option('--video-bitrate', default='0k', help='Video bitrate.')
+@click.option('--video-decoder',
+              default='hevc_cuvid',
+              help='Video decoder (for hardware decoding only).')
+@click.option('--video-encoder', default='hevc_nvenc', help='Video encoder.')
+@click.option('--video-max-bitrate', default='14M', help='Maximum video bitrate.')
+@click.option('-O', '--overwrite', is_flag=True, help='Overwrite existing files.')
+@click.option('-T', '--temp-dir', help='Temporary directory for processing.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def encode_dashcam_main(
+    front_dir: str,
+    back_dir: str,
+    output_dir: str,
+    back_crop: str = '1920:1020:0:0',
+    back_view_divisor: float = 2.5,
+    clip_length: int = 3,
+    hwaccel: str = 'auto',
+    level: int = 5,
+    preset: str = 'p5',
+    setpts: str = '0.25*PTS',
+    temp_dir: str | None = None,
+    tier: str = 'high',
+    time_format: str = '%Y%m%d%H%M%S',
+    video_bitrate: str = '0k',
+    video_decoder: str = 'hevc_cuvid',
+    video_encoder: str = 'hevc_nvenc',
+    video_max_bitrate: str = '14M',
+    *,
+    debug: bool = False,
+    overwrite: bool = True,
+) -> None:
+    """
+    Batch encode dashcam footage, merging back and front footage.
+    
+    This command's defaults are intended for use with Red Tiger dashcam output and file structure.
+
+    Example use:
+    
+        encode-dashcam Movie_F/ Movie_R/ ~/output_dir
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    archive_dashcam_footage(front_dir,
+                            back_dir,
+                            output_dir,
+                            back_crop=back_crop,
+                            back_view_divisor=back_view_divisor,
+                            clip_length=clip_length,
+                            hwaccel=hwaccel,
+                            level=level,
+                            overwrite=overwrite,
+                            preset=preset,
+                            setpts=setpts,
+                            temp_dir=temp_dir,
+                            tier=tier,
+                            time_format=time_format,
+                            video_bitrate=video_bitrate,
+                            video_decoder=video_decoder,
+                            video_encoder=video_encoder,
+                            video_max_bitrate=video_max_bitrate)
