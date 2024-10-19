@@ -598,21 +598,20 @@ def rip_cdda_to_flac(drive: str,
 def group_files(items: Iterable[str],
                 clip_length: int = 3,
                 time_format: str = '%Y%m%d%H%M%S') -> list[list[Path]]:
+    items_sorted = sorted(items)
     groups: list[list[Path]] = []
-    group: list[Path] = []
+    group: list[Path] = [Path(items_sorted[0]).resolve(strict=True)]
     groups.append(group)
-    for item in sorted(items):
-        if not group:
-            group.append(Path(item).resolve(strict=True))
-            continue
+    for item in items_sorted[1:]:
+        p = Path(item).resolve(strict=True)
         this_dt = datetime.strptime(Path(item).name.split('_')[0], time_format)  # noqa: DTZ007
         last_dt = datetime.strptime(  # noqa: DTZ007
             Path(group[-1]).name.split('_')[0], time_format)
-        if ((this_dt - last_dt).total_seconds() // 60) == clip_length:
-            group.append(Path(item).resolve(strict=True))
-        else:
-            group = []
+        if ((this_dt - last_dt).total_seconds() // 60) > clip_length:
+            group = [p]
             groups.append(group)
+        else:
+            group.append(p)
     return groups
 
 
@@ -679,6 +678,7 @@ def archive_dashcam_footage(
                                          prefix='concat-',
                                          suffix='.txt') as temp_concat:
             for i, (back_file, front_file) in enumerate(zip(back_group, front_group, strict=True)):
+                log.debug('Back file: %s, front file: %s', back_file, front_file)
                 cmd = ('ffmpeg', '-hide_banner', *input_options, '-i', str(back_file), '-i',
                        str(front_file), *output_options, '-')
                 log.debug('Running: %s', ' '.join(quote(x) for x in cmd))

@@ -1356,7 +1356,7 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('front_dir', type=click.Path(exists=True, dir_okay=True))
 @click.argument('back_dir', type=click.Path(exists=True, dir_okay=True))
-@click.argument('output_dir', type=click.Path(dir_okay=True), default=('.'))
+@click.argument('output_dir', type=click.Path(dir_okay=True), default='.')
 @click.option('--back-crop', default='1920:1020:0:0', help='Crop string for the back camera view.')
 @click.option('--back-view-divisor', default=2.5, type=float, help='Scaling divisor for back view.')
 @click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
