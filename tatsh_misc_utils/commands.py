@@ -31,6 +31,8 @@ import requests
 import xdg.BaseDirectory
 import yaml
 
+from tatsh_misc_utils import naming
+
 from .adp import calculate_salary
 from .gentoo import (
     DEFAULT_ACTIVE_KERNEL_NAME,
@@ -1535,3 +1537,32 @@ def burnrariso_main(rar_filename: str,
         if not (u.returncode == 0 and cdrecord.returncode == 0):
             click.echo('Write failed!', err=True)
             raise click.Abort
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('titles', type=click.File('r'), default=sys.stdin)
+@click.option('--no-names', help='Disable name checking.', is_flag=True)
+@click.option('-E', '--no-english', help='Disable English mode.', is_flag=True)
+@click.option('-a', '--arabic', help='Enable Arabic mode.', is_flag=True)
+@click.option('-c', '--chinese', help='Enable Chinese mode.', is_flag=True)
+@click.option('-j', '--japanese', help='Enable Japanese mode.', is_flag=True)
+@click.option('-s', '--ampersands', help='Replace " and " with " & ".', is_flag=True)
+def title_fixer_main(titles: tuple[str, ...],
+                     *,
+                     no_english: bool = False,
+                     chinese: bool = False,
+                     japanese: bool = False,
+                     arabic: bool = False,
+                     no_names: bool = False,
+                     ampersands: bool = False) -> None:
+    modes = (
+        *((naming.Mode.Arabic,) if arabic else ()),
+        *((naming.Mode.Chinese,) if chinese else ()),
+        *((naming.Mode.English,) if not no_english else ()),
+        *((naming.Mode.Japanese,) if japanese else ()),
+    )
+    if not modes:
+        click.echo('No modes specified.', err=True)
+        raise click.Abort
+    for title in titles:
+        click.echo(naming.adjust_title(title, modes, disable_names=no_names, ampersands=ampersands))

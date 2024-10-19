@@ -286,3 +286,11 @@ def is_roman_numeral(string: str) -> bool:
         return False
     return re.match(r'^M{0,4}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$', string,
                     re.IGNORECASE) is not None
+
+
+@cache
+def fix_apostrophes(word: str) -> str:
+    if "'" not in word:
+        return word
+    return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
+                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), word)
