@@ -1,6 +1,7 @@
 """Media-related utility functions."""
 from collections.abc import Callable, Iterable, Sequence
 from datetime import datetime
+from functools import cache
 from itertools import chain
 from os import utime
 from pathlib import Path
@@ -418,6 +419,7 @@ class CDDBQueryResult(NamedTuple):
     tracks: tuple[str, ...]
 
 
+@cache
 def cddb_query(disc_id: str,
                *,
                accept_first_match: bool = False,

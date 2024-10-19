@@ -39,10 +39,12 @@ def strip_ansi_if_no_colors(s: str) -> str:
     return strip_ansi(s) if os.environ.get('NO_COLOR') else s
 
 
+@cache
 def underscorize(s: str) -> str:
     return re.sub(r'\s+', '_', s)
 
 
+@cache
 def is_ascii(s: Sequence[str]) -> bool:
     """Check if a string consists of only ASCII characters."""
     return len(s) == len(''.join(y for y in s if ord(y) < ORD_MAX))
@@ -57,6 +59,7 @@ def hexstr2bytes(s: str) -> bytes:
     return bytes(hexstr2bytes_generator(s))
 
 
+@cache
 def unix_path_to_wine(path: StrPath) -> str:
     """
     Convert a UNIX path to an absolute Wine path.
@@ -82,7 +85,7 @@ def unix_path_to_wine(path: StrPath) -> str:
     return f'Z:{path}'.replace('/', '\\')
 
 
-@lru_cache
+@cache
 def get_latest_chrome_major_version() -> str:
     return cast(
         str,
@@ -91,13 +94,13 @@ def get_latest_chrome_major_version() -> str:
             timeout=5).json()['versions'][0]['version'].split('.')[0])
 
 
-@lru_cache
+@cache
 def generate_chrome_user_agent(os: str = 'Windows NT 10.0; Win64; x64') -> str:
     return (f'Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) '
             f'Chrome/{get_latest_chrome_major_version()}.0.0.0 Safari/537.36')
 
 
-@lru_cache
+@cache
 def sanitize(s: str, *, restricted: bool = True) -> str:
     """
     Transform a string to a 'sanitised' form.
@@ -122,6 +125,7 @@ def sanitize(s: str, *, restricted: bool = True) -> str:
                       sanitize_filename(s, restricted=restricted).lower())))
 
 
+@cache
 def is_url(filename: str) -> bool:
     """
     Detect if ``filename`` is a URL.
@@ -268,12 +272,14 @@ FULLWIDTH_MAP = (
 )
 
 
+@cache
 def fullwidth_to_ascii(s: str) -> str:
     for find, replace in FULLWIDTH_MAP:
         s = s.replace(find, replace)
     return s
 
 
+@cache
 def slugify(s: str, *, no_lower: bool = False) -> str:
     """Slug string generator."""
     return re.sub(r'[-\s_]+', '-', re.sub(r'[^\w\s-]', '', s if no_lower else s.lower()).strip())
