@@ -168,7 +168,7 @@ class UnRARExtractionTestFailed(UnRARError):
 class RARInfo:
     attributes_str: str
     date: datetime
-    filename: str
+    name: str
     size: int
 
 
@@ -210,7 +210,7 @@ class UnRAR:
             yield RARInfo(
                 attributes_str=mm['attributes'],
                 date=datetime.strptime(mm['date'], '%Y-%m-%d %H:%M'),  # noqa: DTZ007
-                filename=mm['filename'],
+                name=mm['filename'],
                 size=int(mm['size']))
 
 

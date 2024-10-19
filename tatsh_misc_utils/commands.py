@@ -1506,7 +1506,7 @@ def burnrariso_main(rar_filename: str,
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     rar_path = Path(rar_filename)
     unrar = UnRAR(unrar_path)
-    isos = [x for x in unrar.list_files(rar_path) if x.filename.lower().endswith('.iso')]
+    isos = [x for x in unrar.list_files(rar_path) if x.name.lower().endswith('.iso')]
     if len(isos) != 1:
         raise click.Abort
     iso = isos[0]
@@ -1524,10 +1524,10 @@ def burnrariso_main(rar_filename: str,
     if test_extraction:
         click.echo('Testing extraction.')
         try:
-            unrar.test_extraction(rar_path)
+            unrar.test_extraction(rar_path, iso.name)
         except UnRARExtractionTestFailed:
             click.echo('RAR extraction test failed.', err=True)
-    with (unrar.pipe(rar_filename, iso.filename) as u,
+    with (unrar.pipe(rar_filename, iso.name) as u,
           sp.Popen(
               (cdrecord_path, *((f'dev={device_name}',) if device_name else
                                 ()), f'speed={speed}', 'driveropts=burnfree', f'tsize={iso.size}'),
