@@ -43,7 +43,15 @@ from .git import (
     get_github_default_branch,
     merge_dependabot_pull_requests,
 )
-from .io import extract_gog, unpack_0day, unpack_ebook
+from .io import (
+    SFVVerificationError,
+    UnRAR,
+    UnRARExtractionTestFailed,
+    extract_gog,
+    unpack_0day,
+    unpack_ebook,
+    verify_sfv,
+)
 from .media import (
     add_info_json_to_media_file,
     archive_dashcam_footage,
@@ -1464,3 +1472,66 @@ def encode_dashcam_main(front_dir: str,
                             video_decoder=video_decoder,
                             video_encoder=video_encoder,
                             video_max_bitrate=video_max_bitrate)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('rar_filename', type=click.Path(dir_okay=False, exists=True))
+@click.option('--no-crc-check', is_flag=True, help='Disable CRC check.')
+@click.option('--test-extraction', help='Enable extraction test.', is_flag=True)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-D',
+              '--device-name',
+              help='Device name.',
+              type=click.Path(exists=True, dir_okay=False))
+@click.option('-s', '--speed', type=int, help='Disc write speed.', default=8)
+@click.option('--sfv', help='SFV file.', type=click.Path(exists=True, dir_okay=False))
+@click.option('--cdrecord-path', help='Path to cdrecord.', default='cdrecord')
+@click.option('--unrar-path', help='Path to unrar.', default='unrar')
+def burnrariso_main(rar_filename: str,
+                    unrar_path: str = 'unrar',
+                    cdrecord_path: str = 'cdrecord',
+                    device_name: str | None = None,
+                    sfv: str | None = None,
+                    speed: int = 8,
+                    *,
+                    debug: bool = False,
+                    no_crc_check: bool = False,
+                    test_extraction: bool = False) -> None:
+    """Burns an ISO found in a RAR file via piping."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    rar_path = Path(rar_filename)
+    unrar = UnRAR(unrar_path)
+    isos = [x for x in unrar.list_files(rar_path) if x.filename.lower().endswith('.iso')]
+    if len(isos) != 1:
+        raise click.Abort
+    iso = isos[0]
+    if not iso.size:
+        raise click.Abort
+    if not no_crc_check:
+        sfv_file_expected = (Path(sfv) if sfv else rar_path.parent /
+                             f'{rar_path.name.split(".", 1)}.sfv')
+        assert sfv_file_expected.exists()
+        try:
+            verify_sfv(sfv_file_expected)
+        except SFVVerificationError as e:
+            click.echo('SFV verification failed.', err=True)
+            raise click.Abort from e
+    if test_extraction:
+        click.echo('Testing extraction.')
+        try:
+            unrar.test_extraction(rar_path)
+        except UnRARExtractionTestFailed:
+            click.echo('RAR extraction test failed.', err=True)
+    with (unrar.pipe(rar_filename, iso.filename) as u,
+          sp.Popen(
+              (cdrecord_path, *((f'dev={device_name}',) if device_name else
+                                ()), f'speed={speed}', 'driveropts=burnfree', f'tsize={iso.size}'),
+              stdin=u.stdout,
+              close_fds=True) as cdrecord):
+        assert u.stdout is not None
+        u.stdout.close()
+        cdrecord.wait()
+        u.wait()
+        if not (u.returncode == 0 and cdrecord.returncode == 0):
+            click.echo('Write failed!', err=True)
+            raise click.Abort
