@@ -19,6 +19,7 @@ import socket
 import subprocess as sp
 import tempfile
 
+from send2trash import send2trash
 import keyring
 import requests
 
@@ -607,7 +608,10 @@ def group_files(items: Iterable[str],
         this_dt = datetime.strptime(Path(item).name.split('_')[0], time_format)  # noqa: DTZ007
         last_dt = datetime.strptime(  # noqa: DTZ007
             Path(group[-1]).name.split('_')[0], time_format)
-        if ((this_dt - last_dt).total_seconds() // 60) > clip_length:
+        diff = (this_dt - last_dt).total_seconds() // 60
+        log.debug('Difference for current file %s vs last file %s: %d minutes', p, group[-1], diff)
+        if diff > clip_length:
+            log.debug('New group started with %s.', p)
             group = [p]
             groups.append(group)
         else:
@@ -634,7 +638,7 @@ def archive_dashcam_footage(
     video_bitrate: str = '0k',
     video_decoder: str = 'hevc_cuvid',
     video_encoder: str = 'hevc_nvenc',
-    video_max_bitrate: str = '14M',
+    video_max_bitrate: str = '15M',
 ) -> None:
     front_dir = Path(front_dir)
     back_dir = Path(back_dir)
@@ -665,29 +669,58 @@ def archive_dashcam_footage(
             '-tier': tier,
             '-f': 'matroska'
         }.items() if v)))
-    to_be_merged: list[Path] = []
-    for back_group, front_group in zip(
-            group_files((str(back_dir / x) for x in os.listdir(back_dir)), clip_length,
-                        time_format),
-            group_files((str(front_dir / x) for x in os.listdir(front_dir)), clip_length,
-                        time_format),
-            strict=True):
+
+    back_groups = group_files((str(back_dir / x) for x in os.listdir(back_dir)), clip_length,
+                              time_format)
+    front_groups = group_files((str(front_dir / x) for x in os.listdir(front_dir)), clip_length,
+                               time_format)
+    back_groups_len = len(back_groups)
+    front_groups_len = len(front_groups)
+    log.debug('Back group count: %d', back_groups_len)
+    log.debug('Front group count: %d', front_groups_len)
+    if back_groups_len != front_groups_len:
+        log.warning('Length of front and back groups do not match. Attempting resolution.')
+        back_groups = [x for x in back_groups if len(x) > 1]
+        back_groups_len = len(back_groups)
+        if back_groups_len != front_groups_len:
+            raise ValueError(back_groups_len)
+        log.info('Possibly resolved length issue by ignoring single item rear videos.')
+    # Call list(zip(...)) so strictness can be checked before looping
+    for back_group, front_group in list(zip(back_groups, front_groups, strict=True)):
         with tempfile.NamedTemporaryFile('w',
                                          dir=temp_dir,
                                          encoding='utf-8',
                                          prefix='concat-',
                                          suffix='.txt') as temp_concat:
-            for i, (back_file, front_file) in enumerate(zip(back_group, front_group, strict=True)):
+            fg_len = len(front_group)
+            bg_len = len(back_group)
+            log.debug('Back group length: %d', bg_len)
+            log.debug('Front group length: %d', fg_len)
+            for i, item in enumerate(back_group):
+                log.debug('Front: %40s              Back: %s',
+                          front_group[i].name if i < fg_len else 'NOTHING', item.name)
+            if fg_len != bg_len:
+                log.warning('List lengths of front and back videos do not match.')
+                if bg_len > fg_len and bg_len - fg_len == 1:
+                    back_group.pop()
+                    log.info('Possibly resolved length issue by ignoring last rear video in set.')
+                else:
+                    log.error('Cannot resolve automatically.')
+            to_be_merged: list[Path] = []
+            send_to_waste: list[Path] = []
+            for i, (back_file, front_file) in enumerate(
+                    list(zip(back_group, front_group, strict=True))):
                 log.debug('Back file: %s, front file: %s', back_file, front_file)
                 cmd = ('ffmpeg', '-hide_banner', *input_options, '-i', str(back_file), '-i',
                        str(front_file), *output_options, '-')
+                send_to_waste += [front_file, back_file]
                 log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
                 with tempfile.NamedTemporaryFile(delete=False,
                                                  delete_on_close=False,
                                                  dir=temp_dir,
                                                  prefix=f'{i:04d}-',
                                                  suffix='.mkv') as tf:
-                    sp.run(cmd, stdout=tf, check=True)
+                    sp.run(cmd, stdout=tf, check=True, stderr=sp.PIPE)
                     tf_fixed = Path(tf.name).resolve(strict=True)
                     to_be_merged.append(tf_fixed)
                     temp_concat.write(f"file '{tf_fixed}'\n")
@@ -696,6 +729,9 @@ def archive_dashcam_footage(
                    '-safe', '0', '-i', temp_concat.name, '-c', 'copy',
                    str(output_dir / front_group[0].with_suffix('.mkv').name))
             log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, check=True)
+            sp.run(cmd, check=True, capture_output=True)
             for path in to_be_merged:
-                path.unlink(missing_ok=True)
+                path.unlink()
+            for path in send_to_waste:
+                send2trash(path)
+                log.debug('Sent to wastebin: %s', path)

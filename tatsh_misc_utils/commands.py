@@ -1376,8 +1376,8 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
               default='hevc_cuvid',
               help='Video decoder (for hardware decoding only).')
 @click.option('--video-encoder', default='hevc_nvenc', help='Video encoder.')
-@click.option('--video-max-bitrate', default='14M', help='Maximum video bitrate.')
-@click.option('-O', '--overwrite', is_flag=True, help='Overwrite existing files.')
+@click.option('--video-max-bitrate', default='15M', help='Maximum video bitrate.')
+@click.option('-O', '--no-overwrite', is_flag=True, help='Do not overwrite existing files.')
 @click.option('-T', '--temp-dir', help='Temporary directory for processing.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 def encode_dashcam_main(
@@ -1397,11 +1397,11 @@ def encode_dashcam_main(
     video_bitrate: str = '0k',
     video_decoder: str = 'hevc_cuvid',
     video_encoder: str = 'hevc_nvenc',
-    video_max_bitrate: str = '14M',
+    video_max_bitrate: str = '15M',
     *,
     debug: bool = False,
     no_hwaccel: bool = False,
-    overwrite: bool = True,
+    no_overwrite: bool = False,
 ) -> None:
     """
     Batch encode dashcam footage, merging back and front footage.
@@ -1421,7 +1421,7 @@ def encode_dashcam_main(
                             clip_length=clip_length,
                             hwaccel='' if no_hwaccel else hwaccel,
                             level=level,
-                            overwrite=overwrite,
+                            overwrite=not no_overwrite,
                             preset=preset,
                             setpts=setpts,
                             temp_dir=temp_dir,
