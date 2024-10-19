@@ -1,6 +1,7 @@
+from collections.abc import Sequence
 from enum import IntEnum
 from os import PathLike
-from typing import Annotated, Any, Literal, TypeVar
+from typing import Annotated, Any, Literal, TypeVar, TypedDict
 import os
 import typing
 
@@ -43,3 +44,12 @@ def assert_not_none(var: _T | None) -> _T:
     """
     assert var is not None
     return var
+
+
+# Used by chrome-bisect-flags
+class ChromeLocalStateBrowser(TypedDict):
+    enabled_labs_experiments: Sequence[str]
+
+
+class ChromeLocalState(TypedDict):
+    browser: ChromeLocalStateBrowser

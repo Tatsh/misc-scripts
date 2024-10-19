@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from copy import deepcopy
 from io import BytesIO
 from pathlib import Path
 from shlex import quote, split
@@ -26,6 +27,7 @@ from send2trash import send2trash
 import click
 import github
 import keyring
+import psutil
 import pyperclip
 import requests
 import xdg.BaseDirectory
@@ -73,6 +75,7 @@ from .string import (
     unix_path_to_wine,
 )
 from .system import (
+    CHROME_DEFAULT_LOCAL_STATE_PATH,
     IS_LINUX,
     IS_WINDOWS,
     find_bluetooth_device_info_by_name,
@@ -81,7 +84,7 @@ from .system import (
     slug_rename,
     wait_for_disc,
 )
-from .typing import DecodeErrorsOption, INCITS38Code
+from .typing import ChromeLocalState, DecodeErrorsOption, INCITS38Code
 from .ultraiso import (
     InsufficientArguments,
     run_ultraiso,
@@ -1566,3 +1569,96 @@ def title_fixer_main(titles: tuple[str, ...],
         raise click.Abort
     for title in titles:
         click.echo(naming.adjust_title(title, modes, disable_names=no_names, ampersands=ampersands))
+
+
+@click.command()
+@click.argument('local_state_path',
+                type=click.Path(dir_okay=False, exists=True),
+                metavar='LOCAL_STATE_PATH',
+                default=CHROME_DEFAULT_LOCAL_STATE_PATH)
+@click.option('-s',
+              '--subprocess-name',
+              default='chrome' if not IS_WINDOWS else 'chrome.exe',
+              help='Chromium-based browser subprocess name such as "chrome"')
+@click.option('--sleep-time',
+              default=0.5,
+              type=float,
+              help='Time to sleep after attempting to kill the browser processes in seconds.')
+def chrome_bisect_flags_main(local_state_path: str,
+                             subprocess_name: str = 'chrome',
+                             sleep_time: float = 0.5) -> None:
+    """
+    Determine which flag is causing an issue in Chrome or any Chromium-based browser.
+
+    Only supports removing flags (setting back to default) and not setting them to 'safe' values.
+    """
+    flags_min_len = 2
+
+    def start_test(flags: Sequence[str], local_state: ChromeLocalState) -> tuple[bool, str | None]:
+        """
+        Test apparatus.
+
+        Returns ``True`` if:
+        - there are no more flags (problem flag not found)
+        - if there is only one flag left (problem flag possibly found)
+        - if the problematic flag exists within the passed in flags
+        """
+        len_flags = len(flags)
+        if len_flags == 0:
+            click.echo('Could not find the problem flag.')
+            return True, None
+        click.echo('Testing flags:')
+        for flag in flags:
+            click.echo(f'- {flag}')
+        local_state['browser']['enabled_labs_experiments'] = flags
+        with Path(local_state_path).open('w+', encoding='utf-8') as f:
+            json.dump(local_state, f, allow_nan=False)
+        click.confirm('Start browser and test for the issue, then press enter', show_default=False)
+        procs: list[psutil.Process] = []
+        for p in (x for x in psutil.process_iter() if x.name() == subprocess_name):
+            procs.append(p)
+            p.terminate()
+        _, alive = psutil.wait_procs(procs, timeout=sleep_time)
+        for p in alive:
+            p.kill()
+        at_fault = click.confirm('Did the problem occur?')
+        return at_fault, flags[0] if at_fault and len_flags == 1 else None
+
+    def do_test(flags: Sequence[str], local_state: ChromeLocalState) -> str | None:
+        len_flags = len(flags)
+        if len_flags < flags_min_len:
+            return flags[0] if len_flags == 1 else None
+        done, bad_flag = start_test(flags[:len_flags // 2], deepcopy(local_state))
+        if done:
+            return bad_flag or do_test(flags[:len_flags // 2], local_state)
+        done, bad_flag = start_test(flags[len_flags // 2:], deepcopy(local_state))
+        if done:
+            return bad_flag or do_test(flags[len_flags // 2:], local_state)
+        return None
+
+    p_ls = Path(local_state_path).resolve(strict=True)
+    click.echo(f'Using "{local_state_path}".')
+    with p_ls.open(encoding='utf-8') as f:
+        local_state_data = json.load(f)
+        flags = local_state_data['browser']['enabled_labs_experiments']
+        len_flags = len(flags)
+        if len_flags == 0:
+            click.echo('Nothing to test.', err=True)
+            raise click.Abort
+    bad_flag = None
+    try:
+        click.confirm('Exit the browser and press enter', show_default=False)
+        bad_flag = do_test(flags, local_state_data)
+    except KeyboardInterrupt as e:
+        raise click.Abort from e
+    finally:
+        if bad_flag:
+            local_state_data['browser']['enabled_labs_experiments'] = [
+                x for x in local_state_data['browser']['enabled_labs_experiments'] if x != bad_flag
+            ]
+        with p_ls.open('w+', encoding='utf-8') as f:
+            json.dump(local_state_data, f, sort_keys=True, indent=2, allow_nan=False)
+        if not bad_flag:
+            click.echo('Restored original "Local State".')
+        else:
+            click.echo(f'Saved "Local State" with "{bad_flag}" removed.')

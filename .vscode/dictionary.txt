@@ -364,6 +364,7 @@ popen
 printf
 printmsg
 proc
+procs
 psmdcp
 psql
 psutil

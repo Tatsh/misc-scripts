@@ -12,12 +12,14 @@ from .io import context_os_open
 from .string import slugify
 from .typing import CDStatus, StrPath
 
-__all__ = ('IS_LINUX', 'find_bluetooth_device_info_by_name', 'inhibit_notifications', 'slug_rename',
-           'uninhibit_notifications', 'wait_for_disc')
+__all__ = ('CHROME_DEFAULT_LOCAL_STATE_PATH', 'IS_LINUX', 'find_bluetooth_device_info_by_name',
+           'inhibit_notifications', 'slug_rename', 'uninhibit_notifications', 'wait_for_disc')
 
 CDROM_DRIVE_STATUS = 0x5326
 IS_LINUX = sys.platform == 'linux'
 IS_WINDOWS = sys.platform == 'win32' or sys.platform == 'cygwin'
+CHROME_DEFAULT_LOCAL_STATE_PATH: str | None = str(
+    Path('~/.config/google-chrome/Local State').expanduser())
 log = logging.getLogger(__name__)
 
 
