@@ -1362,6 +1362,7 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 @click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
 @click.option('--hwaccel', help='-hwaccel string for ffmpeg.', default='auto')
 @click.option('--level', help='Level (HEVC).', type=int, default=5)
+@click.option('--no-hwaccel', help='Disable hardware decoding.', is_flag=True)
 @click.option('--preset', help='Output preset (various codecs).', default='p5')
 @click.option('--setpts',
               help='setpts= string. Defaults to speeding video by 4x.',
@@ -1399,6 +1400,7 @@ def encode_dashcam_main(
     video_max_bitrate: str = '14M',
     *,
     debug: bool = False,
+    no_hwaccel: bool = False,
     overwrite: bool = True,
 ) -> None:
     """
@@ -1417,7 +1419,7 @@ def encode_dashcam_main(
                             back_crop=back_crop,
                             back_view_divisor=back_view_divisor,
                             clip_length=clip_length,
-                            hwaccel=hwaccel,
+                            hwaccel='' if no_hwaccel else hwaccel,
                             level=level,
                             overwrite=overwrite,
                             preset=preset,
