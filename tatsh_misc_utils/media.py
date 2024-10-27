@@ -1,5 +1,6 @@
 """Media-related utility functions."""
-from collections.abc import Callable, Iterable, Sequence
+from __future__ import annotations
+
 from datetime import datetime
 from functools import cache
 from itertools import chain
@@ -7,7 +8,7 @@ from os import utime
 from pathlib import Path
 from shlex import quote
 from shutil import copyfile
-from typing import Any, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 import contextlib
 import ctypes
 import getpass
@@ -27,6 +28,9 @@ import requests
 from .io import context_os_open
 from .system import IS_LINUX
 from .typing import StrPath, assert_not_none
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Sequence
 
 __all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'archive_dashcam_footage',
            'cddb_query', 'ffprobe', 'get_cd_disc_id', 'get_info_json',

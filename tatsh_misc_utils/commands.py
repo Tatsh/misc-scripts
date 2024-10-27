@@ -1,11 +1,11 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
 from copy import deepcopy
-from io import BytesIO
 from pathlib import Path
 from shlex import quote, split
 from shutil import which
 from time import sleep
-from typing import Any, TextIO, TypeVar, cast, override
+from typing import TYPE_CHECKING, Any, TextIO, TypeVar, cast, override
 from urllib.parse import unquote_plus, urlparse
 import contextlib
 import errno
@@ -20,14 +20,11 @@ import sys
 import webbrowser
 
 from binaryornot.helpers import is_binary_string
-from git import Repo
-from paramiko import SSHClient
 from requests import HTTPError
 from send2trash import send2trash
 import click
 import github
 import keyring
-import psutil
 import pyperclip
 import requests
 import xdg.BaseDirectory
@@ -94,6 +91,7 @@ from .utils import (
     WineWindowsVersion,
     add_cdda_times,
     create_wine_prefix,
+    kill_processes_by_name,
     secure_move_path,
 )
 from .www import (
@@ -102,6 +100,10 @@ from .www import (
     upload_to_imgbb,
     where_from,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from io import BytesIO
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 _T = TypeVar('_T', bound=str)
@@ -574,6 +576,7 @@ def git_checkout_default_branch_main(base_url: str,
     if not token:
         click.echo('No token.', err=True)
         raise click.Abort
+    from git import Repo  # noqa: PLC0415
     repo = Repo(search_parent_directories=True)
     default_branch = get_github_default_branch(repo=repo,
                                                base_url=base_url,
@@ -613,6 +616,7 @@ def git_rebase_default_branch_main(base_url: str,
     if not token:
         click.echo('No token.', err=True)
         raise click.Abort
+    from git import Repo  # noqa: PLC0415
     repo = Repo(search_parent_directories=True)
     default_branch = get_github_default_branch(repo=repo,
                                                base_url=base_url,
@@ -625,6 +629,7 @@ def git_rebase_default_branch_main(base_url: str,
 @click.argument('name', default='origin')
 def git_open_main(name: str = 'origin') -> None:
     """Open assumed repository web representation (GitHub, GitLab, etc) based on the origin."""
+    from git import Repo  # noqa: PLC0415
     url = Repo(search_parent_directories=True).remote(name).url
     if re.search(r'^https?://', url):
         webbrowser.open(url)
@@ -708,9 +713,13 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
     if not IS_LINUX:
         click.echo('Only Linux is supported.', err=True)
         raise click.Abort
-    from gi.overrides.GLib import GError, Variant  # noqa: PLC0415
-    from gi.repository import GLib  # type: ignore[unused-ignore] # noqa: PLC0415
-    from pydbus import SystemBus  # noqa: PLC0415
+    try:
+        from gi.overrides.GLib import GError, Variant  # noqa: PLC0415
+        from gi.repository import GLib  # type: ignore[unused-ignore] # noqa: PLC0415
+        from pydbus import SystemBus  # noqa: PLC0415
+    except (ImportError, ModuleNotFoundError) as e:
+        click.echo('Imports are missing.', err=True)
+        raise click.Abort from e
     loop = GLib.MainLoop()
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     log = logging.getLogger(__name__)
@@ -1003,6 +1012,7 @@ def smv_main(filenames: str,
     username = target.split('@')[0] if '@' in target else None
     hostname = target.split(':')[0]
     target_dir_or_filename = target.split(':')[1]
+    from paramiko import SSHClient  # noqa: PLC0415
     with SSHClient() as client:
         client.load_system_host_keys()
         client.connect(hostname,
@@ -1614,13 +1624,7 @@ def chrome_bisect_flags_main(local_state_path: str,
         with Path(local_state_path).open('w+', encoding='utf-8') as f:
             json.dump(local_state, f, allow_nan=False)
         click.confirm('Start browser and test for the issue, then press enter', show_default=False)
-        procs: list[psutil.Process] = []
-        for p in (x for x in psutil.process_iter() if x.name() == subprocess_name):
-            procs.append(p)
-            p.terminate()
-        _, alive = psutil.wait_procs(procs, timeout=sleep_time)
-        for p in alive:
-            p.kill()
+        kill_processes_by_name(subprocess_name, sleep_time, force=True)
         at_fault = click.confirm('Did the problem occur?')
         return at_fault, flags[0] if at_fault and len_flags == 1 else None
 

@@ -1,9 +1,14 @@
-from collections.abc import Iterator
+from __future__ import annotations
+
 from fnmatch import fnmatch
 from pathlib import Path
+from typing import TYPE_CHECKING
 import re
 
-from .typing import StrPath
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .typing import StrPath
 
 DEFAULT_ACTIVE_KERNEL_NAME = 'linux'
 DEFAULT_KERNEL_LOCATION = '/usr/src'

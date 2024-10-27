@@ -1,19 +1,28 @@
 """Uncategorised utilities."""
-from collections.abc import Iterable
+from __future__ import annotations
+
 from math import trunc
 from os import environ
 from pathlib import Path
 from shutil import rmtree, which
-from typing import Literal
+from signal import SIGTERM
+from typing import TYPE_CHECKING, Literal, overload
+import csv
 import logging
 import os
 import re
 import subprocess as sp
-
-from paramiko import SFTPClient, SSHClient
+import time
 
 from .media import CD_FRAMES
-from .typing import StrPath
+from .system import IS_WINDOWS
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from paramiko import SFTPClient, SSHClient
+
+    from .typing import StrPath
 
 __all__ = ('WineWindowsVersion', 'add_cdda_times', 'create_wine_prefix', 'secure_move_path')
 
@@ -29,8 +38,8 @@ def add_cdda_times(times: Iterable[str] | None) -> str | None:
     if not times:
         return None
     total_ms = 0.0
-    for time in times:
-        if not (res := re.match(TIMES_RE, time)):
+    for time_ in times:
+        if not (res := re.match(TIMES_RE, time_)):
             return None
         minutes, seconds, frames = [float(x) for x in res.groups()]
         total_ms += (minutes *
@@ -210,3 +219,72 @@ def secure_move_path(client: SSHClient,
                     if not dry_run:
                         p_root.rmdir()
                     deleted_dirs.add(p_root)
+
+
+@overload
+def kill_processes_by_name(name: str) -> None:
+    pass
+
+
+@overload
+def kill_processes_by_name(name: str,
+                           wait_timeout: float,
+                           signal: int = SIGTERM,
+                           *,
+                           force: bool = False) -> list[int]:
+    pass
+
+
+def kill_processes_by_name(name: str,
+                           wait_timeout: float | None = None,
+                           signal: int = SIGTERM,
+                           *,
+                           force: bool = False) -> list[int] | None:
+    """Kill processes by name.
+    
+    Parameters
+    ----------
+    name : str
+        Process name (base name) or image name (Windows).
+    wait_timeout : float | None
+        If set and processes remain after ending processes, wait this amount of time in seconds.
+    signal : int
+        Signal to use. Only applies to non-Windows.
+    force : bool
+        If ``wait_timeout`` is set and ``True``, forcefully end the processes after the wait time.
+
+    Returns
+    -------
+    list[int] | None
+        Process PIDs that may still be running, or ``None`` if ``wait_timeout`` is not specified.
+    """
+    name = f'{name}{Path(name).suffix or ".exe"}' if IS_WINDOWS else name
+    if IS_WINDOWS:
+        sp.run(('taskkill.exe', '/im', name), check=False)
+    else:
+        sp.run(('killall', f'-{signal}', name), check=False)
+    if wait_timeout:
+        if IS_WINDOWS:
+            if still_running := [
+                    int(x[1]) for x in csv.reader(
+                        sp.run(('tasklist.exe', '/fo', 'csv', '/fi', f'IMAGE_NAME eq "{name}"'),
+                               check=True,
+                               text=True,
+                               capture_output=True).stdout.splitlines())
+            ]:
+                time.sleep(wait_timeout)
+                if force:
+                    sp.run(('taskkill.exe', *(t for sl in (('/pid', str(pid))
+                                                           for pid in still_running)
+                                              for t in sl), '/f'),
+                           check=False)
+        elif still_running := [
+                int(y[0]) for y in (x.split() for x in sp.run(
+                    ('ps', 'ax'), check=True, capture_output=True, text=True).stdout.splitlines())
+                if Path(y[0]).name == name
+        ]:
+            time.sleep(wait_timeout)
+            if force:
+                sp.run(('kill', '-9', *(str(x) for x in still_running)), check=False)
+        return still_running
+    return None

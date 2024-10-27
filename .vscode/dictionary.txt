@@ -187,8 +187,6 @@ gitpython
 globbed
 globbing
 gnudb
-gnupg
-gnupghome
 gogextract
 gpac
 groupdict
@@ -313,7 +311,6 @@ msys
 msystem
 mvid
 mypy
-mysqlclient
 mysqldump
 namelist
 nargs
@@ -367,7 +364,6 @@ proc
 procs
 psmdcp
 psql
-psutil
 pushd
 pycache
 pychoco
@@ -443,6 +439,8 @@ sysid
 syslog
 tar'ing
 tarfile
+taskkill
+tasklist
 tatsh
 tempdir
 tempfile
@@ -493,6 +491,7 @@ virtualenv
 virtualenvwrapper
 volset
 wa
+wastebin
 watchos
 wday
 wechat

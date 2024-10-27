@@ -1,10 +1,13 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 import logging
 import re
 
-from git import Repo
-import github
-import github.Repository
+if TYPE_CHECKING:
+    from git import Repo
+    from github.Repository import Repository
 
 __all__ = ('convert_git_ssh_url_to_https', 'get_github_default_branch',
            'merge_dependabot_pull_requests')
@@ -25,9 +28,10 @@ def convert_git_ssh_url_to_https(url: str) -> str:
 def get_github_default_branch(*,
                               repo: Repo,
                               token: str,
-                              base_url: str = github.Consts.DEFAULT_BASE_URL,
+                              base_url: str | None = None,
                               origin_name: str = 'origin') -> str:
-    return github.Github(token, base_url=base_url).get_repo(
+    import github  # noqa: PLC0415
+    return github.Github(token, base_url=base_url or github.Consts.DEFAULT_BASE_URL).get_repo(
         urlparse(convert_git_ssh_url_to_https(
             repo.remote(origin_name).url)).path[1:]).default_branch
 
@@ -36,10 +40,12 @@ def merge_dependabot_pull_requests(
     *,
     token: str,
     affiliation: str = 'owner',
-    base_url: str = github.Consts.DEFAULT_BASE_URL,
+    base_url: str | None = None,
 ) -> None:
     """Merge pull requests made by Dependabot on GitHub."""
-    def uses_dependabot(repo: github.Repository.Repository) -> bool:
+    import github  # noqa: PLC0415
+
+    def uses_dependabot(repo: Repository) -> bool:
         try:
             if repo.security_and_analysis.dependabot_security_updates.status == 'enabled':
                 return True
@@ -54,8 +60,9 @@ def merge_dependabot_pull_requests(
 
     should_raise = False
     for repo in (
-            x for x in github.Github(token, base_url=base_url, per_page=100).get_user().get_repos(
-                affiliation=affiliation, sort='full_name')  # type: ignore[call-arg]
+            x for x in github.Github(
+                token, base_url=base_url or github.Consts.DEFAULT_BASE_URL, per_page=100).get_user(
+                ).get_repos(affiliation=affiliation, sort='full_name')  # type: ignore[call-arg]
             if not x.archived and uses_dependabot(x)):
         log.info('Repository: %s', repo.name)
         for num in (x.number for x in repo.get_pulls() if x.user.login == 'dependabot[bot]'):

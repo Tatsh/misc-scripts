@@ -1,5 +1,9 @@
-from collections.abc import Iterator, Sequence
-from typing import overload
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, overload
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 __all__ = ('chunks',)
 

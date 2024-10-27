@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from binascii import crc32
-from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from zipfile import ZipFile
 import contextlib
 import io
@@ -12,7 +14,10 @@ import re
 import shutil
 import subprocess as sp
 
-from .typing import StrPath
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from .typing import StrPath
 
 log = logging.getLogger(__name__)
 

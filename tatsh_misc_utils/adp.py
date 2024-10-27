@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from datetime import UTC, datetime
-from typing import Final, TypedDict, cast
+from typing import Final, TypedDict, cast, override
 
 import requests
 
@@ -40,6 +40,7 @@ class SalaryResponse:
         self.net_pay = net_pay
         self.state = state
 
+    @override
     def __str__(self) -> str:
         return strip_ansi_if_no_colors(f"""Gross     \033[1;32m{self.gross:8.2f}\033[0m
 Federal   \033[1;32m{self.federal:8.2f}\033[0m

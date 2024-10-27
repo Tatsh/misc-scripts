@@ -1,8 +1,9 @@
 # ruff: noqa: RUF001
-from collections.abc import Iterator, Sequence
+from __future__ import annotations
+
 from functools import cache
 from pathlib import Path
-from typing import cast
+from typing import TYPE_CHECKING, cast
 import os
 import re
 import string
@@ -12,6 +13,9 @@ import requests
 
 from .itertools import chunks
 from .typing import StrPath, assert_not_none
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator, Sequence
 
 __all__ = ('fullwidth_to_ascii', 'generate_chrome_user_agent', 'get_latest_chrome_major_version',
            'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'slugify',

@@ -1,9 +1,13 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
 from enum import IntEnum
 from os import PathLike
 from typing import Annotated, Any, Literal, TypeVar, TypedDict
 import os
 import typing
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
 
 __all__ = ('CDStatus', 'DecodeErrorsOption', 'FileDescriptorOrPath', 'INCITS38Code',
            'StrOrBytesPath', 'StrPath', 'UNIXStrPath', 'assert_not_none',

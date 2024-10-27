@@ -1,12 +1,17 @@
-# non-strict, not including words like below, forms of to be, forms of
-#   you/he/etc, or words like 'call'
-from collections.abc import Iterable
+from __future__ import annotations
+
 from enum import IntEnum
+from typing import TYPE_CHECKING
 import re
 
 from .string import fix_apostrophes, is_roman_numeral
 from .typing import assert_not_none
 
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+# non-strict, not including words like below, forms of to be, forms of
+#   you/he/etc, or words like 'call'
 STOP_WORDS = (
     'a',
     'an',
@@ -112,7 +117,7 @@ def adjust_title(words: str,
     Adjust a string that represents a title.
     
     Primarily for English to lowercase stop words, but also works for other languages. Some name
-    handlings are built-in but can also be passed in the ``names`` parameter.
+    rules are built-in but can also be passed in the ``names`` parameter.
 
     It is far from perfect.
     """

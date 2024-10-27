@@ -1,14 +1,19 @@
-from collections.abc import Iterable
+from __future__ import annotations
+
 from pathlib import Path
 from shlex import quote
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 import logging
 import os
 import subprocess as sp
 
 from .string import unix_path_to_wine as base_unix_path_to_wine
 from .system import IS_WINDOWS
-from .typing import StrPath, StrPathMustExist
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .typing import StrPath, StrPathMustExist
 
 __all__ = ('run_ultraiso',)
 
@@ -20,7 +25,7 @@ log = logging.getLogger(__name__)
 def unix_path_to_wine(s: StrPath) -> str:
     if IS_WINDOWS:
         return str(s)
-    return base_unix_path_to_wine(s)
+    return base_unix_path_to_wine(str(s))
 
 
 def get_ultraiso_path(prefix: StrPath) -> StrPath | None:
