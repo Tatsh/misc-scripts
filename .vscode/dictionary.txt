@@ -364,6 +364,7 @@ proc
 procs
 psmdcp
 psql
+psutil
 pushd
 pycache
 pychoco
