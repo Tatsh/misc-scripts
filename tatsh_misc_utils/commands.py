@@ -24,7 +24,6 @@ from requests import HTTPError
 from send2trash import send2trash
 from typing_extensions import override
 import click
-import github
 import keyring
 import pyperclip
 import requests
@@ -553,14 +552,11 @@ def pl2json_main(file: BytesIO) -> None:
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('origin_name', metavar='ORIGIN_NAME', default='origin')
-@click.option('-b',
-              '--base-url',
-              default=github.Consts.DEFAULT_BASE_URL,
-              help='Base URL for enterprise.')
+@click.option('-b', '--base-url', help='Base URL for enterprise.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-u', '--username', default=getpass.getuser(), help='Username (passed to keyring).')
-def git_checkout_default_branch_main(base_url: str,
-                                     username: str,
+def git_checkout_default_branch_main(username: str,
+                                     base_url: str | None = None,
                                      origin_name: str = 'origin',
                                      *,
                                      debug: bool = False) -> None:
@@ -588,18 +584,15 @@ def git_checkout_default_branch_main(base_url: str,
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('origin_name', metavar='ORIGIN_NAME', default='origin')
-@click.option('-b',
-              '--base-url',
-              default=github.Consts.DEFAULT_BASE_URL,
-              help='Base URL for enterprise.')
+@click.option('-b', '--base-url', help='Base URL for enterprise.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-u', '--username', default=getpass.getuser(), help='Username (passed to keyring).')
 @click.option('-r',
               '--remote',
               is_flag=True,
               help='Rebase with the origin copy of the default branch.')
-def git_rebase_default_branch_main(base_url: str,
-                                   username: str,
+def git_rebase_default_branch_main(username: str,
+                                   base_url: str | None = None,
                                    origin_name: str = 'origin',
                                    *,
                                    debug: bool = False,
@@ -948,16 +941,13 @@ def mvid_rename_main(filenames: tuple[str, ...], *, debug: bool = False) -> None
               '--affiliation',
               default='owner',
               help='Affiliation. See REST API documentation for more information.')
-@click.option('-b',
-              '--base-url',
-              default=github.Consts.DEFAULT_BASE_URL,
-              help='Base URL for enterprise.')
+@click.option('-b', '--base-url', help='Base URL for enterprise.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('--delay', type=float, default=120, help='Delay in seconds between attempts.')
 @click.option('-u', '--username', default=getpass.getuser(), help='Username.')
-def merge_dependabot_prs_main(base_url: str,
-                              username: str,
+def merge_dependabot_prs_main(username: str,
                               affiliation: str = 'owner',
+                              base_url: str | None = None,
                               delay: int = 120,
                               *,
                               debug: bool = False) -> None:
