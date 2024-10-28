@@ -25,7 +25,6 @@
       "name": ""
     }
   ],
-  "python.analysis.typeCheckingMode": "off",
   "python.languageServer": "Pylance",
   "python.testing.pytestArgs": ["tests"],
   "python.testing.pytestEnabled": true

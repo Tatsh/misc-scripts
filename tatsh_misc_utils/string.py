@@ -17,7 +17,7 @@ from .typing import StrPath, assert_not_none
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
-__all__ = ('fullwidth_to_ascii', 'generate_chrome_user_agent', 'get_latest_chrome_major_version',
+__all__ = ('fullwidth_to_narrow', 'generate_chrome_user_agent', 'get_latest_chrome_major_version',
            'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'slugify',
            'strip_ansi', 'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
 
@@ -39,12 +39,17 @@ def strip_ansi(o: str) -> str:
 
 
 def strip_ansi_if_no_colors(s: str) -> str:
-    """See https://no-color.org/."""
+    """
+    Strip ANSI colour-codes if the ``NO_COLOR`` environment variable is set.
+
+    See https://no-color.org/.
+    """
     return strip_ansi(s) if os.environ.get('NO_COLOR') else s
 
 
 @cache
 def underscorize(s: str) -> str:
+    """Replace all space-type characters with ``_``."""
     return re.sub(r'\s+', '_', s)
 
 
@@ -55,11 +60,13 @@ def is_ascii(s: Sequence[str]) -> bool:
 
 
 def hexstr2bytes_generator(s: str) -> Iterator[int]:
+    """Convert a hex string such as ``"01020a"`` to integers."""
     for hex_num in chunks(s, 2):
         yield int(hex_num, 16)
 
 
 def hexstr2bytes(s: str) -> bytes:
+    """Convert a hex string such as ``"01020a"`` to its bytes form (``0x1 0x2 0x10)``)."""
     return bytes(hexstr2bytes_generator(s))
 
 
@@ -91,6 +98,7 @@ def unix_path_to_wine(path: StrPath) -> str:
 
 @cache
 def get_latest_chrome_major_version() -> str:
+    """Get the latest Chrome major version."""
     return cast(
         str,
         requests.get(
@@ -100,6 +108,7 @@ def get_latest_chrome_major_version() -> str:
 
 @cache
 def generate_chrome_user_agent(os: str = 'Windows NT 10.0; Win64; x64') -> str:
+    """Get a Chrome user agent."""
     return (f'Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) '
             f'Chrome/{get_latest_chrome_major_version()}.0.0.0 Safari/537.36')
 
@@ -113,7 +122,6 @@ def sanitize(s: str, *, restricted: bool = True) -> str:
     ----------
     s : str
         String to transform.
-
     restricted : bool
         If ``True``, use a restricted form. This is suitable for filenames on Windows.
 
@@ -147,10 +155,12 @@ def add_unidecode_custom_replacement(find: str, replace: str) -> None:
     """
     Add a custom replacement to the Unidecode library.
 
-    Call this before calling `unidecode()`.
+    Call this before calling ``unidecode()``.
 
-    Note: Unidecode is GPL-only which makes anything calling into this significantly also GPL. If
-    you do not intend to release GPL code, then you must use a different library such as
+    Notes
+    -----
+    Unidecode is GPL-only which makes anything calling into this significantly also GPL. If you do
+    not intend to release GPL code, then you must use a different library such as
     `text-unidecode <https://github.com/kmike/text-unidecode>`_.
     """
     from unidecode import Cache, unidecode  # noqa: PLC0415
@@ -277,7 +287,12 @@ FULLWIDTH_MAP = (
 
 
 @cache
-def fullwidth_to_ascii(s: str) -> str:
+def fullwidth_to_narrow(s: str) -> str:
+    """
+    Convert fullwidth characters in ``s`` to narrow or halfwidth.
+    
+    Unlike Unidecode this will convert ``'￥'`` to its halfwidth form ``'¥'``.
+    """
     for find, replace in FULLWIDTH_MAP:
         s = s.replace(find, replace)
     return s
@@ -300,7 +315,12 @@ def is_roman_numeral(string: str) -> bool:
 
 @cache
 def fix_apostrophes(word: str) -> str:
+    """
+    Fix letters around an apostrophe.
+    
+    Example: ``"Don'T"`` becomes ``"Don't"``.
+    """
     if "'" not in word:
         return word
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
-                  lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), word)
+                  lambda mo: f'{mo.group(0)[0].upper()}{mo.group(0)[1:].lower()}', word)
