@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 from datetime import UTC, datetime
-from typing import Final, TypedDict, cast, override
+from typing import Final, TypedDict, cast
 
+from typing_extensions import override
 import requests
 
 from .string import strip_ansi_if_no_colors

@@ -5,7 +5,7 @@ from pathlib import Path
 from shlex import quote, split
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, TextIO, TypeVar, cast, override
+from typing import TYPE_CHECKING, Any, TextIO, TypeVar, cast
 from urllib.parse import unquote_plus, urlparse
 import contextlib
 import errno
@@ -22,6 +22,7 @@ import webbrowser
 from binaryornot.helpers import is_binary_string
 from requests import HTTPError
 from send2trash import send2trash
+from typing_extensions import override
 import click
 import github
 import keyring
