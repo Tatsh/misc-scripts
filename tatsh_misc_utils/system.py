@@ -133,6 +133,8 @@ def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:
 
     Raises
     ------
+    NotImplementedError
+        If not on Linux.
     KeyError
         If no device is found.
     """

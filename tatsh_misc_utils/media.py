@@ -367,13 +367,18 @@ def get_cd_disc_id(drive: str) -> str:
     drive : str
         Drive path.
 
+    Raises
+    ------
+    NotImplementedError
+        If not on Linux.
+
     Returns
     -------
     str
         String for use with CDDB query.
     """
     if not IS_LINUX:
-        raise OSError
+        raise NotImplementedError
 
     def cddb_sum(n: int) -> int:
         # a number like 2344 becomes 2+3+4+4 (13)
