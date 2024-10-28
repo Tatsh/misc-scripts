@@ -190,6 +190,7 @@ gnudb
 gogextract
 gpac
 groupdict
+halfwidth
 handle
 hashlib
 headofhousehold
@@ -213,6 +214,7 @@ ilayhi
 ilayka
 ilayya
 ilong
+imagename
 imax
 imessage
 imgbb

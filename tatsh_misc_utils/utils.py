@@ -272,7 +272,7 @@ def kill_processes_by_name(name: str,
         lines = sp.run(
             ('tasklist.exe', '/fo', 'csv', '/fi', f'IMAGENAME eq {name}') if IS_WINDOWS else
             ('ps', 'ax'),
-            check=False,
+            check=True,
             capture_output=True,
             text=True).stdout.splitlines()
         if pids := [int(x[1]) for x in list(csv.reader(lines))[1:]] if IS_WINDOWS else [

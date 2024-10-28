@@ -813,7 +813,6 @@ def archive_dashcam_footage(front_dir: StrPath,
                 send_to_waste += [front_file, back_file]
                 log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
                 with tempfile.NamedTemporaryFile(delete=False,
-                                                 delete_on_close=False,
                                                  dir=temp_dir,
                                                  prefix=f'{i:04d}-',
                                                  suffix='.mkv') as tf:

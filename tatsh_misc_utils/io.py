@@ -52,7 +52,7 @@ def unpack_0day(path: StrPath, *, remove_diz: bool = True) -> None:
                 z.extractall()
             zip_file.unlink()
         if remove_diz:
-            for diz in path.glob('*.diz', case_sensitive=False):
+            for diz in path.glob('*.[Dd][Ii][Zz]'):
                 diz.unlink()
         rars = list(path.glob('*.rar'))
         with Path(re.sub(r'(?:\.part\d+)?\.r(?:[0-9][0-9]|ar)$', '.sfv',
@@ -61,8 +61,7 @@ def unpack_0day(path: StrPath, *, remove_diz: bool = True) -> None:
             for rar in sorted(
                     path.glob('*.part*.rar' if any(
                         re.search(r'\.part[0-9]{,3}\.rar$', str(r), re.IGNORECASE)
-                        for r in rars) else '*.[rstuvwxyz][0-9a][0-9r]',
-                              case_sensitive=False)):
+                        for r in rars) else '*.[rstuvwxyz][0-9a][0-9r]')):
                 f.write(f'{rar.name} {crc32(rar.read_bytes()):08X}\n')
 
 
