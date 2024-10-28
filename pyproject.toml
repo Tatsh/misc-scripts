@@ -18,7 +18,7 @@ readme = "README.md"
 repository = "https://github.com/Tatsh/misc-scripts"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.11,<4"
 beautifulsoup4 = "^4.12.3"
 binaryornot = "^0.4.4"
 click = "^8.1.7"
@@ -29,7 +29,6 @@ paramiko = { version = "^3.5.0", optional = true }
 pydbus = { version = "^0.6.0", platform = "linux" }
 pygithub = { version = "^2.4.0", optional = true }
 pyperclip = "^1.9.0"
-python-magic = "^0.4.27"
 pyxdg = "^0.28"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
