@@ -1572,7 +1572,7 @@ def title_fixer_main(titles: tuple[str, ...],
         click.echo(naming.adjust_title(title, modes, disable_names=no_names, ampersands=ampersands))
 
 
-@click.command()
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('local_state_path',
                 type=click.Path(dir_okay=False, exists=True),
                 metavar='LOCAL_STATE_PATH',

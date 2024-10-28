@@ -265,17 +265,17 @@ def kill_processes_by_name(name: str,
     name = f'{name}{Path(name).suffix or ".exe"}' if IS_WINDOWS else name
     pids: list[int] = []
     if IS_WINDOWS:
-        sp.run(('taskkill.exe', '/im', name), check=False)
+        sp.run(('taskkill.exe', '/im', name), check=False, capture_output=True)
     else:
-        sp.run(('killall', f'-{signal}', name), check=False)
+        sp.run(('killall', f'-{signal}', name), check=False, capture_output=True)
     if wait_timeout:
         lines = sp.run(
-            ('tasklist.exe', '/fo', 'csv', '/fi', f'IMAGE_NAME eq "{name}"') if IS_WINDOWS else
+            ('tasklist.exe', '/fo', 'csv', '/fi', f'IMAGENAME eq {name}') if IS_WINDOWS else
             ('ps', 'ax'),
-            check=True,
+            check=False,
             capture_output=True,
             text=True).stdout.splitlines()
-        if pids := [int(x[1]) for x in csv.reader(lines)] if IS_WINDOWS else [
+        if pids := [int(x[1]) for x in list(csv.reader(lines))[1:]] if IS_WINDOWS else [
                 int(y[0]) for y in (x.split() for x in lines) if Path(y[0]).name == name
         ]:
             time.sleep(wait_timeout)
@@ -283,5 +283,6 @@ def kill_processes_by_name(name: str,
                 sp.run(('taskkill.exe', *(t for sl in (('/pid', str(pid)) for pid in pids)
                                           for t in sl), '/f') if IS_WINDOWS else
                        ('kill', '-9', *(str(x) for x in pids)),
-                       check=False)
+                       check=False,
+                       capture_output=True)
     return pids if wait_timeout else None
