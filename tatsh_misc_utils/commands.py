@@ -107,6 +107,7 @@ if TYPE_CHECKING:
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
 _T = TypeVar('_T', bound=str)
+log = logging.getLogger(__name__)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -236,19 +237,21 @@ def unpack_0day_main(dirs: Sequence[str]) -> None:
               help='Location where modules get installed, such as "/lib/modules".',
               default=DEFAULT_MODULES_PATH)
 @click.option('-q', '--quiet', help='Prevent output.', is_flag=True)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug logging.')
 def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
                                        modules_path: str = DEFAULT_MODULES_PATH,
                                        active_kernel_name: str = DEFAULT_ACTIVE_KERNEL_NAME,
                                        *,
-                                       quiet: bool = False) -> None:
+                                       quiet: bool = False,
+                                       debug: bool = False) -> None:
     """
     Remove inactive kernels and modules.
 
     By default, removes old Linux sources from /usr/src.
     """
+    logging.basicConfig(level=logging.INFO if not debug else logging.DEBUG)
     for item in clean_old_kernels_and_modules(path, modules_path, active_kernel_name):
-        if not quiet:
-            click.echo(item)
+        log.info(item)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -653,7 +656,6 @@ def is_bin_main(file: BytesIO) -> None:
 @click.argument('files', nargs=-1)
 def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = False) -> int:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    log = logging.getLogger(__name__)
     fixed_files = ((p if is_url(p) else str(Path(p).resolve(strict=True))) for p in files)
     socket_path = str(Path(xdg.BaseDirectory.xdg_state_home) / 'umpv-socket')
     sock = None
@@ -716,7 +718,6 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
         raise click.Abort from e
     loop = GLib.MainLoop()
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    log = logging.getLogger(__name__)
     bus = SystemBus()
     adapter = bus.get('org.bluez', f'/org/bluez/{device_name}')
 
@@ -920,7 +921,6 @@ If you ran this with eval, your shell is ready.""",
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 def mvid_rename_main(filenames: tuple[str, ...], *, debug: bool = False) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    log = logging.getLogger(__name__)
     for filename in filenames:
         path = Path(filename).resolve(strict=True)
         if not path.is_dir():
