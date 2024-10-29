@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from fnmatch import fnmatch
 from pathlib import Path
+from shutil import rmtree
 from typing import TYPE_CHECKING
+import logging
 import re
 
 if TYPE_CHECKING:
@@ -13,6 +15,7 @@ if TYPE_CHECKING:
 DEFAULT_ACTIVE_KERNEL_NAME = 'linux'
 DEFAULT_KERNEL_LOCATION = '/usr/src'
 DEFAULT_MODULES_PATH = '/lib/modules/'
+log = logging.getLogger(__name__)
 
 
 class InvalidActiveKernelSourcePath(Exception):
@@ -56,10 +59,14 @@ def clean_old_kernels_and_modules(
     current_version = f'{active_kernel_name}-{v}'
     version_pat = f'*{v}*'
     for d in modules_path.glob('*'):
+        log.debug('Examining: %s', d)
         if d.is_dir() and not fnmatch(str(d), version_pat):
-            d.rmdir()
+            log.debug('Will delete: %s', d)
+            rmtree(d)
             yield str(d)
     for d in path.glob(f'{active_kernel_name}-*'):
+        log.debug('Examining: %s', d)
         if d.is_dir() and d.name != current_version:
-            d.rmdir()
+            log.debug('Will delete: %s', d)
+            rmtree(d)
             yield str(d)
