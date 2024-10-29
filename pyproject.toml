@@ -167,7 +167,7 @@ django_find_project = false
 mock_use_standalone_module = true
 norecursedirs = ["node_modules"]
 python_files = ["tests.py", "test_*.py", "*_tests.py"]
-testspaths = ["tests"]
+testpaths = ["tests"]
 
 [tool.pyright]
 deprecateTypingAliases = true
