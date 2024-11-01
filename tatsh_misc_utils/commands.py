@@ -1406,7 +1406,7 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
               help='Regular expression to find the date string.',
               default=r'^(\d+)_.*',
               metavar='RE')
-@click.option('-O', '--no-overwrite', is_flag=True, help='Do not overwrite existing files.')
+@click.option('-O', '--overwrite', is_flag=True, help='Overwrite existing files.')
 @click.option('-T', '--temp-dir', help='Temporary directory for processing.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 def encode_dashcam_main(front_dir: str,
@@ -1430,9 +1430,9 @@ def encode_dashcam_main(front_dir: str,
                         *,
                         debug: bool = False,
                         no_hwaccel: bool = False,
-                        no_overwrite: bool = False,
                         no_rear_crop: bool = False,
-                        no_setpts: bool = False) -> None:
+                        no_setpts: bool = False,
+                        overwrite: bool = False) -> None:
     """
     Batch encode dashcam footage, merging rear and front camera footage.
     
@@ -1459,6 +1459,9 @@ def encode_dashcam_main(front_dir: str,
         encode-dashcam Movie_F/ Movie_R/ ~/output_dir
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    if Path(front_dir).resolve(strict=True) == Path(rear_dir).resolve(strict=True):
+        click.echo('Front and rear directories are the same.', err=True)
+        raise click.Abort
     archive_dashcam_footage(front_dir,
                             rear_dir,
                             output_dir,
@@ -1466,7 +1469,7 @@ def encode_dashcam_main(front_dir: str,
                             hwaccel=None if no_hwaccel else hwaccel,
                             level=level,
                             match_re=match_regexp,
-                            overwrite=not no_overwrite,
+                            overwrite=overwrite,
                             preset=preset,
                             rear_crop=None if no_rear_crop else rear_crop,
                             rear_view_scale_divisor=rear_view_scale_divisor,

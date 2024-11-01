@@ -641,7 +641,7 @@ def archive_dashcam_footage(front_dir: StrPath,
                             clip_length: int = 3,
                             hwaccel: str | None = 'auto',
                             level: int | None = 5,
-                            overwrite: bool = True,
+                            overwrite: bool = False,
                             match_re: str = r'^(\d+)_.*',
                             preset: str | None = 'p5',
                             rear_crop: str | None = '1920:1020:0:0',
@@ -797,8 +797,8 @@ def archive_dashcam_footage(front_dir: StrPath,
             log.debug('Back group length: %d', bg_len)
             log.debug('Front group length: %d', fg_len)
             for i, item in enumerate(back_group):
-                log.debug('Front: %40s              Back: %s',
-                          front_group[i].name if i < fg_len else 'NOTHING', item.name)
+                log.debug('Front: %-40s Back: %s', front_group[i].name if i < fg_len else 'NOTHING',
+                          item.name)
             if fg_len != bg_len:
                 log.warning('List lengths of front and back videos do not match.')
                 if bg_len > fg_len and bg_len - fg_len == 1:
@@ -811,6 +811,7 @@ def archive_dashcam_footage(front_dir: StrPath,
             for i, (back_file, front_file) in enumerate(
                     list(zip(back_group, front_group, strict=True))):
                 log.debug('Back file: %s, front file: %s', back_file, front_file)
+                assert back_file != front_file
                 cmd = ('ffmpeg', '-hide_banner', *input_options, '-i', str(back_file), '-i',
                        str(front_file), *output_options, '-')
                 send_to_waste += [front_file, back_file]
@@ -819,18 +820,34 @@ def archive_dashcam_footage(front_dir: StrPath,
                                                  dir=temp_dir,
                                                  prefix=f'{i:04d}-',
                                                  suffix='.mkv') as tf:
-                    sp.run(cmd, stdout=tf, check=True, stderr=sp.PIPE)
+                    try:
+                        sp.run(cmd, stdout=tf, check=True, stderr=sp.PIPE)
+                    except sp.CalledProcessError as e:
+                        log.exception('STDERR: %s', e.stderr.decode())
+                        for path in to_be_merged:
+                            path.unlink()
+                        raise
                     tf_fixed = Path(tf.name).resolve(strict=True)
                     to_be_merged.append(tf_fixed)
                     temp_concat.write(f"file '{tf_fixed}'\n")
             temp_concat.flush()
             full_output_path = output_dir / front_group[0].with_suffix('.mkv').name
-            if not overwrite and full_output_path.exists():
-                raise FileExistsError(str(full_output_path))
-            cmd = ('ffmpeg', '-hide_banner', *(('-y',) if overwrite else ()), '-f', 'concat',
-                   '-safe', '0', '-i', temp_concat.name, '-c', 'copy', str(full_output_path))
-            log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, check=True, capture_output=True)
+            if not overwrite:
+                suffix = 1
+                while full_output_path.exists():
+                    full_output_path = (
+                        full_output_path.parent /
+                        f'{full_output_path.stem}-{suffix:04d}{full_output_path.suffix}')
+                    suffix += 1
+            if len(to_be_merged) > 1:
+                cmd = ('ffmpeg', '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i',
+                       temp_concat.name, '-c', 'copy', str(full_output_path))
+                log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
+                sp.run(cmd, check=True, capture_output=True)
+            else:
+                first_item = next(x for x in to_be_merged)
+                log.debug('Renaming `%s` to `%s`.', first_item, full_output_path)
+                first_item.rename(full_output_path)
             for path in to_be_merged:
                 path.unlink()
             for path in send_to_waste:
