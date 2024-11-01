@@ -621,7 +621,8 @@ def group_files(items: Iterable[str],
             assert_not_none(re.match(match_re,
                                      Path(item).name)).group(1), time_format)
         last_dt = datetime.strptime(  # noqa: DTZ007
-            Path(group[-1]).name.split('_')[0], time_format)
+            assert_not_none(re.match(match_re,
+                                     Path(group[-1]).name)).group(1), time_format)
         diff = (this_dt - last_dt).total_seconds() // 60
         log.debug('Difference for current file %s vs last file %s: %d minutes', p, group[-1], diff)
         if diff > clip_length:
@@ -767,10 +768,12 @@ def archive_dashcam_footage(front_dir: StrPath,
             '-tier': tier,
             '-f': 'matroska'
         }.items() if v)))
-    back_groups = group_files((str(rear_dir / x) for x in os.listdir(rear_dir)), clip_length,
-                              match_re, time_format)
-    front_groups = group_files((str(front_dir / x) for x in os.listdir(front_dir)), clip_length,
-                               match_re, time_format)
+    back_groups = group_files(
+        (str(rear_dir / x) for x in os.listdir(rear_dir) if x != '.directory'), clip_length,
+        match_re, time_format)
+    front_groups = group_files(
+        (str(front_dir / x) for x in os.listdir(front_dir) if x != '.directory'), clip_length,
+        match_re, time_format)
     back_groups_len = len(back_groups)
     front_groups_len = len(front_groups)
     log.debug('Back group count: %d', back_groups_len)
