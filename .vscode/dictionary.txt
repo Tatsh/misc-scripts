@@ -353,6 +353,7 @@ personalblindness
 pipewire
 pipx
 pixmaps
+platformdirs
 platformtheme
 plist
 plistlib
@@ -448,6 +449,7 @@ tatsh
 tempdir
 tempfile
 tencent
+testpaths
 testspaths
 timebase
 todos

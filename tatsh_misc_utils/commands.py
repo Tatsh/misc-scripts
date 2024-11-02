@@ -20,6 +20,7 @@ import sys
 import webbrowser
 
 from binaryornot.helpers import is_binary_string
+from platformdirs import user_state_path
 from requests import HTTPError
 from send2trash import send2trash
 from typing_extensions import override
@@ -27,7 +28,6 @@ import click
 import keyring
 import pyperclip
 import requests
-import xdg.BaseDirectory
 import yaml
 
 from tatsh_misc_utils import naming
@@ -657,7 +657,7 @@ def is_bin_main(file: BytesIO) -> None:
 def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = False) -> int:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     fixed_files = ((p if is_url(p) else str(Path(p).resolve(strict=True))) for p in files)
-    socket_path = str(Path(xdg.BaseDirectory.xdg_state_home) / 'umpv-socket')
+    socket_path = str(user_state_path() / 'umpv-socket')
     sock = None
     socket_connected = False
     try:
