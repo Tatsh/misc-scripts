@@ -638,6 +638,7 @@ def archive_dashcam_footage(front_dir: StrPath,
                             rear_dir: StrPath,
                             output_dir: StrPath,
                             *,
+                            allow_group_discrepancy_resolution: bool = True,
                             clip_length: int = 3,
                             hwaccel: str | None = 'auto',
                             level: int | None = 5,
@@ -689,6 +690,8 @@ def archive_dashcam_footage(front_dir: StrPath,
         Directory containing rear footage.
     output_dir : StrPath
         Will be created if it does not exist including parents.
+    allow_group_discrepancy_resolution : bool
+        Attempt to solve grouping discrepancies (count of files) automatically.
     clip_length : int
         Clip length in minutes.
     hwaccel : str | None
@@ -769,16 +772,18 @@ def archive_dashcam_footage(front_dir: StrPath,
             '-f': 'matroska'
         }.items() if v)))
     back_groups = group_files(
-        (str(rear_dir / x) for x in os.listdir(rear_dir) if x != '.directory'), clip_length,
+        (str(rear_dir / x) for x in os.listdir(rear_dir) if not x.startswith('.')), clip_length,
         match_re, time_format)
     front_groups = group_files(
-        (str(front_dir / x) for x in os.listdir(front_dir) if x != '.directory'), clip_length,
+        (str(front_dir / x) for x in os.listdir(front_dir) if not x.startswith('.')), clip_length,
         match_re, time_format)
     back_groups_len = len(back_groups)
     front_groups_len = len(front_groups)
     log.debug('Back group count: %d', back_groups_len)
     log.debug('Front group count: %d', front_groups_len)
     if back_groups_len != front_groups_len:
+        if not allow_group_discrepancy_resolution:
+            raise ValueError(back_groups_len)
         log.warning('Length of front and back groups do not match. Attempting resolution.')
         back_groups = [x for x in back_groups if len(x) > 1]
         back_groups_len = len(back_groups)
@@ -800,10 +805,19 @@ def archive_dashcam_footage(front_dir: StrPath,
                 log.debug('Front: %-40s Back: %s', front_group[i].name if i < fg_len else 'NOTHING',
                           item.name)
             if fg_len != bg_len:
+                if not allow_group_discrepancy_resolution:
+                    raise ValueError(bg_len)
                 log.warning('List lengths of front and back videos do not match.')
-                if bg_len > fg_len and bg_len - fg_len == 1:
-                    back_group.pop()
+                if bg_len - fg_len == 1:
+                    last = back_group.pop()
+                    log.debug('Sent to wastebin: %s', last)
+                    send2trash(last)
                     log.info('Possibly resolved length issue by ignoring last rear video in set.')
+                elif fg_len - bg_len == 1:
+                    last = front_group.pop()
+                    log.debug('Sent to wastebin: %s', last)
+                    send2trash(last)
+                    log.info('Possibly resolved length issue by ignoring last front video in set.')
                 else:
                     log.error('Cannot resolve automatically.')
             to_be_merged: list[Path] = []
@@ -835,19 +849,15 @@ def archive_dashcam_footage(front_dir: StrPath,
             if not overwrite:
                 suffix = 1
                 while full_output_path.exists():
+                    offset = 5 if suffix > 1 else 0
                     full_output_path = (
                         full_output_path.parent /
-                        f'{full_output_path.stem}-{suffix:04d}{full_output_path.suffix}')
+                        f'{full_output_path.stem[:-offset]}-{suffix:04d}{full_output_path.suffix}')
                     suffix += 1
-            if len(to_be_merged) > 1:
-                cmd = ('ffmpeg', '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i',
-                       temp_concat.name, '-c', 'copy', str(full_output_path))
-                log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
-                sp.run(cmd, check=True, capture_output=True)
-            else:
-                first_item = next(x for x in to_be_merged)
-                log.debug('Renaming `%s` to `%s`.', first_item, full_output_path)
-                first_item.rename(full_output_path)
+            cmd = ('ffmpeg', '-hide_banner', '-y', '-f', 'concat', '-safe', '0', '-i',
+                   temp_concat.name, '-c', 'copy', str(full_output_path))
+            log.debug('Concatenating with: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, check=True, capture_output=True)
             for path in to_be_merged:
                 path.unlink()
             for path in send_to_waste:

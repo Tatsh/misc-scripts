@@ -1374,6 +1374,7 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 @click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
 @click.option('--hwaccel', help='-hwaccel string for ffmpeg.', default='auto')
 @click.option('--level', help='Level (HEVC).', type=int, default=5)
+@click.option('--no-fix-groups', help='Disable group discrepancy resolution.', is_flag=True)
 @click.option('--no-hwaccel', help='Disable hardware decoding.', is_flag=True)
 @click.option('--no-rear-crop', is_flag=True, help='Disable rear video cropping.')
 @click.option('--no-setpts', is_flag=True, help='Disable use of setpts.')
@@ -1429,6 +1430,7 @@ def encode_dashcam_main(front_dir: str,
                         video_max_bitrate: str = '15M',
                         *,
                         debug: bool = False,
+                        no_fix_groups: bool = False,
                         no_hwaccel: bool = False,
                         no_rear_crop: bool = False,
                         no_setpts: bool = False,
@@ -1450,7 +1452,7 @@ def encode_dashcam_main(front_dir: str,
     
     In many cases, the camera leaves behind stray rear camera files (usually no more than one per
     group and always a video without a matching front video file the end). These are automatically
-    ignored if possible.
+    ignored if possible. This behaviour can be disabled by passing --no-fix-groups.
 
     Original files' whose content is successfully converted are sent to the wastebin.
 
@@ -1465,6 +1467,7 @@ def encode_dashcam_main(front_dir: str,
     archive_dashcam_footage(front_dir,
                             rear_dir,
                             output_dir,
+                            allow_group_discrepancy_resolution=not no_fix_groups,
                             clip_length=clip_length,
                             hwaccel=None if no_hwaccel else hwaccel,
                             level=level,
