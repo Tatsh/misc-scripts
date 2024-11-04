@@ -46,7 +46,7 @@ types-psutil = "^6.1.0.20241022"
 types-pyyaml = "^6.0.12.20240917"
 types-requests = "^2.32.0.20241016"
 yapf = "^0.40.2"
-yt-dlp-types = "~0.0.7"
+yt-dlp-types = "~0.0.11"
 
 [tool.poetry.group.docs]
 optional = true
