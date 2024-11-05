@@ -1570,13 +1570,13 @@ test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 
 [[package]]
 name = "yt-dlp-types"
-version = "0.0.7"
+version = "0.0.13"
 description = "Typing stubs for yt-dlp."
 optional = false
-python-versions = ">=3.10,<4"
+python-versions = "<4,>=3.10"
 files = [
-    {file = "yt_dlp_types-0.0.7-py3-none-any.whl", hash = "sha256:8d3e7029e51996a4c446da7185a262e2edd62ff8231ae4148cec1dd8e3999ace"},
-    {file = "yt_dlp_types-0.0.7.tar.gz", hash = "sha256:fca97b28c4b6cfd5abafb01e8c8f678af1bcbc670d282df082c59436f7c04ddd"},
+    {file = "yt_dlp_types-0.0.13-py3-none-any.whl", hash = "sha256:8f0fe4ce61c91f2692ec05e915e3366ac61c387cc30e5459fdd9f98ec18918d8"},
+    {file = "yt_dlp_types-0.0.13.tar.gz", hash = "sha256:a350258371aece1712a87c74fa6609188d40a70a90da891426ad5529a8e945f2"},
 ]
 
 [[package]]
@@ -1601,4 +1601,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "99d5ed04dd30dae349feb9a46d827d265283c9bdc35fd16b000652c4883a0f89"
+content-hash = "4d154379a9d29ffebc5e174856fbbb781bb6c7a4d83d0b9ad8c700f6154d551a"
