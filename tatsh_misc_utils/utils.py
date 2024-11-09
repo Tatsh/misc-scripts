@@ -73,6 +73,7 @@ WINETRICKS_VERSION_MAPPING = {
 
 def create_wine_prefix(prefix_name: str,
                        *,
+                       tricks: Iterable[str] | None = None,
                        windows_version: WineWindowsVersion = 'xp',
                        vd: str = 'off',
                        debug: bool = False,
@@ -85,6 +86,9 @@ def create_wine_prefix(prefix_name: str,
 
     Requires Wine and winetricks.
     """
+    tricks = list((t for t in tricks
+                   if t not in WINETRICKS_VERSION_MAPPING.values() and not t.startswith('vd=')
+                   ) if tricks else [])
     prefix_root = Path(prefix_root) if prefix_root else Path.home() / '.local/share/wineprefixes'
     prefix_root.mkdir(parents=True, exist_ok=True)
     target = prefix_root / prefix_name
@@ -117,9 +121,12 @@ def create_wine_prefix(prefix_name: str,
     if not (winetricks := which('winetricks')):
         raise FileNotFoundError('winetricks')
     try:
-        sp.run((winetricks, f'prefix={prefix_name}', WINETRICKS_VERSION_MAPPING[windows_version],
-                *(('isolate_home', 'sandbox') if sandbox else
-                  ()), *((f'vd={vd}',) if vd != 'off' else ())),
+        tricks += [WINETRICKS_VERSION_MAPPING[windows_version]]
+        if sandbox:
+            tricks += ['isolate_home', 'sandbox']
+        if vd != 'off':
+            tricks += [f'vd={vd}']
+        sp.run((winetricks, f'prefix={prefix_name}', *set(tricks)),
                check=True,
                capture_output=not debug)
     except sp.CalledProcessError as e:

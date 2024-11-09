@@ -875,11 +875,13 @@ def slug_rename_main(filenames: tuple[str, ...],
               nargs=1,
               default='off',
               help='Virtual desktop size, e.g. 1024x768.')
-@click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe')
+@click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
+@click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
 @click.option('--32', '_32bit', help='Use 32-bit prefix.', is_flag=True)
 def mkwineprefix_main(
     prefix_name: str,
     prefix_root: str,
+    tricks: tuple[str, ...],
     vd: str = 'off',
     windows_version: WineWindowsVersion = 'xp',
     *,
@@ -901,6 +903,7 @@ def mkwineprefix_main(
                                     no_xdg=no_xdg,
                                     prefix_root=prefix_root,
                                     sandbox=sandbox,
+                                    tricks=tricks,
                                     vd=vd,
                                     windows_version=windows_version)
     except FileExistsError as e:
