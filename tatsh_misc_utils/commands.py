@@ -1023,31 +1023,6 @@ def smv_main(filenames: str,
                              preserve_stats=preserve)
 
 
-def _upload_to_imgbb_xdg_install(context: click.Context, _: Any, value: str) -> None:
-    prefix = str(Path('~/.local').expanduser()) if (value == '-' or not value) else value
-    apps = Path(f'{prefix}/share/applications')
-    apps.mkdir(parents=True, exist_ok=True)
-    (apps / 'upload-to-imgbb.desktop').write_text("""[Desktop Entry]
-Categories=Graphics;2DGraphics;RasterGraphics;
-Exec=upload-to-imgbb %U
-Icon=imgbb
-Keywords=graphic;design;
-MimeType=image/avif;image/gif;image/jpeg;image/png;image/webp
-Name=Upload to ImgBB
-StartupNotify=false
-Terminal=false
-TryExec=upload-to-imgbb
-Type=Application
-Version=1.0
-""")
-    r = requests.get('https://simgbb.com/images/favicon.png', timeout=5)
-    icons_dir = Path(f'{prefix}/share/icons/hicolor/300x300')
-    icons_dir.mkdir(parents=True, exist_ok=True)
-    (icons_dir / 'imgbb.png').write_bytes(r.content)
-    sp.run(('update-desktop-database', '-v', str(apps)), check=True)
-    context.exit()
-
-
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=-1)
 @click.option('--api-key', help='API key.', metavar='KEY')
