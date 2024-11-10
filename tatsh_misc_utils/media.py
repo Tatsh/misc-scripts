@@ -8,7 +8,7 @@ from os import utime
 from pathlib import Path
 from shlex import quote
 from shutil import copyfile
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 import contextlib
 import ctypes
 import getpass
@@ -27,14 +27,15 @@ import requests
 
 from .io import context_os_open
 from .system import IS_LINUX
-from .typing import StrPath, assert_not_none
+from .typing import ProbeDict, StrPath, assert_not_none
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
 
 __all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'archive_dashcam_footage',
            'cddb_query', 'ffprobe', 'get_cd_disc_id', 'get_info_json',
-           'is_audio_input_format_supported', 'rip_cdda_to_flac', 'supported_audio_input_formats')
+           'is_audio_input_format_supported', 'rip_cdda_to_flac',
+           'supported_audio_input_formats')
 
 log = logging.getLogger(__name__)
 
@@ -217,14 +218,14 @@ def add_info_json_to_media_file(path: StrPath,
     json_path.unlink()
 
 
-def ffprobe(path: StrPath) -> Any:
+def ffprobe(path: StrPath) -> ProbeDict:
     """Run ``ffprobe`` and decode its JSON output."""
-    return json.loads(
-        sp.run(('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams',
+    p = sp.run(('ffprobe', '-v', 'quiet', '-print_format', 'json', '-show_format', '-show_streams',
                 str(path)),
-               text=True,
+               check=True,
                capture_output=True,
-               check=True).stdout.strip())
+               text=True)
+    return cast(ProbeDict, json.loads(p.stdout.strip()))
 
 
 def get_info_json(path: StrPath, *, raw: bool = False) -> Any:

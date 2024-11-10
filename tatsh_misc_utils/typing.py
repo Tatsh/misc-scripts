@@ -9,9 +9,9 @@ import typing
 if typing.TYPE_CHECKING:
     from collections.abc import Sequence
 
-__all__ = ('CDStatus', 'DecodeErrorsOption', 'FileDescriptorOrPath', 'INCITS38Code',
-           'StrOrBytesPath', 'StrPath', 'UNIXStrPath', 'assert_not_none',
-           'contains_type_path_like_str')
+__all__ = ('CDStatus', 'DecodeErrorsOption', 'FileDescriptorOrPath', 'INCITS38Code', 'ProbeDict',
+           'StrOrBytesPath', 'StrPath', 'StreamDispositionDict', 'StreamsDict', 'UNIXStrPath',
+           'assert_not_none', 'contains_type_path_like_str')
 
 DecodeErrorsOption = Literal['ignore', 'replace', 'strict']
 INCITS38Code = Literal['AK', 'AL', 'AR', 'AS', 'AZ', 'CA', 'CO', 'CT', 'DC', 'DE', 'FL', 'FM', 'GA',
@@ -57,3 +57,18 @@ class ChromeLocalStateBrowser(TypedDict):
 
 class ChromeLocalState(TypedDict):
     browser: ChromeLocalStateBrowser
+
+
+class StreamDispositionDict(TypedDict):
+    default: Literal[0, 1]
+
+
+class StreamsDict(TypedDict):
+    codec_type: Literal['audio', 'video']
+    disposition: StreamDispositionDict
+    height: int
+    width: int
+
+
+class ProbeDict(TypedDict):
+    streams: Sequence[StreamsDict]

@@ -5,7 +5,7 @@ from pathlib import Path
 from shlex import quote, split
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, TextIO, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, overload
 from urllib.parse import unquote_plus, urlparse
 import contextlib
 import errno
@@ -58,6 +58,7 @@ from .media import (
     archive_dashcam_footage,
     cddb_query,
     create_static_text_video,
+    ffprobe,
     get_info_json,
     rip_cdda_to_flac,
     supported_audio_input_formats,
@@ -81,7 +82,13 @@ from .system import (
     slug_rename,
     wait_for_disc,
 )
-from .typing import ChromeLocalState, DecodeErrorsOption, INCITS38Code
+from .typing import (
+    ChromeLocalState,
+    DecodeErrorsOption,
+    INCITS38Code,
+    ProbeDict,
+    StreamDispositionDict,
+)
 from .ultraiso import (
     InsufficientArguments,
     run_ultraiso,
@@ -1641,3 +1648,70 @@ def chrome_bisect_flags_main(local_state_path: str,
             click.echo('Restored original "Local State".')
         else:
             click.echo(f'Saved "Local State" with "{bad_flag}" removed.')
+
+
+@click.command()
+@click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=2)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def mpv_sbs_main(filenames: tuple[str, str],
+                 max_width: int = 3840,
+                 min_height: int = 31,
+                 min_width: int = 31,
+                 *,
+                 debug: bool = False) -> None:
+    @overload
+    def get_prop(prop: Literal['codec_type'], info: ProbeDict) -> Literal['audio', 'video']:
+        ...
+
+    @overload
+    def get_prop(prop: Literal['disposition'], info: ProbeDict) -> StreamDispositionDict:
+        ...
+
+    @overload
+    def get_prop(prop: Literal['height', 'width'], info: ProbeDict) -> int:
+        ...
+
+    def get_prop(prop: Literal['codec_type', 'disposition', 'height', 'width'],
+                 info: ProbeDict) -> Literal['audio', 'video'] | StreamDispositionDict | int:
+        return max((x for x in info['streams'] if x['codec_type'] == 'video'),
+                   key=lambda x: x['disposition'].get('default', 0))[prop]
+
+    def get_default_video_index(info: ProbeDict) -> int:
+        for i, x in enumerate(info['streams']):
+            try:
+                if x['disposition']['default']:
+                    return i
+            except (KeyError, IndexError):
+                continue
+        return next((i for i, x in enumerate(info['streams']) if x['codec_type'] == 'video'), 0)
+
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    filename1, filename2 = filenames
+    info1, info2 = ffprobe(filename1), ffprobe(filename2)
+    width1, width2 = (int(get_prop('width', info1)), int(get_prop('width', info2)))
+    height1, height2 = (int(get_prop('height', info1)), int(get_prop('height', info2)))
+    assert height1 > min_height, 'Invalid height in video 1'
+    assert height2 > min_height, 'Invalid height in video 2'
+    assert width1 <= max_width, 'Video 1 is too wide'
+    assert width1 > min_width, 'Invalid width in video 1'
+    assert width2 <= max_width, 'Video 2 is too wide'
+    assert width2 > min_width, 'Invalid width in video 2'
+    scale_w = max(width1, width2)
+    scale_h = int(get_prop('height', info1)) if scale_w == width1 else int(get_prop(
+        'height', info2))
+    scale = '' if width1 == width2 and height1 == height2 else f'scale={scale_w}x{scale_h}'
+    scale1, scale2 = (scale if scale_h != height1 == 1 else '',
+                      scale if scale_h == height1 == 2 else '')  # noqa: PLR2004
+    second_stream_index = (len([x for x in info1['streams'] if x['codec_type'] == 'video']) +
+                           get_default_video_index(info2)) + 1
+    if not scale1 and not scale2:
+        filter_chain = '[vid1][vid2] hstack [vo]'
+    else:
+        filter_chain = ';'.join(
+            (f'[vid1] {scale} [vid1_scale]',
+             f'[vid{second_stream_index}] {scale} [vid{second_stream_index}_crop]',
+             f'[vid1_scale][vid{second_stream_index}_crop] hstack [vo]'))
+    cmd = ('mpv', '--hwdec=no', '--config=no', filename1, f'--external-file={filename2}',
+           f'--lavfi-complex={filter_chain}')
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)

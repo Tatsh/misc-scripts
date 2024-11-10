@@ -199,10 +199,12 @@ hexdigest
 hexstr
 hicolor
 hkcu
+hstack
 htmlcov
 htmltree
 httponly
 hwaccel
+hwdec
 hwdownload
 hwinfo
 icns
