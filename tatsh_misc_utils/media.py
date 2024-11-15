@@ -8,7 +8,7 @@ from os import utime
 from pathlib import Path
 from shlex import quote
 from shutil import copyfile
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, cast
 import contextlib
 import ctypes
 import getpass
@@ -34,8 +34,7 @@ if TYPE_CHECKING:
 
 __all__ = ('CDDBQueryResult', 'add_info_json_to_media_file', 'archive_dashcam_footage',
            'cddb_query', 'ffprobe', 'get_cd_disc_id', 'get_info_json',
-           'is_audio_input_format_supported', 'rip_cdda_to_flac',
-           'supported_audio_input_formats')
+           'is_audio_input_format_supported', 'rip_cdda_to_flac', 'supported_audio_input_formats')
 
 log = logging.getLogger(__name__)
 
@@ -236,9 +235,8 @@ def get_info_json(path: StrPath, *, raw: bool = False) -> Any:
     ----------
     path : StrPath
         Path to FLAC, MP3, MP4, or Opus media file.
-
     raw : bool
-        If raw, do not decode.
+        If ``True``, do not decode.
 
     Returns
     -------
@@ -864,3 +862,42 @@ def archive_dashcam_footage(front_dir: StrPath,
             for path in send_to_waste:
                 send2trash(path)
                 log.debug('Sent to wastebin: %s', path)
+
+
+def hlg_to_sdr(input_file: StrPath,
+               crf: int = 20,
+               output_codec: Literal['libx265', 'libx264'] = 'libx265',
+               output_file: StrPath | None = None,
+               input_args: Sequence[str] | None = None,
+               output_args: Sequence[str] | None = None,
+               *,
+               delete_after: bool = False,
+               fast: bool = False) -> None:
+    input_file = Path(input_file)
+    vf = ((
+        'zscale=t=linear:npl=100,'
+        'format=gbrpf32le,'
+        'zscale=p=bt709,'
+        'tonemap=tonemap=hable:desat=0,'
+        'zscale=t=bt709:m=bt709:r=tv,'
+        'format=yuv420p'
+    ) if fast else (
+        'zscale=tin=arib-std-b67:min=bt2020nc:pin=bt2020:rin=tv:t=arib-std-b67:m=bt2020nc:p=bt2020:'
+        'r=tv,'
+        'zscale=t=linear:npl=100,'
+        'format=gbrpf32le,'
+        'zscale=p=bt709,'
+        'tonemap=tonemap=hable:desat=0,'
+        'zscale=t=bt709:m=bt709:r=tv,'
+        'format=yuv420p'))
+    output_file = str(output_file) if output_file else str(
+        input_file.parent / f'{input_file.stem}-sdr{input_file.suffix}')
+    cmd = ('ffmpeg', '-hide_banner', '-y', *(input_args or []), '-i', str(input_file),
+           *(output_args or []), '-c:v', output_codec,
+           '-crf', str(crf), '-vf', vf, '-acodec', 'copy', '-movflags', '+faststart',
+           str(output_file) if output_file else f'{input_file.stem}-sdr{input_file.suffix}')
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True, capture_output=True)
+    if delete_after:
+        send2trash(input_file)
+        log.debug('Sent to wastebin: %s', input_file)

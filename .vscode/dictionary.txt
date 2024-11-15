@@ -9,6 +9,7 @@ alayka
 alayya
 albumartist
 algo
+aloma
 alrm
 alsa
 amerge
@@ -25,6 +26,7 @@ arcname
 argcomplete
 argparse
 args
+arib
 arkit
 armor
 asctime
@@ -104,6 +106,7 @@ datetime
 dcterms
 deepcopy
 defusedxml
+desat
 devnull
 dgenre
 directores
@@ -172,6 +175,7 @@ fullwidth
 funcs
 functools
 furb
+gbrpf
 getattr
 getboolean
 getcwd
@@ -190,6 +194,7 @@ gnudb
 gogextract
 gpac
 groupdict
+hable
 halfwidth
 handle
 hashlib
@@ -469,6 +474,7 @@ udfdvd
 udvare
 uids
 uint
+uiso
 ukpabmc
 ultraiso
 umount
@@ -529,3 +535,4 @@ yapfignore
 yday
 zehm
 zipfile
+zscale

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 from os import PathLike
-from typing import Annotated, Any, Literal, TypeVar, TypedDict
+from typing import Annotated, Any, Literal, NotRequired, TypeVar, TypedDict
 import os
 import typing
 
@@ -63,12 +63,23 @@ class StreamDispositionDict(TypedDict):
     default: Literal[0, 1]
 
 
+class TagsDict(TypedDict):
+    info_json: NotRequired[str]
+    TXXX: NotRequired[str]
+
+
 class StreamsDict(TypedDict):
     codec_type: Literal['audio', 'video']
     disposition: StreamDispositionDict
     height: int
+    tags: TagsDict
     width: int
 
 
+class FormatDict(TypedDict):
+    tags: TagsDict
+
+
 class ProbeDict(TypedDict):
+    format: FormatDict
     streams: Sequence[StreamsDict]

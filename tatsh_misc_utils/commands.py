@@ -60,6 +60,7 @@ from .media import (
     create_static_text_video,
     ffprobe,
     get_info_json,
+    hlg_to_sdr,
     rip_cdda_to_flac,
     supported_audio_input_formats,
 )
@@ -1650,7 +1651,7 @@ def chrome_bisect_flags_main(local_state_path: str,
             click.echo(f'Saved "Local State" with "{bad_flag}" removed.')
 
 
-@click.command()
+@click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=2)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 def mpv_sbs_main(filenames: tuple[str, str],
@@ -1715,3 +1716,26 @@ def mpv_sbs_main(filenames: tuple[str, str],
            f'--lavfi-complex={filter_chain}')
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     sp.run(cmd, check=True)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('output', type=click.Path(dir_okay=False), required=False)
+@click.option('--codec',
+              help='Video codec.',
+              type=click.Choice(('libx264', 'libx265')),
+              default='libx265')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('--crf', help='CRF value.', type=int, default=20)
+@click.option('--delete-after', help='Send processed file to wastebin.', is_flag=True)
+@click.option('-f', '--fast', help='Use less filters.', is_flag=True)
+def hlg2sdr_main(filename: str,
+                 output: str | None,
+                 crf: int = 20,
+                 codec: Literal['libx264', 'libx265'] = 'libx265',
+                 *,
+                 debug: bool = False,
+                 delete_after: bool = False,
+                 fast: bool = False) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    hlg_to_sdr(filename, crf, codec, output, fast=fast, delete_after=delete_after)

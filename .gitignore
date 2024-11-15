@@ -1,9 +1,7 @@
-.*~
+*~
 .directory
 .pnp.*
 /.*_cache/
-/.vscode/.ropeproject/objectdb
-/.vscode/tags
 /.yarn/install-state.gz
+__pycache__/
 node_modules/
-__pycache__

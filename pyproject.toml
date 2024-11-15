@@ -89,6 +89,7 @@ add-cdda-times = "tatsh_misc_utils.commands:add_cdda_times_main"
 audio2vid = "tatsh_misc_utils.commands:audio2vid_main"
 cddb-query = "tatsh_misc_utils.commands:cddb_query_main"
 encode-dashcam = "tatsh_misc_utils.commands:encode_dashcam_main"
+hlg2sdr = "tatsh_misc_utils.commands:hlg2sdr_main"
 ripcd = "tatsh_misc_utils.commands:ripcd_main"
 supported-audio-input-formats = "tatsh_misc_utils.commands:supported_audio_input_formats_main"
 # sanford (yt-dlp-addons)
