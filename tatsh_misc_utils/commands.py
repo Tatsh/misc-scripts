@@ -1753,11 +1753,7 @@ def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = 
     """
     Convert VBI data in a ld-decode/vhs-decode TBC file to SubRip format.
     
-    Requires the following:
-        * ld-process-vbi
-        * ld-export-metadata
-        * scc2raw.pl
-        * ccextractor
+    Requires the following: ld-process-vbi, ld-export-metadata, scc2raw.pl, ccextractor.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     p_filename = Path(filename)
