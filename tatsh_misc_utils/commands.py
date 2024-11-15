@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from operator import itemgetter
+from os import listdir
 from pathlib import Path
 from shlex import quote, split
 from shutil import which
@@ -17,6 +19,7 @@ import re
 import socket
 import subprocess as sp
 import sys
+import unicodedata
 import webbrowser
 
 from binaryornot.helpers import is_binary_string
@@ -49,6 +52,7 @@ from .io import (
     UnRAR,
     UnRARExtractionTestFailed,
     extract_gog,
+    make_sfv,
     unpack_0day,
     unpack_ebook,
     verify_sfv,
@@ -110,7 +114,7 @@ from .www import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Iterator, Sequence
     from io import BytesIO
 
 CONTEXT_SETTINGS = {'help_option_names': ('-h', '--help')}
@@ -1775,3 +1779,65 @@ def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = 
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     sp.run(cmd, check=True)
     send2trash([scc_file, bin_file, output_json_file, input_json])
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('directory', type=click.Path(exists=True, file_okay=False))
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def flac_dir_finalize_main(directory: str, *, debug: bool = False) -> None:
+    def get_flac_tags(flac_path: Path) -> Iterator[tuple[str, str]]:
+        def _split_eq(x: str) -> tuple[str, str] | None:
+            y = x.split('=', 1)
+            if len(y) == 2:  # noqa: PLR2004
+                return y[0].lower(), y[1]
+            return None
+
+        return (y for y in (_split_eq(x)
+                            for x in sp.run(('metaflac', '--export-tags-to=-', str(flac_path)),
+                                            stdout=sp.PIPE,
+                                            text=True,
+                                            check=False).stdout.splitlines()) if y is not None)
+
+    def remove_accents(s: str) -> str:
+        return ''.join(c for c in unicodedata.normalize('NFD', re.sub(r'[Øø]', 'o', s))
+                       if unicodedata.category(c) != 'Mn')
+
+    def sanitize_for_filename(s: str) -> str:
+        return underscorize(
+            re.sub(
+                r'[!&"\'$;`^,#\?%=\.,°±¡¯¬«ª²³¨§¦¥¤£¢¿¾½¼»þ÷¹¸·¶µ´]',  # noqa: RUF001
+                '',
+                re.sub(
+                    r'[/\|:\\\*\+@~]', '-',
+                    re.sub(
+                        r'[<{\(\[]', '(',
+                        re.sub(r'[>}\)\]]', ')',
+                               re.sub(r'\s&\s', ' and ', remove_accents(s),
+                                      flags=re.IGNORECASE))))))
+
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    path = Path(directory).resolve(strict=True)
+    flac_files = ((path / x) for x in listdir(directory) if x.endswith('.flac'))
+    new_flac_files: list[Path] = []
+    imgs = ((path / x) for x in listdir(directory)
+            if re.search(r'\.(?:jpe?g|png|gif|webp)', x) is not None)
+    misc_files_prefix = f'00-{path.name.lower()}'
+    img_prefix = '-'.join(misc_files_prefix.split('-')[:-1])
+    out_m3u = path / f'{misc_files_prefix}.m3u'
+    out_sfv = path / f'{misc_files_prefix}.sfv'
+    for flac in flac_files:
+        tracknumber, artist, title = itemgetter('tracknumber', 'artist', 'title')(dict(
+            get_flac_tags(flac)))
+        new_fn = path / re.sub(r'-+', '-',
+                               (f'{int(tracknumber):02d}-{sanitize_for_filename(artist)}-'
+                                f'{sanitize_for_filename(title)}.flac'.lower()))
+        new_flac_files.append(new_fn)
+        flac.rename(new_fn)
+    for i, img in enumerate(sorted(imgs), start=1):
+        ext = img.suffix[1:].replace('jpg', 'jpeg')
+        new_fn = path / f'{img_prefix}-{i:>02}.{ext}'
+        img.rename(new_fn)
+    with out_m3u.open('w+', encoding='utf-8') as f:
+        for flac in sorted(new_flac_files):
+            f.write(f'{flac.name}\r\n')
+    make_sfv(out_sfv, new_flac_files)

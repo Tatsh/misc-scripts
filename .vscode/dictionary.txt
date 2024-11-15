@@ -146,6 +146,7 @@ expanduser
 extdebug
 f'prescaled
 f'wineprefix
+faststart
 favicon
 fcntl
 fetchall
@@ -311,6 +312,7 @@ mkvpropedit
 mkwineprefix
 modtime
 mojosetup
+movflags
 mozcookie
 mplayer
 mprotect
@@ -462,6 +464,7 @@ testspaths
 timebase
 todos
 tomlkit
+tonemap
 topdown
 totalallowances
 tracknumber

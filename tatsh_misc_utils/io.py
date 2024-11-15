@@ -15,7 +15,7 @@ import shutil
 import subprocess as sp
 
 if TYPE_CHECKING:
-    from collections.abc import Iterator
+    from collections.abc import Iterable, Iterator
 
     from .typing import StrPath
 
@@ -234,3 +234,16 @@ def verify_sfv(sfv_file: StrPath) -> None:
             recorded_crc = int(recorded_crc_s, 16)
             if (crc := crc32((sfv_file.parent / filename).read_bytes())) != recorded_crc:
                 raise SFVVerificationError(filename, recorded_crc, crc)
+
+
+def make_sfv(sfv_file: StrPath, files: Iterable[StrPath], *, header: bool = True) -> None:
+    file_paths = sorted([Path(file) for file in files])
+    with Path(sfv_file).open('w+', encoding='utf-8') as f:
+        if header:
+            f.write(f'; Generated on {datetime.now(tz=UTC).isoformat(" ")}\n')
+            for file in file_paths:
+                stat = file.stat()
+                dt = datetime.fromtimestamp(stat.st_mtime, tz=UTC).isoformat(' ')
+                f.write(f'; {stat.st_size:-10d} {dt} {file.stem}\n')
+        for file in file_paths:
+            f.write(f'{file.name} {crc32(file.read_bytes()):08X}\n')

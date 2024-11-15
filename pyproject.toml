@@ -107,6 +107,7 @@ wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
 # flacted
 flac-album = "tatsh_misc_utils.commands:flacted_main"
 flac-artist = "tatsh_misc_utils.commands:flacted_main"
+flac-dir-finalize = "tatsh_misc_utils.commands:flac_dir_finalize_main"
 flac-genre = "tatsh_misc_utils.commands:flacted_main"
 flac-title = "tatsh_misc_utils.commands:flacted_main"
 flac-track = "tatsh_misc_utils.commands:flacted_main"
