@@ -52,6 +52,7 @@ bzip
 cabac
 calcbpp
 capitalise
+ccextractor
 ccitt
 cdda
 cddb

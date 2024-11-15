@@ -92,6 +92,7 @@ encode-dashcam = "tatsh_misc_utils.commands:encode_dashcam_main"
 hlg2sdr = "tatsh_misc_utils.commands:hlg2sdr_main"
 ripcd = "tatsh_misc_utils.commands:ripcd_main"
 supported-audio-input-formats = "tatsh_misc_utils.commands:supported_audio_input_formats_main"
+tbc2srt = "tatsh_misc_utils.commands:tbc2srt_main"
 # sanford (yt-dlp-addons)
 add-info-json = "tatsh_misc_utils.commands:add_info_json_main"
 mp4json = "tatsh_misc_utils.commands:add_info_json_main"

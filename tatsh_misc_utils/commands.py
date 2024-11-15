@@ -1728,7 +1728,7 @@ def mpv_sbs_main(filenames: tuple[str, str],
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('--crf', help='CRF value.', type=int, default=20)
 @click.option('--delete-after', help='Send processed file to wastebin.', is_flag=True)
-@click.option('-f', '--fast', help='Use less filters.', is_flag=True)
+@click.option('-f', '--fast', help='Use less filters (lower quality).', is_flag=True)
 def hlg2sdr_main(filename: str,
                  output: str | None,
                  crf: int = 20,
@@ -1739,3 +1739,39 @@ def hlg2sdr_main(filename: str,
                  fast: bool = False) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     hlg_to_sdr(filename, crf, codec, output, fast=fast, delete_after=delete_after)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('--input-json', help='Input JSON file.', type=click.Path(exists=True, dir_okay=False))
+def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = False) -> None:
+    """
+    Convert VBI data in a ld-decode/vhs-decode TBC file to SubRip format.
+    
+    Requires the following:
+        * ld-process-vbi
+        * ld-export-metadata
+        * scc2raw.pl
+        * ccextractor
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    p_filename = Path(filename)
+    scc_file = p_filename.parent / f'{p_filename.stem}.scc'
+    bin_file = p_filename.parent / f'{p_filename.stem}.bin'
+    output_json_file = p_filename.parent / f'{p_filename.stem}.json'
+    input_json = input_json or str(p_filename.parent / 'input.json')
+    cmd: tuple[str, ...] = ('ld-process-vbi', '--input-json', input_json, '--output-json',
+                            str(output_json_file), filename)
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
+    cmd = ('ld-export-metadata', '--closed-captions', str(scc_file), str(output_json_file))
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
+    cmd = ('scc2raw.pl', str(scc_file))
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
+    cmd = ('ccextractor', '-in=raw', str(bin_file))
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
+    send2trash([scc_file, bin_file, output_json_file, input_json])
