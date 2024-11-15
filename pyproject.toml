@@ -122,7 +122,7 @@ merge-dependabot-prs = "tatsh_misc_utils.commands:merge_dependabot_prs_main"
 # lakeland (wine)
 mkwineprefix = "tatsh_misc_utils.commands:mkwineprefix_main"
 unix2wine = "tatsh_misc_utils.commands:unix2wine_main"
-# uiso-cli
+# uiso
 uiso = "tatsh_misc_utils.commands:ultraiso_main"
 # clermont (file management)
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
@@ -138,7 +138,7 @@ burnrariso = "tatsh_misc_utils.commands:burnrariso_main"
 gogextract = "tatsh_misc_utils.commands:gogextract_main"
 # patch-bundle
 patch-bundle = "tatsh_misc_utils.commands:patch_bundle_main"
-# tatsh-smv
+# secure-move
 smv = "tatsh_misc_utils.commands:smv_main"
 # aloma (string)
 fullwidth2ascii = "tatsh_misc_utils.commands:fullwidth2ascii_main"
