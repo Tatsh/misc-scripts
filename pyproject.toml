@@ -123,7 +123,7 @@ merge-dependabot-prs = "tatsh_misc_utils.commands:merge_dependabot_prs_main"
 mkwineprefix = "tatsh_misc_utils.commands:mkwineprefix_main"
 unix2wine = "tatsh_misc_utils.commands:unix2wine_main"
 # uiso-cli
-ultraiso = "tatsh_misc_utils.commands:ultraiso_main"
+uiso = "tatsh_misc_utils.commands:ultraiso_main"
 # clermont (file management)
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
