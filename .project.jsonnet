@@ -33,10 +33,11 @@ local yarn_version = '4.5.0';
 
 local shared_ignore = [
   '*~',
+  '.*_cache/',
   '.directory',
   '.pnp.*',
-  '/.yarn/install-state.gz',
   '/.yarn/**/*.cjs',
+  '/.yarn/install-state.gz',
   '__pycache__/',
   'node_modules/',
 ];

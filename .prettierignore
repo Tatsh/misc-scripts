@@ -1,5 +1,6 @@
 *.jsonnet
 *~
+.*_cache/
 .directory
 .pnp.*
 /.yarn/**/*.cjs
