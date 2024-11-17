@@ -55,6 +55,10 @@ local manifestYaml(value) =
   std.manifestYamlDoc(value, true, false);
 
 {
+  '.gitattributes': manifestLines([
+    '*.lock binary',
+    '/.yarn/**/*.cjs',
+  ]),
   '.github/FUNDING.yml': manifestYaml(github_funding),
   '.github/dependabot.yml': manifestYaml({
     updates: [
@@ -649,11 +653,12 @@ local manifestYaml(value) =
           dev: {
             optional: true,
             dependencies: {
-              'binaryornot-stubs': '^0.0.1',
+              'binaryornot-stubs': '^0',
               cffconvert: '^2.0.0',
+              commitizen: '^3.31.0',
               mypy: '^1.13.0',
-              'pydbus-stubs': '^0.0.1',
-              'pyperclip-stubs': '^0.0.1',
+              'pydbus-stubs': '^0',
+              'pyperclip-stubs': '^0',
               ruff: '^0.7.4',
               'types-beautifulsoup4': '^4.12.0.20241020',
               'types-paramiko': '^3.5.0.20240928',
@@ -751,6 +756,11 @@ local manifestYaml(value) =
           'chrome-bisect-flags': '%s.commands:chrome_bisect_flags_main' % module_name,
           'upload-to-imgbb': '%s.commands:upload_to_imgbb_main' % module_name,
         },
+      },
+      commitizen: {
+        tag_format: 'v$version',
+        version_files: ['.project.jsonnet', 'CITATION.cff', 'README.md', 'package.json'],
+        version_provider: 'poetry',
       },
       coverage: {
         report: {
