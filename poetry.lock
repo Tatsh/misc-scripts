@@ -135,6 +135,20 @@ files = [
 chardet = ">=3.0.2"
 
 [[package]]
+name = "binaryornot-stubs"
+version = "0.0.1"
+description = "Stubs for binaryornot."
+optional = false
+python-versions = "<4,>=3.9"
+files = [
+    {file = "binaryornot_stubs-0.0.1-py3-none-any.whl", hash = "sha256:28672c85b254eb62c1d82fe4a5d99fb295bee62e559ca882cbd91ea81250ea11"},
+    {file = "binaryornot_stubs-0.0.1.tar.gz", hash = "sha256:58ed695d5c7b2e46fdcd1a16577b8314198fcb6c191ea61564d66462b803d54c"},
+]
+
+[package.dependencies]
+binaryornot = ">=0.4.4,<0.5.0"
+
+[[package]]
 name = "cattrs"
 version = "24.1.2"
 description = "Composable complex class support for attrs and dataclasses."
@@ -2155,4 +2169,4 @@ unidecode = ["unidecode"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4"
-content-hash = "4eebf74a2308e2e663e7b420cfd9ce46e5b71d0d90eff05d4e932a848d09ef27"
+content-hash = "1617b515ce278e1a5dd34dcab5db7bed127cd1eb54335052df2ffb7e4e0bdd9b"

@@ -649,6 +649,7 @@ local manifestYaml(value) =
           dev: {
             optional: true,
             dependencies: {
+              'binaryornot-stubs': '^0.0.1',
               cffconvert: '^2.0.0',
               mypy: '^1.13.0',
               ruff: '^0.7.4',

@@ -95,6 +95,7 @@ unidecode = ["unidecode"]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
+binaryornot-stubs = "^0.0.1"
 cffconvert = "^2.0.0"
 mypy = "^1.13.0"
 ruff = "^0.7.4"
