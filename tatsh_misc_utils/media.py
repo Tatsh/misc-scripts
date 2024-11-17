@@ -92,6 +92,7 @@ def is_audio_input_format_supported(
         input_device: str,
         format: str,  # noqa: A002
         rate: int) -> bool:
+    """Check if an audio format is supported by a device."""
     return bool(supported_audio_input_formats(input_device, formats=(format,), rates=(rate,)))
 
 
@@ -873,6 +874,7 @@ def hlg_to_sdr(input_file: StrPath,
                *,
                delete_after: bool = False,
                fast: bool = False) -> None:
+    """Convert an HLG HDR video to SDR."""
     input_file = Path(input_file)
     vf = ((
         'zscale=t=linear:npl=100,'

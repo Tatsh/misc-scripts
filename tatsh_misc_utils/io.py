@@ -19,6 +19,10 @@ if TYPE_CHECKING:
 
     from .typing import StrPath
 
+__all__ = ('RARInfo', 'SFVVerificationError', 'UnRAR', 'UnRARError', 'UnRARExtractionTestFailed',
+           'context_os_open', 'extract_gog', 'make_sfv', 'unpack_0day', 'unpack_ebook',
+           'verify_sfv')
+
 log = logging.getLogger(__name__)
 
 
@@ -161,15 +165,16 @@ def extract_gog(filename: str, output_dir: StrPath) -> None:
 
 
 class UnRARError(Exception):
-    pass
+    """General ``unrar`` error."""
 
 
 class UnRARExtractionTestFailed(UnRARError):
-    pass
+    """Raised when testing extraction fails."""
 
 
 @dataclass
 class RARInfo:
+    """File within a RAR information."""
     attributes_str: str
     date: datetime
     name: str
@@ -219,11 +224,13 @@ class UnRAR:
 
 
 class SFVVerificationError(Exception):
+    """Raised when SFV fails verification."""
     def __init__(self, filename: StrPath, expected_crc: int, actual_crc: int) -> None:
         super().__init__(f'{filename}: Expected {expected_crc:08X}. Actual: {actual_crc:08X}.')
 
 
 def verify_sfv(sfv_file: StrPath) -> None:
+    """Verify an SFV file."""
     sfv_file = Path(sfv_file)
     with sfv_file.open(encoding='utf-8') as f:
         for line in (lj for lj in (li.split(';', 1)[0].split('#', 1)[0].strip() for li in f
@@ -237,6 +244,7 @@ def verify_sfv(sfv_file: StrPath) -> None:
 
 
 def make_sfv(sfv_file: StrPath, files: Iterable[StrPath], *, header: bool = True) -> None:
+    """Create an SFV file."""
     file_paths = sorted([Path(file) for file in files])
     with Path(sfv_file).open('w+', encoding='utf-8') as f:
         if header:
