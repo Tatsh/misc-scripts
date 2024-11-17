@@ -1,7 +1,7 @@
 *~
 .directory
 .pnp.*
-/.*_cache/
+/.yarn/releases/*.cjs
 /.yarn/install-state.gz
 __pycache__/
 node_modules/

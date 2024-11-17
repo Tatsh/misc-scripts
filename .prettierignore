@@ -1,1 +1,8 @@
-/.pytest_cache/
+*.jsonnet
+*~
+.directory
+.pnp.*
+/.yarn/**/*.cjs
+/.yarn/install-state.gz
+__pycache__/
+node_modules/

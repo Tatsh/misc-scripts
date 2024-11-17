@@ -74,6 +74,7 @@ chost
 cigam
 cksfv
 cmds
+codeowners
 codepoint
 codesign
 colnames
@@ -91,6 +92,7 @@ copyfile
 copyfileobj
 copytree
 coreutils
+coveragerc
 cpqrv
 cpusubtype
 cputype
@@ -104,7 +106,9 @@ datafile
 datamode
 dataoffset
 datetime
+davidanson
 dcterms
+debugpy
 deepcopy
 defusedxml
 desat
@@ -248,6 +252,8 @@ jibberish
 jinja
 jlong
 joinpath
+jsonnet
+jsonschema
 kakasi
 kdialog
 keepends
@@ -288,6 +294,7 @@ makeself
 malloc
 mapfile
 mapkit
+markdownlint
 maxdepth
 maxrate
 mcdonald
@@ -356,6 +363,7 @@ paletteuse
 paramiko
 paren
 parms
+pascalreitermann
 pathlib
 pathsep
 pdfkit
@@ -388,6 +396,7 @@ pylance
 pylint
 pyobjc
 pyperclip
+pyproject
 pyright
 pytest
 pyxdg
@@ -416,6 +425,7 @@ rstuvwxyz
 safemv
 samplerate
 scandir
+schemafile
 secring
 setattr
 setfiletime
@@ -536,6 +546,8 @@ xsel
 xsession
 yapf
 yapfignore
+yarnpkg
+yarnrc
 yday
 zehm
 zipfile

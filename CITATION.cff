@@ -1,8 +1,8 @@
-cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
 authors:
-  - family-names: Udvare
-    given-names: Andrew
-title: misc-scripts
-version: 0.0.1
-date-released: 2024-04-27
+  - family-names: 'Udvare'
+    given-names: 'Andrew'
+cff-version: '1.2.0'
+date-released: '2024-04-27'
+message: 'If you use this software, please cite it as below.'
+title: 'deltona'
+version: '0.0.1'

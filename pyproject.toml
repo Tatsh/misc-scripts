@@ -1,6 +1,34 @@
+[build-system]
+build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core"]
+
+[tool]
+
+[tool.coverage]
+
+[tool.coverage.report]
+omit = ["conftest.py", "tests.py", "tests/test_*.py"]
+show_missing = true
+
+[tool.coverage.run]
+branch = true
+omit = ["conftest.py", "tests.py", "tests/test_*.py"]
+
+[tool.doc8]
+max-line-length = 100
+
+[tool.mypy]
+cache_dir = "~/.cache/mypy"
+explicit_package_bases = true
+mypy_path = ".stubs"
+platform = "linux"
+python_version = "3.11"
+show_column_numbers = true
+strict = true
+strict_optional = true
+warn_unreachable = true
+
 [tool.poetry]
-name = "deltona"
-version = "0.0.1"
 authors = ["Andrew Udvare <audvare@gmail.com>"]
 classifiers = [
   "Development Status :: 2 - Pre-Alpha",
@@ -12,36 +40,56 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Typing :: Typed",
 ]
-description = "Core library used by my utility packages."
-keywords = ["library", "miscellaneous"]
+description = "Core library used by my tools."
+documentation = "https://deltona.readthedocs.org"
+homepage = "https://github.com/Tatsh/deltona"
+keywords = ["command line", "library", "media"]
 license = "MIT"
-packages = [{ include = "tatsh_misc_utils" }]
+name = "deltona"
 readme = "README.md"
-repository = "https://github.com/Tatsh/misc-scripts"
+repository = "https://github.com/Tatsh/deltona"
+version = "0.0.1"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4"
 beautifulsoup4 = "^4.12.3"
 binaryornot = "^0.4.4"
 click = "^8.1.7"
-gitpython = { version = "^3.1.43", optional = true }
 html5lib = "^1.1"
 keyring = "^25.4.1"
-paramiko = { version = "^3.5.0", optional = true }
 platformdirs = "^4.3.6"
-pydbus = { version = "^0.6.0", platform = "linux" }
-pygithub = { version = "^2.4.0", optional = true }
 pyperclip = "^1.9.0"
+python = ">=3.11,<4"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 send2trash = "^1.8.3"
-unidecode = { version = "^1.3.8", optional = true }
 yt-dlp = "^2024.9.27"
+
+[tool.poetry.dependencies.gitpython]
+optional = true
+version = "^3.1.43"
+
+[tool.poetry.dependencies.paramiko]
+optional = true
+version = "^3.5.0"
+
+[tool.poetry.dependencies.pydbus]
+platform = "linux"
+version = "^0.6.0"
+
+[tool.poetry.dependencies.pygithub]
+optional = true
+version = "^2.4.0"
+
+[tool.poetry.dependencies.unidecode]
+optional = true
+version = "^1.3.8"
 
 [tool.poetry.extras]
 git = ["gitpython", "pygithub"]
 ssh = ["paramiko"]
 unidecode = ["unidecode"]
+
+[tool.poetry.group]
 
 [tool.poetry.group.dev]
 optional = true
@@ -81,30 +129,21 @@ pytest-cov = "^4.1.0"
 pytest-mock = "^3.12.0"
 requests-mock = "^1.11.0"
 
+[[tool.poetry.packages]]
+include = "tatsh_misc_utils"
+
 [tool.poetry.scripts]
-# adp
-adp = "tatsh_misc_utils.commands:adp_main"
-# apopka (media)
 add-cdda-times = "tatsh_misc_utils.commands:add_cdda_times_main"
-audio2vid = "tatsh_misc_utils.commands:audio2vid_main"
-cddb-query = "tatsh_misc_utils.commands:cddb_query_main"
-encode-dashcam = "tatsh_misc_utils.commands:encode_dashcam_main"
-hlg2sdr = "tatsh_misc_utils.commands:hlg2sdr_main"
-ripcd = "tatsh_misc_utils.commands:ripcd_main"
-supported-audio-input-formats = "tatsh_misc_utils.commands:supported_audio_input_formats_main"
-tbc2srt = "tatsh_misc_utils.commands:tbc2srt_main"
-# sanford (yt-dlp-addons)
 add-info-json = "tatsh_misc_utils.commands:add_info_json_main"
-mp4json = "tatsh_misc_utils.commands:add_info_json_main"
-mp4json-display = "tatsh_misc_utils.commands:display_info_json_main"
-show-info-json = "tatsh_misc_utils.commands:display_info_json_main"
-# gentoo-clean-old-kernels-modules
+adp = "tatsh_misc_utils.commands:adp_main"
+audio2vid = "tatsh_misc_utils.commands:audio2vid_main"
+burnrariso = "tatsh_misc_utils.commands:burnrariso_main"
+cddb-query = "tatsh_misc_utils.commands:cddb_query_main"
+check-bookmarks-html = "tatsh_misc_utils.commands:check_bookmarks_html_main"
+chrome-bisect-flags = "tatsh_misc_utils.commands:chrome_bisect_flags_main"
 clean-old-kernels-modules = "tatsh_misc_utils.commands:clean_old_kernels_and_modules_main"
-# bartow (linux)
 connect-g603 = "tatsh_misc_utils.commands:connect_g603_main"
-inhibit-notifications = "tatsh_misc_utils.commands:inhibit_notifications_main"
-wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
-# flacted
+encode-dashcam = "tatsh_misc_utils.commands:encode_dashcam_main"
 flac-album = "tatsh_misc_utils.commands:flacted_main"
 flac-artist = "tatsh_misc_utils.commands:flacted_main"
 flac-dir-finalize = "tatsh_misc_utils.commands:flac_dir_finalize_main"
@@ -113,82 +152,51 @@ flac-title = "tatsh_misc_utils.commands:flacted_main"
 flac-track = "tatsh_misc_utils.commands:flacted_main"
 flac-year = "tatsh_misc_utils.commands:flacted_main"
 flacted = "tatsh_misc_utils.commands:flacted_main"
-# maitland (git)
+fullwidth2ascii = "tatsh_misc_utils.commands:fullwidth2ascii_main"
 git-checkout-default-branch = "tatsh_misc_utils.commands:git_checkout_default_branch_main"
 git-co-default-branch = "tatsh_misc_utils.commands:git_checkout_default_branch_main"
 git-open = "tatsh_misc_utils.commands:git_open_main"
 git-rebase-default-branch = "tatsh_misc_utils.commands:git_rebase_default_branch_main"
-merge-dependabot-prs = "tatsh_misc_utils.commands:merge_dependabot_prs_main"
-# lakeland (wine)
-mkwineprefix = "tatsh_misc_utils.commands:mkwineprefix_main"
-unix2wine = "tatsh_misc_utils.commands:unix2wine_main"
-# uiso
-uiso = "tatsh_misc_utils.commands:ultraiso_main"
-# clermont (file management)
+gogextract = "tatsh_misc_utils.commands:gogextract_main"
+hlg2sdr = "tatsh_misc_utils.commands:hlg2sdr_main"
 htmltree = "tatsh_misc_utils.commands:generate_html_dir_tree_main"
+inhibit-notifications = "tatsh_misc_utils.commands:inhibit_notifications_main"
 is-ascii = "tatsh_misc_utils.commands:is_ascii_main"
 is-bin = "tatsh_misc_utils.commands:is_bin_main"
-ke-ebook-ex = "tatsh_misc_utils.commands:ke_ebook_ex_main"
-mvid-rename = "tatsh_misc_utils.commands:mvid_rename_main"
-slug-rename = "tatsh_misc_utils.commands:slug_rename_main"
-unpack-0day = "tatsh_misc_utils.commands:unpack_0day_main"
-where-from = "tatsh_misc_utils.commands:where_from_main"
-# davenport (archive)
-burnrariso = "tatsh_misc_utils.commands:burnrariso_main"
-gogextract = "tatsh_misc_utils.commands:gogextract_main"
-# patch-bundle
-patch-bundle = "tatsh_misc_utils.commands:patch_bundle_main"
-# secure-move
-smv = "tatsh_misc_utils.commands:smv_main"
-# aloma (string)
-fullwidth2ascii = "tatsh_misc_utils.commands:fullwidth2ascii_main"
 json2yaml = "tatsh_misc_utils.commands:json2yaml_main"
+ke-ebook-ex = "tatsh_misc_utils.commands:ke_ebook_ex_main"
+merge-dependabot-prs = "tatsh_misc_utils.commands:merge_dependabot_prs_main"
+mkwineprefix = "tatsh_misc_utils.commands:mkwineprefix_main"
+mp4json = "tatsh_misc_utils.commands:add_info_json_main"
+mp4json-display = "tatsh_misc_utils.commands:display_info_json_main"
+mpv-sbs = "tatsh_misc_utils.commands:mpv_sbs_main"
+mvid-rename = "tatsh_misc_utils.commands:mvid_rename_main"
 netloc = "tatsh_misc_utils.commands:urldecode_main"
+patch-bundle = "tatsh_misc_utils.commands:patch_bundle_main"
 pl2json = "tatsh_misc_utils.commands:pl2json_main"
+ripcd = "tatsh_misc_utils.commands:ripcd_main"
 sanitize = "tatsh_misc_utils.commands:sanitize_main"
+show-info-json = "tatsh_misc_utils.commands:display_info_json_main"
+slug-rename = "tatsh_misc_utils.commands:slug_rename_main"
 slugify = "tatsh_misc_utils.commands:slugify_main"
+smv = "tatsh_misc_utils.commands:smv_main"
+supported-audio-input-formats = "tatsh_misc_utils.commands:supported_audio_input_formats_main"
+tbc2srt = "tatsh_misc_utils.commands:tbc2srt_main"
 title-fixer = "tatsh_misc_utils.commands:title_fixer_main"
 trim = "tatsh_misc_utils.commands:trim_main"
 ucwords = "tatsh_misc_utils.commands:ucwords_main"
-underscorize = "tatsh_misc_utils.commands:underscorize_main"
-urldecode = "tatsh_misc_utils.commands:urldecode_main"
-# doral (mpv)
-mpv-sbs = "tatsh_misc_utils.commands:mpv_sbs_main"
+uiso = "tatsh_misc_utils.commands:ultraiso_main"
 umpv = "tatsh_misc_utils.commands:umpv_main"
-# ocoee (www)
-check-bookmarks-html = "tatsh_misc_utils.commands:check_bookmarks_html_main"
-chrome-bisect-flags = "tatsh_misc_utils.commands:chrome_bisect_flags_main"
+underscorize = "tatsh_misc_utils.commands:underscorize_main"
+unix2wine = "tatsh_misc_utils.commands:unix2wine_main"
+unpack-0day = "tatsh_misc_utils.commands:unpack_0day_main"
 upload-to-imgbb = "tatsh_misc_utils.commands:upload_to_imgbb_main"
+urldecode = "tatsh_misc_utils.commands:urldecode_main"
+wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
+where-from = "tatsh_misc_utils.commands:where_from_main"
 
-[tool.coverage.report]
-omit = ["conftest.py", "tests.py", "tests/test_*.py"]
-show_missing = true
-
-[tool.coverage.run]
-branch = true
-omit = ["conftest.py", "tests.py", "tests/test_*.py"]
-
-[tool.doc8]
-max-line-length = 100
-
-[tool.mypy]
-cache_dir = "~/.cache/mypy"
-explicit_package_bases = true
-mypy_path = ".stubs"
-platform = "linux"
-python_version = "3.11"
-show_column_numbers = true
-strict = true
-strict_optional = true
-warn_unreachable = true
-
-[tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.env.pytest"
-django_find_project = false
-mock_use_standalone_module = true
-norecursedirs = ["node_modules"]
-python_files = ["tests.py", "test_*.py", "*_tests.py"]
-testpaths = ["tests"]
+[tool.poetry.urls]
+Issues = "https://github.com/Tatsh/deltona/issues"
 
 [tool.pyright]
 deprecateTypingAliases = true
@@ -207,6 +215,16 @@ reportUnnecessaryTypeIgnoreComment = "none"
 stubPath = "./.stubs"
 typeCheckingMode = "off"
 useLibraryCodeForTypes = false
+
+[tool.pytest]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.env.pytest"
+django_find_project = false
+mock_use_standalone_module = true
+norecursedirs = ["node_modules"]
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+testpaths = ["tests"]
 
 [tool.ruff]
 cache-dir = "~/.cache/ruff"
@@ -309,7 +327,6 @@ ignore = [
   "S101",
   "S404",
   "S603",
-  "T201",    # temporary
   "TD002",
   "TD003",
   "TD004",
@@ -379,7 +396,3 @@ use_tabs = false
 
 [tool.yapfignore]
 ignore_patterns = ["node_modules/**"]
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
