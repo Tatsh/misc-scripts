@@ -36,7 +36,6 @@ local shared_ignore = [
   '.*_cache/',
   '.directory',
   '.pnp.*',
-  '/.yarn/**/*.cjs',
   '/.yarn/install-state.gz',
   '__pycache__/',
   'node_modules/',
@@ -374,7 +373,7 @@ local manifestYaml(value) =
       },
     ],
   }),
-  '.prettierignore': manifestIgnore(['*.jsonnet']),
+  '.prettierignore': manifestIgnore(['*.jsonnet', '/.yarn/**/*.cjs']),
   '.vscode/cspell.json': std.manifestJson({
     dictionaryDefinitions: [
       {
