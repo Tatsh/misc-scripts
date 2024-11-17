@@ -613,6 +613,7 @@ local manifestYaml(value) =
           },
           html5lib: '^1.1',
           keyring: '^25.4.1',
+          mutagen: '^1.47.0',
           paramiko: {
             version: '^3.5.0',
             optional: true,

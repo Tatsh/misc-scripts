@@ -81,6 +81,7 @@ colnames
 color
 colorspace
 commandline
+commitizen
 concat
 cond
 configparser
