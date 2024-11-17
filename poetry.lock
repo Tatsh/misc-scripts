@@ -1163,6 +1163,20 @@ files = [
 ]
 
 [[package]]
+name = "pydbus-stubs"
+version = "0.0.2"
+description = "Stubs for pydbus."
+optional = false
+python-versions = "<4,>=3.9"
+files = [
+    {file = "pydbus_stubs-0.0.2-py3-none-any.whl", hash = "sha256:2a49ad09f21c25a58b1f670897b79f96fec1e2c0c150233267ec52df395f701d"},
+    {file = "pydbus_stubs-0.0.2.tar.gz", hash = "sha256:30bd7ec08b2469b3842372e4993438f8dc679768524d71067e5213c3c9d99d7d"},
+]
+
+[package.dependencies]
+pygobject-stubs = ">=2.12.0,<3.0.0"
+
+[[package]]
 name = "pygithub"
 version = "2.5.0"
 description = "Use the full Github API v3"
@@ -1212,6 +1226,19 @@ files = [
 
 [package.extras]
 windows-terminal = ["colorama (>=0.4.6)"]
+
+[[package]]
+name = "pygobject-stubs"
+version = "2.12.0"
+description = "Typing stubs for PyGObject"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pygobject_stubs-2.12.0.tar.gz", hash = "sha256:4dad2d876c070a16f604c249bb70e8cbc36373151a6731d826a8436c6a80b99d"},
+]
+
+[package.extras]
+dev = ["PyGObject", "black (>=24.1.1)", "codespell", "isort (>=5.13.2)", "pre-commit", "ruff"]
 
 [[package]]
 name = "pyjwt"
@@ -1283,6 +1310,17 @@ optional = false
 python-versions = "*"
 files = [
     {file = "pyperclip-1.9.0.tar.gz", hash = "sha256:b7de0142ddc81bfc5c7507eea19da920b92252b548b96186caf94a5e2527d310"},
+]
+
+[[package]]
+name = "pyperclip-stubs"
+version = "0.0.1"
+description = "Stubs for pyperclip."
+optional = false
+python-versions = "<4,>=3.9"
+files = [
+    {file = "pyperclip_stubs-0.0.1-py3-none-any.whl", hash = "sha256:3443615b2ee32af83208db8e11b01490c1e7034faf394766d303814e4a6ddf5a"},
+    {file = "pyperclip_stubs-0.0.1.tar.gz", hash = "sha256:b8c49a4ecc3b0549624fc152a12550a3b7047caca9d57632983b8b6897155dbe"},
 ]
 
 [[package]]
@@ -2166,4 +2204,4 @@ unidecode = ["unidecode"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4"
-content-hash = "df8c3c526e5fd550e932c6609983069e16fcf7c6cb3711e4eac401e36b5f0abb"
+content-hash = "2818ed394dc5e148c29d67dfd09b4eebbd30a96f6004b74adb64ab2f935a0df9"

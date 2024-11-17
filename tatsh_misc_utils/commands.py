@@ -722,8 +722,7 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
         click.echo('Only Linux is supported.', err=True)
         raise click.Abort
     try:
-        from gi.overrides.GLib import GError, Variant  # noqa: PLC0415
-        from gi.repository import GLib  # type: ignore[unused-ignore] # noqa: PLC0415
+        from gi.repository import GLib, Gio  # type: ignore[unused-ignore] # noqa: PLC0415
         from pydbus import SystemBus  # noqa: PLC0415
     except (ImportError, ModuleNotFoundError) as e:
         click.echo('Imports are missing.', err=True)
@@ -734,9 +733,10 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
     adapter = bus.get('org.bluez', f'/org/bluez/{device_name}')
 
     def on_properties_changed(_: Any, __: Any, object_path: str, ___: Any, ____: Any,
-                              props: Variant) -> None:
-        dev_iface = props[0]
-        values = props[1]
+                              props: GLib.Variant) -> None:
+        unpacked = props.unpack()
+        dev_iface = unpacked[0]
+        values = unpacked[1]
         if dev_iface == 'org.bluez.Adapter1' and values.get('Discovering'):
             log.debug('Scan on.')
         elif (dev_iface == 'org.bluez.Device1'
@@ -751,7 +751,7 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
                 if device.Name != 'G603':
                     log.debug('Ignoring device %s (MAC: %s).', device.Name, mac)
                     return
-            except (GError, KeyError) as e:
+            except (KeyError, RuntimeError) as e:
                 log.debug('Caught error with device %s: %s', mac, str(e))
                 return
             if values.get('Paired'):
@@ -767,7 +767,7 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
 
     # PropertiesChanged.connect()/.PropertiesChanged = ... will not catch the device node events
     bus.con.signal_subscribe(None, 'org.freedesktop.DBus.Properties', 'PropertiesChanged', None,
-                             None, 0, on_properties_changed)
+                             None, Gio.DBusSignalFlags.NONE, on_properties_changed)
     log.debug('Looking for existing devices.')
     with contextlib.suppress(KeyError):
         while res := find_bluetooth_device_info_by_name('G603'):
@@ -778,7 +778,7 @@ def connect_g603_main(device_name: str = 'hci0', *, debug: bool = False) -> None
     log.debug('Starting scan.')
     adapter.StartDiscovery()
     try:
-        loop.run()
+        loop.run()  # type: ignore[no-untyped-call]
     except KeyboardInterrupt:
         loop.quit()
 
