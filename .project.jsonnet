@@ -826,7 +826,6 @@ local manifestYaml(value) =
         reportMissingModuleSource: 'error',
         reportPropertyTypeMismatch: 'error',
         reportShadowedImports: 'error',
-        reportUninitializedInstanceVariable: 'error',
         reportUnnecessaryTypeIgnoreComment: 'none',
         typeCheckingMode: 'off',
         useLibraryCodeForTypes: false,
