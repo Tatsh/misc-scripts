@@ -190,7 +190,7 @@ def add_info_json_to_media_file(path: StrPath,
 
     def mp4box_add_json() -> None:
         with contextlib.suppress(sp.CalledProcessError):
-            sp.run(('MP4Box', '-rem-item', '1', str(path)), check=False)
+            sp.run(('MP4Box', '-rem-item', '1', str(path)), capture_output=not debug, check=True)
         sp.run(('MP4Box', '-set-meta', 'mp21', str(path)), capture_output=not debug, check=True)
         info_json_path = Path('info.json')
         copyfile(json_path, info_json_path)
@@ -198,7 +198,7 @@ def add_info_json_to_media_file(path: StrPath,
         sp.run(('MP4Box', '-add-item',
                 (f'{info_json_path}:replace:name=youtube-dl metadata:mime=application/json:'
                  'encoding=utf8'), str(path)),
-               check=False,
+               check=True,
                capture_output=not debug)
         info_json_path.unlink()
         set_date()
@@ -874,7 +874,7 @@ def hlg_to_sdr(input_file: StrPath,
                *,
                delete_after: bool = False,
                fast: bool = False) -> None:
-    """Convert an HLG HDR video to SDR."""
+    """Convert a HLG HDR video to SDR."""
     input_file = Path(input_file)
     vf = ((
         'zscale=t=linear:npl=100,'
