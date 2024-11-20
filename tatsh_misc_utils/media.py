@@ -334,16 +334,30 @@ CDROM_LEADOUT = 0xAA
 
 
 class CDROMMSF0(ctypes.Structure):
+    if TYPE_CHECKING:
+        minute: int
+        second: int
+        frame: int
     _fields_: ClassVar[list[tuple[str, Any]]] = [('minute', ctypes.c_ubyte),
                                                  ('second', ctypes.c_ubyte),
                                                  ('frame', ctypes.c_ubyte)]
 
 
 class CDROMAddress(ctypes.Union):
+    if TYPE_CHECKING:
+        msf: CDROMMSF0
+        lba: int
     _fields_: ClassVar[list[tuple[str, Any]]] = [('msf', CDROMMSF0), ('lba', ctypes.c_int)]
 
 
 class CDROMTOCEntry(ctypes.Structure):
+    if TYPE_CHECKING:
+        cdte_addr: CDROMAddress
+        cdte_adr: int
+        cdte_ctrl: int
+        cdte_datamode: int
+        cdte_format: int
+        cdte_track: int
     _fields_: ClassVar[list[tuple[str, Any] | tuple[str, Any, int]]] = [
         ('cdte_track', ctypes.c_ubyte), ('cdte_adr', ctypes.c_ubyte, 4),
         ('cdte_ctrl', ctypes.c_ubyte, 4), ('cdte_format', ctypes.c_ubyte),
@@ -352,6 +366,9 @@ class CDROMTOCEntry(ctypes.Structure):
 
 
 class CDROMTOCHeader(ctypes.Structure):
+    if TYPE_CHECKING:
+        cdth_trk0: int
+        cdth_trk1: int
     _fields_: ClassVar[list[tuple[str, Any]]] = [('cdth_trk0', ctypes.c_ubyte),
                                                  ('cdth_trk1', ctypes.c_ubyte)]
 
@@ -394,7 +411,7 @@ def get_cd_disc_id(drive: str) -> str:
         if libc.ioctl(fd, CDROMREADTOCHDR, ctypes.byref(toc_header)) < 0:
             raise OSError(ctypes.get_errno())
         last: int = toc_header.cdth_trk1
-        toc_entries = []
+        toc_entries: list[CDROMTOCEntry] = []
         for i in range(last):
             buf = CDROMTOCEntry()
             buf.cdte_track = i + 1
