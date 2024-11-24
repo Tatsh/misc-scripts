@@ -1417,8 +1417,14 @@ def winegoginstall_main(args: tuple[str, ...],
     /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NOCANCEL /NORESTART /SILENT
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    env = {}
-    very_silent_args = ('/SP-', '/SUPPRESSMSGBOXES', '/VERYSILENT') if very_silent else ()
+    if 'DISPLAY' not in environ or 'XAUTHORITY' not in environ:
+        log.warning('Wine will likely fail to run since DISPLAY or XAUTHORITY are not in the '
+                    'environment.')
+    env = {
+        'DISPLAY': environ.get('DISPLAY', ''),
+        'XAUTHORITY': environ.get('XAUTHORITY', ''),
+    }
+    very_silent_args = ('/SP-', '/SUPPRESSMSGBOXES', '/VERYSILENT') if very_silent else ('/SILENT',)
     if prefix:
         env['WINEPREFIX'] = (prefix if Path(prefix).exists() else str(
             (Path('~/.local/share/wineprefixes') / prefix).expanduser()))
@@ -1427,8 +1433,9 @@ def winegoginstall_main(args: tuple[str, ...],
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     click.echo('Be very patient especially if this release is large.', err=True)
     try:
-        sp.run(cmd, check=True, capture_output=not debug, env=env)
+        sp.run(cmd, check=True, capture_output=True, env=env, text=True)
     except sp.CalledProcessError as e:
+        click.echo('STDERR: {e.stderr}')
         raise click.exceptions.Exit(e.returncode) from e
 
 
