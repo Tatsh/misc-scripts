@@ -349,9 +349,9 @@ local manifestYaml(value) =
             name: 'check files are formatted with Prettier',
           },
           {
-            entry: 'ruff check --fix --exit-non-zero-on-fix',
+            entry: 'poetry run ruff check --fix --exit-non-zero-on-fix',
             id: 'fix-ruff',
-            language: 'python',
+            language: 'system',
             name: 'check Python files have Ruff fixes applied',
             require_serial: true,
             types_or: [

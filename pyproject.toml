@@ -203,6 +203,7 @@ upload-to-imgbb = "tatsh_misc_utils.commands:upload_to_imgbb_main"
 urldecode = "tatsh_misc_utils.commands:urldecode_main"
 wait-for-disc = "tatsh_misc_utils.commands:wait_for_disc_main"
 where-from = "tatsh_misc_utils.commands:where_from_main"
+winegoginstall = "tatsh_misc_utils.commands:winegoginstall_main"
 
 [tool.poetry.urls]
 Issues = "https://github.com/Tatsh/deltona/issues"

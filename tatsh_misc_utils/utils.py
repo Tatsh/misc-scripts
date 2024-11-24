@@ -4,7 +4,8 @@ from __future__ import annotations
 from math import trunc
 from os import environ
 from pathlib import Path
-from shutil import rmtree, which
+from shlex import quote
+from shutil import which
 from signal import SIGTERM
 from typing import TYPE_CHECKING, Literal, overload
 import csv
@@ -70,17 +71,24 @@ WINETRICKS_VERSION_MAPPING = {
     '95': 'win95'
 }
 
+DEFAULT_DPI = 96
+
 
 def create_wine_prefix(prefix_name: str,
                        *,
-                       tricks: Iterable[str] | None = None,
-                       windows_version: WineWindowsVersion = 'xp',
-                       vd: str = 'off',
-                       debug: bool = False,
-                       no_xdg: bool = False,
                        _32bit: bool = False,
+                       debug: bool = False,
+                       dpi: int = DEFAULT_DPI,
+                       dxva_vaapi: bool = False,
+                       eax: bool = False,
+                       gtk: bool = False,
+                       no_xdg: bool = False,
+                       prefix_root: StrPath | None = None,
                        sandbox: bool = False,
-                       prefix_root: StrPath | None = None) -> StrPath:
+                       tricks: Iterable[str] | None = None,
+                       vd: str = 'off',
+                       windows_version: WineWindowsVersion = 'xp',
+                       winrt_dark: bool = False) -> StrPath:
     """
     Create a Wine prefix with custom settings.
 
@@ -106,18 +114,38 @@ def create_wine_prefix(prefix_name: str,
             'WINEARCH': environ.get('WINEARCH', arch)
         } if arch else {})
     }
+    if dpi != DEFAULT_DPI:
+        cmd: tuple[str, ...] = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop', '/t',
+                                'REG_DWORD', '/v', 'LogPixels', '/d', str(dpi), '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if dxva_vaapi:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DXVA2', '/t', 'REG_SZ', '/v', 'backend',
+               '/d', 'va', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if eax:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DirectSound', '/t', 'REG_SZ', '/v',
+               'EAXEnabled', '/d', 'Y', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if gtk:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine', '/t', 'REG_SZ', '/v', 'ThemeEngine',
+               '/d', 'GTK', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if winrt_dark:
+        for k in ('AppsUseLightTheme', 'SystemUsesLightTheme'):
+            cmd = ('wine', 'reg', 'add',
+                   r'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', '/t',
+                   'REG_DWORD', '/v', k, '/d', '0', '/f')
+            log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
     if no_xdg:
-        try:
-            sp.run(('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
-                    'winemenubuilder.exe', '/f'),
-                   env=env,
-                   check=True,
-                   capture_output=not debug)
-        except (KeyboardInterrupt, sp.CalledProcessError):
-            rmtree(target)
-            raise
-    else:
-        sp.run(('wine', 'reg'), check=False, capture_output=not debug)
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
+               'winemenubuilder.exe', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
     if not (winetricks := which('winetricks')):
         raise FileNotFoundError('winetricks')
     try:
@@ -126,9 +154,9 @@ def create_wine_prefix(prefix_name: str,
             tricks += ['isolate_home', 'sandbox']
         if vd != 'off':
             tricks += [f'vd={vd}']
-        sp.run((winetricks, f'prefix={prefix_name}', *set(tricks)),
-               check=True,
-               capture_output=not debug)
+        cmd = (winetricks, f'prefix={prefix_name}', *set(tricks))
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, check=True, capture_output=True, text=True)
     except sp.CalledProcessError as e:
         log.warning('Winetricks exit code was %d but it may have succeeded.', e.returncode)
         log.debug('STDERR: %s', e.stderr)

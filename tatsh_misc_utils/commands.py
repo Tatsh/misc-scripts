@@ -873,9 +873,14 @@ def slug_rename_main(filenames: tuple[str, ...],
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('prefix_name')
+@click.option('-D', '--dpi', type=int, help='DPI.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-E', '--eax', is_flag=True, help='Enable EAX.')
+@click.option('-g', '--gtk', is_flag=True, help='Enable Gtk+ theming.')
 @click.option('-r', '--prefix-root', type=click.Path(), help='Prefix root.')
 @click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
+@click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
+@click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
 @click.option(
     '-V',
     '--windows-version',
@@ -887,21 +892,24 @@ def slug_rename_main(filenames: tuple[str, ...],
               nargs=1,
               default='off',
               help='Virtual desktop size, e.g. 1024x768.')
-@click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
-@click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
+@click.option('-W', '--winrt-dark', is_flag=True, help='Enable dark mode for WinRT apps.')
+@click.option('-x', '--dxva-vaapi', is_flag=True, help='Enable DXVA2 support with VA-API.')
 @click.option('--32', '_32bit', help='Use 32-bit prefix.', is_flag=True)
-def mkwineprefix_main(
-    prefix_name: str,
-    prefix_root: str,
-    tricks: tuple[str, ...],
-    vd: str = 'off',
-    windows_version: WineWindowsVersion = 'xp',
-    *,
-    _32bit: bool = False,
-    debug: bool = False,
-    no_xdg: bool = False,
-    sandbox: bool = False,
-) -> None:
+def mkwineprefix_main(prefix_name: str,
+                      prefix_root: str,
+                      tricks: tuple[str, ...],
+                      vd: str = 'off',
+                      windows_version: WineWindowsVersion = 'xp',
+                      *,
+                      _32bit: bool = False,
+                      debug: bool = False,
+                      dpi: int = 96,
+                      dxva_vaapi: bool = False,
+                      eax: bool = False,
+                      gtk: bool = False,
+                      no_xdg: bool = False,
+                      sandbox: bool = False,
+                      winrt_dark: bool = False) -> None:
     """
     Create a Wine prefix with custom settings.
 
@@ -912,13 +920,23 @@ def mkwineprefix_main(
         target = create_wine_prefix(prefix_name,
                                     _32bit=_32bit,
                                     debug=debug,
+                                    dpi=dpi,
+                                    dxva_vaapi=dxva_vaapi,
+                                    eax=eax,
+                                    gtk=gtk,
                                     no_xdg=no_xdg,
                                     prefix_root=prefix_root,
                                     sandbox=sandbox,
                                     tricks=tricks,
                                     vd=vd,
-                                    windows_version=windows_version)
+                                    windows_version=windows_version,
+                                    winrt_dark=winrt_dark)
     except FileExistsError as e:
+        raise click.Abort from e
+    except sp.CalledProcessError as e:
+        click.echo(f'Exception: {e}', err=True)
+        click.echo(f'STDERR: {e.stderr}', err=True)
+        click.echo(f'STDOUT: {e.stdout}', err=True)
         raise click.Abort from e
     wineprefix_env = quote(f'WINEPREFIX={target}')
     click.echo(f"""Run `export WINEPREFIX={target}` before running wine or use env:
@@ -1343,6 +1361,44 @@ def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> N
     """Extract a Linux gog.com archive."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     extract_gog(filename, output_dir)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS | {'ignore_unknown_options': True})
+@click.argument('args', nargs=-1, type=click.UNPROCESSED)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.option('-S',
+              '--very-silent',
+              help='Pass /VERYSILENT (no windows will be displayed).',
+              is_flag=True)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-p', '--prefix', help='Wine prefix path or name.')
+def winegoginstall_main(args: tuple[str, ...],
+                        filename: str,
+                        prefix: str,
+                        *,
+                        debug: bool = False,
+                        very_silent: bool = False) -> None:
+    """
+    Silent installer for GOG InnoSetup-based releases.
+    
+    This calls the installer with the following arguments:
+
+    /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NOCANCEL /NORESTART /SILENT
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    env = {}
+    very_silent_args = ('/SP-', '/SUPPRESSMSGBOXES', '/VERYSILENT') if very_silent else ()
+    if prefix:
+        env['WINEPREFIX'] = (prefix if Path(prefix).exists() else str(
+            (Path('~/.local/share/wineprefixes') / prefix).expanduser()))
+    cmd = ('wine', filename, '/CLOSEAPPLICATIONS', '/FORCECLOSEAPPLICATIONS', '/NOCANCEL',
+           '/NORESTART', *very_silent_args, *args)
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    click.echo('Be very patient especially if this release is large.', err=True)
+    try:
+        sp.run(cmd, check=True, capture_output=not debug, env=env)
+    except sp.CalledProcessError as e:
+        raise click.exceptions.Exit(e.returncode) from e
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

@@ -73,6 +73,7 @@ choco
 chost
 cigam
 cksfv
+closeapplications
 cmds
 codeowners
 codepoint
@@ -124,6 +125,7 @@ dpkg
 drawtext
 driveropts
 dtitle
+dxva
 dyear
 dynload
 econnrefused
@@ -171,6 +173,7 @@ followlinks
 fontcolor
 fontfile
 fontsize
+forcecloseapplications
 freedesktop
 froms
 fromtimestamp
@@ -235,6 +238,7 @@ imgbb
 iname
 incits
 inlinevar
+innosetup
 introspectable
 inul
 ioctl
@@ -337,9 +341,11 @@ nargs
 ncmds
 newdir
 nfat
+nocancel
 nologo
 nonblock
 norecursedirs
+norestart
 nssdb
 numargv
 numpy
@@ -458,6 +464,7 @@ strreason
 struct
 stylesheet
 subclassing
+suppressmsgboxes
 sysctl
 sysfs
 sysid
@@ -507,12 +514,14 @@ usbfs
 usec
 utcnow
 utime
+vaapi
 vars
 vcodec
 vernum
 vers
 veryfy
 veryfymd
+verysilent
 veryslow
 videotoolbox
 virtualenv
@@ -525,10 +534,12 @@ wday
 wechat
 wherefroms
 winearch
+winegoginstall
 winemenubuilder
 wineprefix
 wineprefixes
 winetricks
+winrt
 winxp
 wkwebview
 wprefix
