@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from operator import itemgetter
-from os import listdir
+from os import environ, listdir
 from pathlib import Path
 from shlex import quote, split
 from shutil import which
@@ -16,6 +16,8 @@ import json
 import logging
 import plistlib
 import re
+import shutil
+import signal
 import socket
 import subprocess as sp
 import sys
@@ -29,6 +31,7 @@ from send2trash import send2trash
 from typing_extensions import override
 import click
 import keyring
+import pexpect
 import pyperclip
 import requests
 import yaml
@@ -947,6 +950,34 @@ If you ran this with eval, your shell is ready.""",
                file=sys.stderr)
     click.echo(f'export {wineprefix_env}')
     click.echo(f'export PS1="{prefix_name}🍷$PS1"')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('prefix_name')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def wineshell_main(prefix_name: str, *, debug: bool = False) -> None:
+    """
+    Start a new shell with WINEPREFIX set up.
+    
+    For Bash and similar shells only.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    target = (Path(prefix_name) if Path(prefix_name).exists() else
+              Path('~/.local/share/wineprefixes').expanduser() / prefix_name)
+    terminal = shutil.get_terminal_size()
+    c = pexpect.spawn(environ.get('SHELL', '/bin/bash'), ['-i'],
+                      dimensions=(terminal.lines, terminal.columns))
+    c.sendline(f'export WINEPREFIX={quote(str(target))}; export PS1="{target.name}🍷$PS1"')
+
+    def resize(sig: Any, data: Any) -> None:
+        terminal = shutil.get_terminal_size()
+        c.setwinsize(terminal.lines, terminal.columns)
+
+    signal.signal(signal.SIGWINCH, resize)
+    c.interact(escape_character=None)
+    c.close()
+    if c.exitstatus != 0:
+        raise click.exceptions.Exit(c.exitstatus)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

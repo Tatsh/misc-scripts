@@ -322,6 +322,7 @@ mkvextract
 mkvmerge
 mkvpropedit
 mkwineprefix
+mkwineprefix
 modtime
 mojosetup
 movflags
@@ -375,6 +376,7 @@ pathlib
 pathsep
 pdfkit
 personalblindness
+pexpect
 pipewire
 pipx
 pixmaps
@@ -538,6 +540,7 @@ winegoginstall
 winemenubuilder
 wineprefix
 wineprefixes
+wineshell
 winetricks
 winrt
 winxp

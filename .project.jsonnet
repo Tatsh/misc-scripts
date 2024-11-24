@@ -618,6 +618,7 @@ local manifestYaml(value) =
             version: '^3.5.0',
             optional: true,
           },
+          pexpect: '^4.9.0',
           platformdirs: '^4.3.6',
           pydbus: {
             version: '^0.6.0',
