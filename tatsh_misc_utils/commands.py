@@ -1435,7 +1435,8 @@ def winegoginstall_main(args: tuple[str, ...],
     try:
         sp.run(cmd, check=True, capture_output=True, env=env, text=True)
     except sp.CalledProcessError as e:
-        click.echo('STDERR: {e.stderr}')
+        click.echo(f'STDERR: {e.stderr}', err=True)
+        click.echo(f'STDOUT: {e.stdout}', err=True)
         raise click.exceptions.Exit(e.returncode) from e
 
 
