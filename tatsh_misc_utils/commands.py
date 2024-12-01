@@ -86,6 +86,7 @@ from .system import (
     IS_WINDOWS,
     find_bluetooth_device_info_by_name,
     inhibit_notifications,
+    kill_gamescope,
     patch_macos_bundle_info_plist,
     slug_rename,
     wait_for_disc,
@@ -976,8 +977,8 @@ def wineshell_main(prefix_name: str, *, debug: bool = False) -> None:
     signal.signal(signal.SIGWINCH, resize)
     c.interact(escape_character=None)
     c.close()
-    if c.exitstatus != 0:
-        raise click.exceptions.Exit(c.exitstatus)
+    if c.status is not None and c.status != 0:
+        raise click.exceptions.Exit(c.status)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
@@ -1932,3 +1933,9 @@ def flac_dir_finalize_main(directory: str, *, debug: bool = False) -> None:
         for flac in sorted(new_flac_files):
             f.write(f'{flac.name}\r\n')
     make_sfv(out_sfv, new_flac_files)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+def kill_gamescope_main() -> None:
+    """Terminate gamescope and gamescopereaper."""
+    kill_gamescope()

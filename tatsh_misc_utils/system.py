@@ -179,3 +179,10 @@ def patch_macos_bundle_info_plist(bundle: StrPath, **data: Any) -> None:
     with info_plist.open('wb') as f:
         plistlib.dump(file_data | data, f, sort_keys=False)
     info_plist.touch()
+
+
+def kill_gamescope() -> None:
+    import psutil  # noqa: PLC0415
+    for proc in (x for x in psutil.process_iter(('pid', 'name', 'username'))
+                 if x.info['name'] in {'gamescope', 'gamescopereaper'}):
+        proc.kill()

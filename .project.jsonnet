@@ -620,6 +620,10 @@ local manifestYaml(value) =
           },
           pexpect: '^4.9.0',
           platformdirs: '^4.3.6',
+          psutil: {
+            optional: true,
+            version: '^6.1.0',
+          },
           pydbus: {
             version: '^0.6.0',
             platform: 'linux',
@@ -663,6 +667,8 @@ local manifestYaml(value) =
               ruff: '^0.7.4',
               'types-beautifulsoup4': '^4.12.0.20241020',
               'types-paramiko': '^3.5.0.20240928',
+              'types-pexpect': '^4.9.0.20240806',
+              'types-psutil': '^6.1.0.20241102',
               'types-pyyaml': '^6.0.12.20240917',
               'types-requests': '^2.32.0.20241016',
               'types-send2trash': '^1.8.2.7',
@@ -732,6 +738,7 @@ local manifestYaml(value) =
           'is-ascii': '%s.commands:is_ascii_main' % module_name,
           'is-bin': '%s.commands:is_bin_main' % module_name,
           'ke-ebook-ex': '%s.commands:ke_ebook_ex_main' % module_name,
+          'kill-gamescope': '%s.commands:kill_gamescope_main' % module_name,
           'mvid-rename': '%s.commands:mvid_rename_main' % module_name,
           'slug-rename': '%s.commands:slug_rename_main' % module_name,
           'unpack-0day': '%s.commands:unpack_0day_main' % module_name,
