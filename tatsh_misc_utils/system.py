@@ -30,8 +30,7 @@ def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bo
         s = -1
         try:
             while s != CDStatus.DISC_OK:
-                s = fcntl.ioctl(f, CDROM_DRIVE_STATUS, 0)
-                if s != CDStatus.DISC_OK:
+                if (s := fcntl.ioctl(f, CDROM_DRIVE_STATUS, 0)) != CDStatus.DISC_OK:
                     sleep(sleep_time)
         except KeyboardInterrupt:
             pass
