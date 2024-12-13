@@ -126,6 +126,7 @@ drawtext
 driveropts
 dtitle
 dxva
+dxvk
 dyear
 dynload
 econnrefused
@@ -141,6 +142,7 @@ epub
 errno
 esac
 esbonio
+esync
 etree
 execdir
 executable's
@@ -216,6 +218,7 @@ hexdigest
 hexstr
 hicolor
 hkcu
+hklm
 hstack
 htmlcov
 htmltree
@@ -354,7 +357,14 @@ numargv
 numpy
 nupkg
 nuspecs
+nvapi
+nvcuda
+nvcuvid
 nvenc
+nvencodeapi
+nvngx
+nvofapi
+nvoptix
 objectdb
 openssl
 openxmlformats
@@ -476,6 +486,7 @@ sysctl
 sysfs
 sysid
 syslog
+syswow
 tar'ing
 tarfile
 taskkill
@@ -541,6 +552,7 @@ wday
 wechat
 wherefroms
 winearch
+wineesync
 winegoginstall
 winemenubuilder
 wineprefix

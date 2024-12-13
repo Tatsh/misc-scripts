@@ -633,6 +633,7 @@ local manifestYaml(value) =
             optional: true,
           },
           pyperclip: '^1.9.0',
+          'python-xz': '^0.5.0',
           pyyaml: '^6.0.2',
           requests: '^2.32.3',
           send2trash: '^1.8.3',

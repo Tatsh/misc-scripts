@@ -7,7 +7,7 @@ from pathlib import Path
 from shlex import quote, split
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, get_args, overload
 from urllib.parse import unquote_plus, urlparse
 import contextlib
 import errno
@@ -877,20 +877,20 @@ def slug_rename_main(filenames: tuple[str, ...],
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('prefix_name')
-@click.option('-D', '--dpi', type=int, help='DPI.')
+@click.option('-D', '--dpi', default=96, type=int, help='DPI.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-E', '--eax', is_flag=True, help='Enable EAX.')
 @click.option('-g', '--gtk', is_flag=True, help='Enable Gtk+ theming.')
 @click.option('-r', '--prefix-root', type=click.Path(), help='Prefix root.')
 @click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
 @click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
+@click.option('-N', '--nvapi', help='Add dxvk-nvapi.', is_flag=True)
 @click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
-@click.option(
-    '-V',
-    '--windows-version',
-    default='xp',
-    type=click.Choice(WineWindowsVersion.__args__),  # type: ignore[attr-defined]
-    help='Windows version.')
+@click.option('-V',
+              '--windows-version',
+              default='10',
+              type=click.Choice(get_args(WineWindowsVersion)),
+              help='Windows version.')
 @click.option('--vd',
               metavar='SIZE',
               nargs=1,
@@ -903,7 +903,7 @@ def mkwineprefix_main(prefix_name: str,
                       prefix_root: str,
                       tricks: tuple[str, ...],
                       vd: str = 'off',
-                      windows_version: WineWindowsVersion = 'xp',
+                      windows_version: WineWindowsVersion = '10',
                       *,
                       _32bit: bool = False,
                       debug: bool = False,
@@ -912,6 +912,7 @@ def mkwineprefix_main(prefix_name: str,
                       eax: bool = False,
                       gtk: bool = False,
                       no_xdg: bool = False,
+                      nvapi: bool = False,
                       sandbox: bool = False,
                       winrt_dark: bool = False) -> None:
     """
@@ -923,9 +924,9 @@ def mkwineprefix_main(prefix_name: str,
     try:
         target = create_wine_prefix(prefix_name,
                                     _32bit=_32bit,
-                                    debug=debug,
                                     dpi=dpi,
                                     dxva_vaapi=dxva_vaapi,
+                                    dxvk_nvapi=nvapi,
                                     eax=eax,
                                     gtk=gtk,
                                     no_xdg=no_xdg,

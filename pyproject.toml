@@ -66,6 +66,7 @@ platformdirs = "^4.3.6"
 psutil = { version = "^6.1.0", optional = true }
 pyperclip = "^1.9.0"
 python = ">=3.11,<4"
+python-xz = "^0.5.0"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 send2trash = "^1.8.3"

@@ -1,11 +1,12 @@
 """Uncategorised utilities."""
 from __future__ import annotations
 
+from io import BytesIO
 from math import trunc
 from os import environ
 from pathlib import Path
 from shlex import quote
-from shutil import which
+from shutil import copyfile, which
 from signal import SIGTERM
 from typing import TYPE_CHECKING, Literal, overload
 import csv
@@ -13,7 +14,11 @@ import logging
 import os
 import re
 import subprocess as sp
+import tarfile
 import time
+
+import requests
+import xz
 
 from .media import CD_FRAMES
 from .system import IS_WINDOWS
@@ -77,9 +82,9 @@ DEFAULT_DPI = 96
 def create_wine_prefix(prefix_name: str,
                        *,
                        _32bit: bool = False,
-                       debug: bool = False,
                        dpi: int = DEFAULT_DPI,
                        dxva_vaapi: bool = False,
+                       dxvk_nvapi: bool = False,
                        eax: bool = False,
                        gtk: bool = False,
                        no_xdg: bool = False,
@@ -106,14 +111,17 @@ def create_wine_prefix(prefix_name: str,
     if 'DISPLAY' not in environ or 'XAUTHORITY' not in environ:
         log.warning('Wine will likely fail to run since DISPLAY or XAUTHORITY are not in the '
                     'environment.')
+    esync = environ.get('WINEESYNC', '')
     env = {
-        'WINEPREFIX': str(target),
         'DISPLAY': environ.get('DISPLAY', ''),
-        'XAUTHORITY': environ.get('XAUTHORITY', ''),
-        **({
-            'WINEARCH': environ.get('WINEARCH', arch)
-        } if arch else {})
-    }
+        'PATH': environ['PATH'],
+        'WINEPREFIX': str(target),
+        'XAUTHORITY': environ.get('XAUTHORITY', '')
+    } | ({
+        'WINEARCH': environ.get('WINEARCH', arch)
+    } if arch else {}) | ({
+        'WINEESYNC': esync
+    } if esync else {})
     if dpi != DEFAULT_DPI:
         cmd: tuple[str, ...] = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop', '/t',
                                 'REG_DWORD', '/v', 'LogPixels', '/d', str(dpi), '/f')
@@ -146,6 +154,8 @@ def create_wine_prefix(prefix_name: str,
                'winemenubuilder.exe', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if dxvk_nvapi:
+        tricks += ['dxvk']
     if not (winetricks := which('winetricks')):
         raise FileNotFoundError('winetricks')
     try:
@@ -154,13 +164,51 @@ def create_wine_prefix(prefix_name: str,
             tricks += ['isolate_home', 'sandbox']
         if vd != 'off':
             tricks += [f'vd={vd}']
-        cmd = (winetricks, f'prefix={prefix_name}', *set(tricks))
+        cmd = (winetricks, '--force', '--country=US', '--unattended', f'prefix={prefix_name}',
+               *sorted(set(tricks)))
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, check=True, capture_output=True, text=True)
     except sp.CalledProcessError as e:
         log.warning('Winetricks exit code was %d but it may have succeeded.', e.returncode)
         log.debug('STDERR: %s', e.stderr)
         log.debug('STDOUT: %s', e.stdout)
+    if dxvk_nvapi:
+        cmd = ('setup_vkd3d_proton.sh', 'install')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        version = '0.8.1'
+        prefix = f'nvidia-libs-{version}'
+        r = requests.get(
+            f'https://github.com/SveSop/nvidia-libs/releases/download/v{version}/{prefix}.tar.xz',
+            timeout=15)
+        r.raise_for_status()
+        with xz.open(BytesIO(r.content)) as xz_file, tarfile.TarFile(fileobj=xz_file) as tar:
+            for item in ('nvcuda', 'nvcuvid', 'nvencodeapi', 'nvapi'):
+                cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', item, '/d',
+                       'native', '/f')
+                log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+                sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+                member = tar.getmember(f'{prefix}/x32/{item}.dll')
+                member.name = f'{item}.dll'
+                tar.extract(member, target / 'drive_c' / 'windows' / 'syswow64')
+            if not _32bit:
+                for item in ('nvcuda', 'nvoptix', 'nvcuvid', 'nvencodeapi64', 'nvapi64',
+                             'nvofapi64'):
+                    cmd = ('wine64', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', item,
+                           '/d', 'native', '/f')
+                    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+                    sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+                    member = tar.getmember(f'{prefix}/x64/{item}.dll')
+                    member.name = f'{item}.dll'
+                    tar.extract(member, target / 'drive_c' / 'windows' / 'system32')
+        for prefix in ('', '_'):
+            copyfile(f'/lib64/nvidia/wine/{prefix}nvngx.dll',
+                     target / 'drive_c' / 'windows' / 'system32' / f'{prefix}nvngx.dll')
+        cmd = ('wine64', 'reg', 'add', r'HKLM\Software\NVIDIA Corporation\Global\NGXCore', '/t',
+               'REG_SZ', '/v', 'FullPath', '/d', r'C:\Windows\system32', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+
     return target
 
 
