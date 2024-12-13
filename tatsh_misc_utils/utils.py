@@ -177,9 +177,10 @@ def create_wine_prefix(prefix_name: str,
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True, capture_output=True, text=True)
         version = '0.8.1'
-        prefix = f'nvidia-libs-{version}'
+        nvidia_libs = 'nvidia-libs'
+        prefix = f'{nvidia_libs}-{version}'
         r = requests.get(
-            f'https://github.com/SveSop/nvidia-libs/releases/download/v{version}/{prefix}.tar.xz',
+            f'https://github.com/SveSop/{nvidia_libs}/releases/download/v{version}/{prefix}.tar.xz',
             timeout=15)
         r.raise_for_status()
         with xz.open(BytesIO(r.content)) as xz_file, tarfile.TarFile(fileobj=xz_file) as tar:
