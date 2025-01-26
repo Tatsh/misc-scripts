@@ -8,11 +8,12 @@ from pathlib import Path
 from shlex import quote
 from shutil import copyfile, which
 from signal import SIGTERM
-from typing import TYPE_CHECKING, Literal, overload
+from typing import TYPE_CHECKING, Literal, NamedTuple, overload
 import csv
 import logging
 import os
 import re
+import struct
 import subprocess as sp
 import tarfile
 import time
@@ -78,6 +79,37 @@ WINETRICKS_VERSION_MAPPING = {
 
 DEFAULT_DPI = 96
 
+_CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS = {
+    'Arial Baltic,186', 'Arial CE,238', 'Arial CYR,204', 'Arial Greek,161', 'Arial TUR,162',
+    'Courier New Baltic,186', 'Courier New CE,238', 'Courier New CYR,204', 'Courier New Greek,161',
+    'Courier New TUR,162', 'Helv', 'Helvetica', 'MS Shell Dlg', 'MS Shell Dlg 2', 'MS Sans Serif',
+    'Segoe UI', 'System', 'Tahoma', 'Times', 'Times New Roman Baltic,186', 'Times New Roman CE,238',
+    'Times New Roman CYR,204', 'Times New Roman Greek,161', 'Times New Roman TUR,162', 'Tms Rmn',
+    'Verdana'
+}
+_CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES = {
+    'Caption', 'Icon', 'Menu', 'Message', 'SmCaption', 'Status'
+}
+FW_BOLD = 700
+FW_NORMAL = 400
+DEFAULT_CHARSET = 1
+
+
+class LOGFONTW(NamedTuple):
+    lfHeight: int  # noqa: N815
+    lfWidth: int  # noqa: N815
+    lfEscapement: int  # noqa: N815
+    lfOrientation: int  # noqa: N815
+    lfWeight: int  # noqa: N815
+    lfItalic: bool  # noqa: N815
+    lfUnderline: bool  # noqa: N815
+    lfStrikeOut: bool  # noqa: N815
+    lfCharSet: int  # noqa: N815
+    lfOutPrecision: int  # noqa: N815
+    lfClipPrecision: int  # noqa: N815
+    lfQuality: int  # noqa: N815
+    lfPitchAndFamily: int  # noqa: N815
+
 
 def create_wine_prefix(prefix_name: str,
                        *,
@@ -88,6 +120,7 @@ def create_wine_prefix(prefix_name: str,
                        eax: bool = False,
                        gtk: bool = False,
                        no_xdg: bool = False,
+                       noto_sans: bool = False,
                        prefix_root: StrPath | None = None,
                        sandbox: bool = False,
                        tricks: Iterable[str] | None = None,
@@ -205,11 +238,50 @@ def create_wine_prefix(prefix_name: str,
         for prefix in ('', '_'):
             copyfile(f'/lib64/nvidia/wine/{prefix}nvngx.dll',
                      target / 'drive_c' / 'windows' / 'system32' / f'{prefix}nvngx.dll')
-        cmd = ('wine64', 'reg', 'add', r'HKLM\Software\NVIDIA Corporation\Global\NGXCore', '/t',
-               'REG_SZ', '/v', 'FullPath', '/d', r'C:\Windows\system32', '/f')
-        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
-
+        if not _32bit:
+            cmd = ('wine64', 'reg', 'add', r'HKLM\Software\NVIDIA Corporation\Global\NGXCore', '/t',
+                   'REG_SZ', '/v', 'FullPath', '/d', r'C:\Windows\system32', '/f')
+            log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if noto_sans:
+        for font_name in _CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS:
+            cmd = ('wine', 'reg', 'add',
+                   r'HKLM\Software\Microsoft\Windows NT\CurrentVersion\FontSubstitutes', '/t',
+                   'REG_SZ', '/v', font_name, '/d', 'Noto Sans', '/f')
+            log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        face_name = list('Noto Sans Regular'.encode('utf-16le')) + (30 * [0])
+        for entry_name in _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES:
+            cmd = (
+                'wine',
+                'reg',
+                'add',
+                r'HKCU\Control Panel\Desktop\WindowMetrics',
+                '/t',
+                'REG_BINARY',
+                '/v',
+                f'{entry_name}Font',
+                '/d',
+                ''.join(f'{x:02x}' for x in struct.pack(
+                    '=5L8B64B',
+                    *LOGFONTW(
+                        lfHeight=0xfffffff4,
+                        lfWidth=0,
+                        lfEscapement=0,
+                        lfOrientation=0,
+                        lfWeight=FW_BOLD if entry_name == 'Caption' else FW_NORMAL,
+                        lfItalic=False,
+                        lfUnderline=False,
+                        lfStrikeOut=False,
+                        lfCharSet=DEFAULT_CHARSET,
+                        lfOutPrecision=0,  # OUT_DEFAULT_PRECIS
+                        lfClipPrecision=0,  # OUT_DEFAULT_CLIP_PRECIS
+                        lfQuality=0,  # DEFAULT_QUALITY
+                        lfPitchAndFamily=0x22),  # VARIABLE_PITCH | FF_SWISS
+                    *face_name)),
+                '/f')
+            log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
     return target
 
 

@@ -213,6 +213,7 @@ halfwidth
 handle
 hashlib
 headofhousehold
+helv
 hevc
 hexdigest
 hexstr
@@ -287,6 +288,7 @@ llvm
 loadfile
 localtime
 logfile
+logfontw
 loglevel
 loguru
 lsregister
@@ -327,7 +329,6 @@ mkvextract
 mkvmerge
 mkvpropedit
 mkwineprefix
-mkwineprefix
 modtime
 mojosetup
 movflags
@@ -352,6 +353,7 @@ nologo
 nonblock
 norecursedirs
 norestart
+noto
 nssdb
 numargv
 numpy
@@ -400,6 +402,7 @@ plutil
 pointsize
 popd
 popen
+precis
 printf
 printmsg
 proc
@@ -448,6 +451,7 @@ samplerate
 scandir
 schemafile
 secring
+segoe
 sendline
 setattr
 setfiletime
@@ -487,6 +491,7 @@ sysfs
 sysid
 syslog
 syswow
+tahoma
 tar'ing
 tarfile
 taskkill

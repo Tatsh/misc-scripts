@@ -885,6 +885,7 @@ def slug_rename_main(filenames: tuple[str, ...],
 @click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
 @click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
 @click.option('-N', '--nvapi', help='Add dxvk-nvapi.', is_flag=True)
+@click.option('-o', '--noto', is_flag=True, help='Use Noto Sans in place of most fonts.')
 @click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
 @click.option('-V',
               '--windows-version',
@@ -912,6 +913,7 @@ def mkwineprefix_main(prefix_name: str,
                       eax: bool = False,
                       gtk: bool = False,
                       no_xdg: bool = False,
+                      noto: bool = False,
                       nvapi: bool = False,
                       sandbox: bool = False,
                       winrt_dark: bool = False) -> None:
@@ -930,6 +932,7 @@ def mkwineprefix_main(prefix_name: str,
                                     eax=eax,
                                     gtk=gtk,
                                     no_xdg=no_xdg,
+                                    noto_sans=noto,
                                     prefix_root=prefix_root,
                                     sandbox=sandbox,
                                     tricks=tricks,
