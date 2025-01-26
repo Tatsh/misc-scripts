@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from time import sleep
-from typing import Any
+from typing import Any, cast
 import logging
 import os
 import plistlib
@@ -109,6 +109,16 @@ def uninhibit_notifications() -> None:
     if _key is not None:
         notifications.UnInhibit(_key)
         _key = None
+
+
+def get_inhibitor(what: str, who: str, why: str, mode: str) -> int:
+    try:
+        from pydbus import SystemBus  # noqa: PLC0415
+    except (ImportError, ModuleNotFoundError):
+        log.exception('Cannot import pydbus.', stack_info=False)
+        return -1
+    login1 = SystemBus().get('org.freedesktop.login1', '/org/freedesktop/login1')
+    return cast(int, login1['org.freedesktop.login1.Manager'].Inhibit(what, who, why, mode))
 
 
 def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:
