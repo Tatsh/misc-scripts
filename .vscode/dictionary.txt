@@ -469,6 +469,7 @@ siri
 sirikit
 sizeofcmds
 sjis
+slugified
 socat
 somefile
 speedtest

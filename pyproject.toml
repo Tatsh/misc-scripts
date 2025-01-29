@@ -235,8 +235,6 @@ useLibraryCodeForTypes = false
 [tool.pytest]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.env.pytest"
-django_find_project = false
 mock_use_standalone_module = true
 norecursedirs = ["node_modules"]
 python_files = ["tests.py", "test_*.py", "*_tests.py"]

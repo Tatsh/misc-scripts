@@ -23,18 +23,17 @@ CHROME_DEFAULT_LOCAL_STATE_PATH: str | None = str(
 log = logging.getLogger(__name__)
 
 
-def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bool | None:
+def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bool:
     """For Linux only."""
     import fcntl  # noqa: PLC0415
     with context_os_open(drive_path, os.O_RDONLY | os.O_NONBLOCK) as f:
         s = -1
         try:
-            while s != CDStatus.DISC_OK:
-                if (s := fcntl.ioctl(f, CDROM_DRIVE_STATUS, 0)) != CDStatus.DISC_OK:
-                    sleep(sleep_time)
+            while (s := fcntl.ioctl(f, CDROM_DRIVE_STATUS)) != CDStatus.DISC_OK:
+                sleep(sleep_time)
         except KeyboardInterrupt:
             pass
-    return s != CDStatus.DISC_OK
+    return s == CDStatus.DISC_OK
 
 
 _key: int | None = None
@@ -67,7 +66,7 @@ def inhibit_notifications(name: str = __name__, reason: str = 'No reason specifi
     global _key  # noqa: PLW0603
     try:
         from pydbus import SessionBus  # noqa: PLC0415
-    except (ImportError, ModuleNotFoundError):
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
         log.exception('Cannot import pydbus.', stack_info=False)
         return False
     notifications = SessionBus().get('org.freedesktop.Notifications',
@@ -114,7 +113,7 @@ def uninhibit_notifications() -> None:
 def get_inhibitor(what: str, who: str, why: str, mode: str) -> int:
     try:
         from pydbus import SystemBus  # noqa: PLC0415
-    except (ImportError, ModuleNotFoundError):
+    except (ImportError, ModuleNotFoundError):  # pragma: no cover
         log.exception('Cannot import pydbus.', stack_info=False)
         return -1
     login1 = SystemBus().get('org.freedesktop.login1', '/org/freedesktop/login1')
