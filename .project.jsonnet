@@ -36,6 +36,7 @@ local shared_ignore = [
   '.*_cache/',
   '.directory',
   '.pnp.*',
+  '/.coverage',
   '/.yarn/install-state.gz',
   '__pycache__/',
   'node_modules/',
