@@ -13,11 +13,13 @@ import csv
 import logging
 import os
 import re
+import sqlite3
 import struct
 import subprocess as sp
 import tarfile
 import time
 
+import platformdirs
 import requests
 import xz
 
@@ -109,6 +111,26 @@ class LOGFONTW(NamedTuple):
     lfClipPrecision: int  # noqa: N815
     lfQuality: int  # noqa: N815
     lfPitchAndFamily: int  # noqa: N815
+
+
+Q4WINE_DEFAULT_ICONS: tuple[tuple[str, str, str, str, str, str], ...] = (
+    ('', 'winecfg.exe', 'winecfg', 'Configure the general settings for Wine', 'system', 'winecfg'),
+    ('--backend=user cmd', 'wineconsole', 'wineconsole',
+     'Wineconsole is similar to wine command wcmd', 'system', 'wineconsole'),
+    ('', 'uninstaller.exe', 'uninstaller', 'Uninstall Windows programs under Wine properly',
+     'system', 'uninstaller'),
+    ('', 'regedit.exe', 'regedit', 'Wine registry editor', 'system', 'regedit'),
+    ('', 'explorer.exe', 'explorer', 'Browse the files in the virtual Wine Drive', 'system',
+     'explorer'),
+    ('', 'eject.exe', 'eject', 'Wine CD eject tool', 'system', 'eject'),
+    ('', 'wordpad.exe', 'wordpad', 'Wine wordpad text editor', 'system', 'wordpad'),
+    ('', 'taskmgr.exe', 'taskmgr', 'Wine task manager', 'system', 'taskmgr'),
+    ('', 'winemine.exe', 'winemine', 'Wine saper game', 'system', 'winemine'),
+    ('', 'oleview.exe', 'wordpad', 'Wine OLE/COM object viewer', 'system', 'oleview'),
+    ('', 'notepad.exe', 'notepad', 'Wine notepad text editor', 'system', 'notepad'),
+    ('', 'iexplore.exe', 'iexplore', 'Wine internet explorer', 'system', 'iexplore'),
+    ('', 'control.exe', 'control', 'Wine control panel', 'system', 'control'),
+)
 
 
 def create_wine_prefix(prefix_name: str,
@@ -282,6 +304,33 @@ def create_wine_prefix(prefix_name: str,
                 '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+    if (db_path := (platformdirs.user_config_path() / 'q4wine/db/generic.dat')).exists():
+        # Based on addPrefix() and createPrefixDBStructure().
+        # https://github.com/brezerk/q4wine/blob/master/src/core/database/prefix.cpp#L250
+        # https://github.com/brezerk/q4wine/blob/master/src/q4wine-lib/q4wine-lib.cpp#L1920
+        log.debug('Adding this prefix to Q4Wine.')
+        with sqlite3.connect(db_path) as conn:
+            c = conn.cursor()
+            c.execute(
+                'INSERT INTO prefix (name, path, mountpoint_windrive, run_string, version_id) '
+                'VALUES (?, ?, ?, ?, 1)',
+                (prefix_name, str(target), 'D:',
+                 r'%CONSOLE_BIN% %CONSOLE_ARGS% %ENV_BIN% %ENV_ARGS% /bin/sh -c '
+                 r'"%WORK_DIR% %SET_NICE% %WINE_BIN% %VIRTUAL_DESKTOP% %PROGRAM_BIN% '
+                 r'%PROGRAM_ARGS% 2>&1 "'))
+            prefix_id = c.lastrowid
+            log.debug('Q4Wine prefix ID: %d', prefix_id)
+            assert prefix_id is not None
+            for dir_name in ('system', 'autostart', 'import'):
+                c.execute('INSERT INTO dir (name, prefix_id) VALUES (?, ?)', (dir_name, prefix_id))
+            for args, exec_, icon_path, desc, folder, display_name in Q4WINE_DEFAULT_ICONS:
+                c.execute(
+                    'INSERT INTO icon (cmdargs, exec, icon_path, desc, dir_id, name, prefix_id, '
+                    'nice) VALUES (?, ?, ?, ?, (SELECT id FROM dir WHERE name = ? AND '
+                    'prefix_id = ?), ?, ?, 0)',
+                    (args
+                     or None, exec_, icon_path, desc, folder, prefix_id, display_name, prefix_id))
+            c.execute('DELETE FROM logging WHERE prefix_id = ?', (prefix_id,))
     return target
 
 

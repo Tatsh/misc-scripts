@@ -231,6 +231,7 @@ hwinfo
 icns
 iconset
 iconutil
+iexplore
 ignorecase
 ila
 ilayhi
@@ -554,10 +555,12 @@ volset
 wa
 wastebin
 watchos
+wcmd
 wday
 wechat
 wherefroms
 winearch
+winecfg
 wineesync
 winegoginstall
 winemenubuilder
