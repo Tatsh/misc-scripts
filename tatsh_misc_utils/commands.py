@@ -1438,7 +1438,7 @@ def winegoginstall_main(args: tuple[str, ...],
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     click.echo('Be very patient especially if this release is large.', err=True)
     try:
-        sp.run(cmd, check=True, capture_output=True, env=env, text=True)
+        sp.run(cmd, check=True, env=env)
     except sp.CalledProcessError as e:
         click.echo(f'STDERR: {e.stderr}', err=True)
         click.echo(f'STDOUT: {e.stdout}', err=True)

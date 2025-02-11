@@ -331,12 +331,16 @@ def create_wine_prefix(prefix_name: str,
             for dir_name in ('system', 'autostart', 'import'):
                 c.execute('INSERT INTO dir (name, prefix_id) VALUES (?, ?)', (dir_name, prefix_id))
             for args, exec_, icon_path, desc, folder, display_name in Q4WINE_DEFAULT_ICONS:
+                params = (args or None, exec_, icon_path, desc, folder, prefix_id, display_name,
+                          prefix_id)
                 c.execute(
-                    'INSERT INTO icon (cmdargs, exec, icon_path, desc, dir_id, name, prefix_id, '
-                    'nice) VALUES (?, ?, ?, ?, (SELECT id FROM dir WHERE name = ? AND '
-                    'prefix_id = ?), ?, ?, 0)',
-                    (args
-                     or None, exec_, icon_path, desc, folder, prefix_id, display_name, prefix_id))
+                    """INSERT INTO icon (
+    cmdargs, exec, icon_path, desc, dir_id, name, prefix_id, nice)
+    VALUES (
+        ?, ?, ?, ?, (
+            SELECT id FROM dir WHERE name = ? AND prefix_id = ?
+        ), ?, ?, 0
+    )""", params)
             c.execute('DELETE FROM logging WHERE prefix_id = ?', (prefix_id,))
     return target
 
