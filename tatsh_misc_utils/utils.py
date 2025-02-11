@@ -65,7 +65,7 @@ def add_cdda_times(times: Iterable[str] | None) -> str | None:
 
 WineWindowsVersion = Literal['11', '10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']
 WINETRICKS_VERSION_MAPPING = {
-    '11': 'win10',
+    '11': 'win11',
     '10': 'win10',
     'vista': 'vista',
     '2k3': 'win2k3',
@@ -152,7 +152,7 @@ def create_wine_prefix(prefix_name: str,
     """
     Create a Wine prefix with custom settings.
 
-    Requires Wine and winetricks.
+    If winetricks is not installed, the ``tricks`` argument will be ignored.
     """
     tricks = list((t for t in tricks
                    if t not in WINETRICKS_VERSION_MAPPING.values() and not t.startswith('vd=')
@@ -171,66 +171,71 @@ def create_wine_prefix(prefix_name: str,
         'DISPLAY': environ.get('DISPLAY', ''),
         'PATH': environ['PATH'],
         'WINEPREFIX': str(target),
-        'XAUTHORITY': environ.get('XAUTHORITY', '')
+        'XAUTHORITY': environ.get('XAUTHORITY', ''),
+        'WINEDEBUG': environ.get('WINEDEBUG', '-all')
     } | ({
         'WINEARCH': environ.get('WINEARCH', arch)
     } if arch else {}) | ({
         'WINEESYNC': esync
     } if esync else {})
+    # Warm up Wine
+    cmd: tuple[str, ...] = ('wineboot', '--init')
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, env=env, check=True, timeout=30)
+    cmd = ('wineserver', '-w')
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, env=env, check=True, timeout=30)
     if dpi != DEFAULT_DPI:
-        cmd: tuple[str, ...] = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop', '/t',
-                                'REG_DWORD', '/v', 'LogPixels', '/d', str(dpi), '/f')
+        cmd = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop', '/t', 'REG_DWORD', '/v',
+               'LogPixels', '/d', str(dpi), '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True, timeout=2)
     if dxva_vaapi:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DXVA2', '/t', 'REG_SZ', '/v', 'backend',
                '/d', 'va', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True, timeout=2)
     if eax:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DirectSound', '/t', 'REG_SZ', '/v',
                'EAXEnabled', '/d', 'Y', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True, timeout=2)
     if gtk:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine', '/t', 'REG_SZ', '/v', 'ThemeEngine',
                '/d', 'GTK', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True, timeout=2)
     if winrt_dark:
         for k in ('AppsUseLightTheme', 'SystemUsesLightTheme'):
             cmd = ('wine', 'reg', 'add',
                    r'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', '/t',
                    'REG_DWORD', '/v', k, '/d', '0', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+            sp.run(cmd, env=env, check=True, timeout=2)
     if no_xdg:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
                'winemenubuilder.exe', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True, timeout=2)
     if dxvk_nvapi:
         tricks += ['dxvk']
-    if not (winetricks := which('winetricks')):
-        raise FileNotFoundError('winetricks')
     try:
         tricks += [WINETRICKS_VERSION_MAPPING[windows_version]]
         if sandbox:
             tricks += ['isolate_home', 'sandbox']
         if vd != 'off':
             tricks += [f'vd={vd}']
-        cmd = (winetricks, '--force', '--country=US', '--unattended', f'prefix={prefix_name}',
-               *sorted(set(tricks)))
-        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, check=True, capture_output=True, text=True)
+        if (winetricks := which('winetricks')):
+            cmd = (winetricks, '--force', '--country=US', '--unattended', f'prefix={prefix_name}',
+                   *sorted(set(tricks)))
+            log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+            sp.run(cmd, check=True)
     except sp.CalledProcessError as e:
         log.warning('Winetricks exit code was %d but it may have succeeded.', e.returncode)
-        log.debug('STDERR: %s', e.stderr)
-        log.debug('STDOUT: %s', e.stdout)
     if dxvk_nvapi:
         cmd = ('setup_vkd3d_proton.sh', 'install')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+        sp.run(cmd, env=env, check=True)
         version = '0.8.1'
         nvidia_libs = 'nvidia-libs'
         prefix = f'{nvidia_libs}-{version}'
@@ -243,7 +248,7 @@ def create_wine_prefix(prefix_name: str,
                 cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', item, '/d',
                        'native', '/f')
                 log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-                sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+                sp.run(cmd, env=env, check=True)
                 member = tar.getmember(f'{prefix}/x32/{item}.dll')
                 member.name = f'{item}.dll'
                 tar.extract(member, target / 'drive_c' / 'windows' / 'syswow64')
@@ -253,7 +258,7 @@ def create_wine_prefix(prefix_name: str,
                     cmd = ('wine64', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', item,
                            '/d', 'native', '/f')
                     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-                    sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+                    sp.run(cmd, env=env, check=True, timeout=2)
                     member = tar.getmember(f'{prefix}/x64/{item}.dll')
                     member.name = f'{item}.dll'
                     tar.extract(member, target / 'drive_c' / 'windows' / 'system32')
@@ -264,14 +269,14 @@ def create_wine_prefix(prefix_name: str,
             cmd = ('wine64', 'reg', 'add', r'HKLM\Software\NVIDIA Corporation\Global\NGXCore', '/t',
                    'REG_SZ', '/v', 'FullPath', '/d', r'C:\Windows\system32', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+            sp.run(cmd, env=env, check=True, timeout=2)
     if noto_sans:
         for font_name in _CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS:
             cmd = ('wine', 'reg', 'add',
                    r'HKLM\Software\Microsoft\Windows NT\CurrentVersion\FontSubstitutes', '/t',
                    'REG_SZ', '/v', font_name, '/d', 'Noto Sans', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+            sp.run(cmd, env=env, check=True, timeout=2)
         face_name = list('Noto Sans Regular'.encode('utf-16le')) + (30 * [0])
         for entry_name in _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES:
             cmd = (
@@ -303,7 +308,7 @@ def create_wine_prefix(prefix_name: str,
                     *face_name)),
                 '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, capture_output=True, text=True)
+            sp.run(cmd, env=env, check=True, timeout=2)
     if (db_path := (platformdirs.user_config_path() / 'q4wine/db/generic.dat')).exists():
         # Based on addPrefix() and createPrefixDBStructure().
         # https://github.com/brezerk/q4wine/blob/master/src/core/database/prefix.cpp#L250
