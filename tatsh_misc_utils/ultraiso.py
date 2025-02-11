@@ -256,7 +256,7 @@ def run_ultraiso(
     else:
         log.debug('Command: %s', quoted_args)
     try:
-        sp.run(sp_args, capture_output=True, env=env, text=True, check=True)
+        sp.run(sp_args, env=env, check=True)
     except sp.CalledProcessError as e:
         if stderr := e.stderr.strip():
             log.exception('stderr output:')
