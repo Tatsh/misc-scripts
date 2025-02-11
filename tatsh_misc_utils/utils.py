@@ -125,7 +125,7 @@ Q4WINE_DEFAULT_ICONS: tuple[tuple[str, str, str, str, str, str], ...] = (
     ('', 'eject.exe', 'eject', 'Wine CD eject tool', 'system', 'eject'),
     ('', 'wordpad.exe', 'wordpad', 'Wine wordpad text editor', 'system', 'wordpad'),
     ('', 'taskmgr.exe', 'taskmgr', 'Wine task manager', 'system', 'taskmgr'),
-    ('', 'winemine.exe', 'winemine', 'Wine saper game', 'system', 'winemine'),
+    ('', 'winemine.exe', 'winemine', 'Wine sweeper game', 'system', 'winemine'),
     ('', 'oleview.exe', 'wordpad', 'Wine OLE/COM object viewer', 'system', 'oleview'),
     ('', 'notepad.exe', 'notepad', 'Wine notepad text editor', 'system', 'notepad'),
     ('', 'iexplore.exe', 'iexplore', 'Wine internet explorer', 'system', 'iexplore'),
@@ -147,7 +147,7 @@ def create_wine_prefix(prefix_name: str,
                        sandbox: bool = False,
                        tricks: Iterable[str] | None = None,
                        vd: str = 'off',
-                       windows_version: WineWindowsVersion = 'xp',
+                       windows_version: WineWindowsVersion = '10',
                        winrt_dark: bool = False) -> StrPath:
     """
     Create a Wine prefix with custom settings.
@@ -181,42 +181,44 @@ def create_wine_prefix(prefix_name: str,
     # Warm up Wine
     cmd: tuple[str, ...] = ('wineboot', '--init')
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-    sp.run(cmd, env=env, check=True, timeout=30)
+    sp.run(cmd, env=env, check=True)
+    # Wait for the server to finish because wineboot does not necessarily quit before the prefix is
+    # done being set up.
     cmd = ('wineserver', '-w')
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-    sp.run(cmd, env=env, check=True, timeout=30)
+    sp.run(cmd, env=env, check=True)
     if dpi != DEFAULT_DPI:
         cmd = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop', '/t', 'REG_DWORD', '/v',
                'LogPixels', '/d', str(dpi), '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, timeout=2)
+        sp.run(cmd, env=env, check=True)
     if dxva_vaapi:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DXVA2', '/t', 'REG_SZ', '/v', 'backend',
                '/d', 'va', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, timeout=2)
+        sp.run(cmd, env=env, check=True)
     if eax:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DirectSound', '/t', 'REG_SZ', '/v',
                'EAXEnabled', '/d', 'Y', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, timeout=2)
+        sp.run(cmd, env=env, check=True)
     if gtk:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine', '/t', 'REG_SZ', '/v', 'ThemeEngine',
                '/d', 'GTK', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, timeout=2)
+        sp.run(cmd, env=env, check=True)
     if winrt_dark:
         for k in ('AppsUseLightTheme', 'SystemUsesLightTheme'):
             cmd = ('wine', 'reg', 'add',
                    r'HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize', '/t',
                    'REG_DWORD', '/v', k, '/d', '0', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, timeout=2)
+            sp.run(cmd, env=env, check=True)
     if no_xdg:
         cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
                'winemenubuilder.exe', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-        sp.run(cmd, env=env, check=True, timeout=2)
+        sp.run(cmd, env=env, check=True)
     if dxvk_nvapi:
         tricks += ['dxvk']
     try:
@@ -258,7 +260,7 @@ def create_wine_prefix(prefix_name: str,
                     cmd = ('wine64', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', item,
                            '/d', 'native', '/f')
                     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-                    sp.run(cmd, env=env, check=True, timeout=2)
+                    sp.run(cmd, env=env, check=True)
                     member = tar.getmember(f'{prefix}/x64/{item}.dll')
                     member.name = f'{item}.dll'
                     tar.extract(member, target / 'drive_c' / 'windows' / 'system32')
@@ -269,14 +271,14 @@ def create_wine_prefix(prefix_name: str,
             cmd = ('wine64', 'reg', 'add', r'HKLM\Software\NVIDIA Corporation\Global\NGXCore', '/t',
                    'REG_SZ', '/v', 'FullPath', '/d', r'C:\Windows\system32', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, timeout=2)
+            sp.run(cmd, env=env, check=True)
     if noto_sans:
         for font_name in _CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS:
             cmd = ('wine', 'reg', 'add',
                    r'HKLM\Software\Microsoft\Windows NT\CurrentVersion\FontSubstitutes', '/t',
                    'REG_SZ', '/v', font_name, '/d', 'Noto Sans', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, timeout=2)
+            sp.run(cmd, env=env, check=True)
         face_name = list('Noto Sans Regular'.encode('utf-16le')) + (30 * [0])
         for entry_name in _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES:
             cmd = (
@@ -308,7 +310,7 @@ def create_wine_prefix(prefix_name: str,
                     *face_name)),
                 '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
-            sp.run(cmd, env=env, check=True, timeout=2)
+            sp.run(cmd, env=env, check=True)
     if (db_path := (platformdirs.user_config_path() / 'q4wine/db/generic.dat')).exists():
         # Based on addPrefix() and createPrefixDBStructure().
         # https://github.com/brezerk/q4wine/blob/master/src/core/database/prefix.cpp#L250
