@@ -87,6 +87,7 @@ from .system import (
     find_bluetooth_device_info_by_name,
     inhibit_notifications,
     kill_gamescope,
+    kill_wine,
     patch_macos_bundle_info_plist,
     slug_rename,
     wait_for_disc,
@@ -1943,3 +1944,9 @@ def flac_dir_finalize_main(directory: str, *, debug: bool = False) -> None:
 def kill_gamescope_main() -> None:
     """Terminate gamescope and gamescopereaper."""
     kill_gamescope()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+def kill_wine_main() -> None:
+    """Terminate all Wine processes."""
+    kill_wine()

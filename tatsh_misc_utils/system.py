@@ -192,3 +192,12 @@ def kill_gamescope() -> None:
     for proc in (x for x in psutil.process_iter(('pid', 'name', 'username'))
                  if x.info['name'] in {'gamescope', 'gamescopereaper'}):
         proc.kill()
+
+
+def kill_wine() -> None:
+    """If a process is named with ``.exe``, it is assumed to be a Wine process."""
+    import psutil  # noqa: PLC0415
+    for proc in (x for x in psutil.process_iter(('pid', 'name', 'username'))
+                 if x.info['name'] in {'wineserver', 'wine-preloader', 'wine64-preloader'} or (
+                     x.info['name'].lower().endswith('.exe'))):
+        proc.kill()
