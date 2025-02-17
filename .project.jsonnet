@@ -260,9 +260,6 @@ local manifestYaml(value) =
             ],
           },
           {
-            args: [
-              '--no-update',
-            ],
             id: 'poetry-lock',
             stages: [
               'pre-push',
@@ -271,14 +268,14 @@ local manifestYaml(value) =
           {
             args: [
               '--all-extras',
+              '--all-groups',
               '--sync',
-              '--with=dev,docs,tests',
             ],
             id: 'poetry-install',
           },
         ],
         repo: 'https://github.com/python-poetry/poetry',
-        rev: '1.8.0',
+        rev: '2.0.1',
       },
       {
         hooks: [
