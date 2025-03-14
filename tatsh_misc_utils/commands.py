@@ -110,6 +110,7 @@ from .utils import (
     create_wine_prefix,
     kill_processes_by_name,
     secure_move_path,
+    unregister_wine_file_associations,
 )
 from .www import (
     check_bookmarks_html_urls,
@@ -880,14 +881,28 @@ def slug_rename_main(filenames: tuple[str, ...],
 @click.argument('prefix_name')
 @click.option('-D', '--dpi', default=96, type=int, help='DPI.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('--disable-explorer',
+              is_flag=True,
+              help='Disable starting explorer.exe automatically.')
+@click.option('--disable-services',
+              is_flag=True,
+              help=('Disable starting services.exe automatically (only useful for simple CLI '
+                    'programs with --disable-explorer).'))
 @click.option('-E', '--eax', is_flag=True, help='Enable EAX.')
 @click.option('-g', '--gtk', is_flag=True, help='Enable Gtk+ theming.')
 @click.option('-r', '--prefix-root', type=click.Path(), help='Prefix root.')
 @click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
+@click.option('--no-gecko', is_flag=True, help='Disable downloading Gecko automatically.')
+@click.option('--no-mono', is_flag=True, help='Disable downloading Mono automatically.')
 @click.option('--no-xdg', is_flag=True, help='Disable winemenubuilder.exe.')
+@click.option('--no-assocs',
+              is_flag=True,
+              help=('Disable creating file associations, but still allow menu entries to be made'
+                    ' (unless --no-xdg is also passed).'))
 @click.option('-N', '--nvapi', help='Add dxvk-nvapi.', is_flag=True)
 @click.option('-o', '--noto', is_flag=True, help='Use Noto Sans in place of most fonts.')
 @click.option('-T', '--trick', 'tricks', help='Add an argument for winetricks.', multiple=True)
+@click.option('-t', '--tmpfs', is_flag=True, help='Make Wine use tmpfs.')
 @click.option('-V',
               '--windows-version',
               default='10',
@@ -908,15 +923,22 @@ def mkwineprefix_main(prefix_name: str,
                       windows_version: WineWindowsVersion = '10',
                       *,
                       _32bit: bool = False,
+                      asio: bool = False,
                       debug: bool = False,
+                      disable_explorer: bool = False,
+                      disable_services: bool = False,
                       dpi: int = 96,
                       dxva_vaapi: bool = False,
                       eax: bool = False,
                       gtk: bool = False,
+                      no_assocs: bool = False,
+                      no_gecko: bool = False,
+                      no_mono: bool = False,
                       no_xdg: bool = False,
                       noto: bool = False,
                       nvapi: bool = False,
                       sandbox: bool = False,
+                      tmpfs: bool = False,
                       winrt_dark: bool = False) -> None:
     """
     Create a Wine prefix with custom settings.
@@ -927,15 +949,22 @@ def mkwineprefix_main(prefix_name: str,
     try:
         target = create_wine_prefix(prefix_name,
                                     _32bit=_32bit,
+                                    asio=asio,
+                                    disable_explorer=disable_explorer,
+                                    disable_services=disable_services,
                                     dpi=dpi,
                                     dxva_vaapi=dxva_vaapi,
                                     dxvk_nvapi=nvapi,
                                     eax=eax,
                                     gtk=gtk,
+                                    no_associations=no_assocs,
+                                    no_gecko=no_gecko,
+                                    no_mono=no_mono,
                                     no_xdg=no_xdg,
                                     noto_sans=noto,
                                     prefix_root=prefix_root,
                                     sandbox=sandbox,
+                                    tmpfs=tmpfs,
                                     tricks=tricks,
                                     vd=vd,
                                     windows_version=windows_version,
@@ -956,6 +985,14 @@ If you ran this with eval, your shell is ready.""",
                file=sys.stderr)
     click.echo(f'export {wineprefix_env}')
     click.echo(f'export PS1="{prefix_name}🍷$PS1"')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def unregister_wine_file_associations_main(*, debug: bool = False) -> None:
+    """Unregister Wine file associations. Terminates all Wine processes before starting."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
+    unregister_wine_file_associations(debug=debug)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)

@@ -6,7 +6,7 @@ from math import trunc
 from os import environ
 from pathlib import Path
 from shlex import quote
-from shutil import copyfile, which
+from shutil import copyfile, rmtree, which
 from signal import SIGTERM
 from typing import TYPE_CHECKING, Literal, NamedTuple, overload
 import csv
@@ -17,6 +17,7 @@ import sqlite3
 import struct
 import subprocess as sp
 import tarfile
+import tempfile
 import time
 
 import platformdirs
@@ -24,7 +25,7 @@ import requests
 import xz
 
 from .media import CD_FRAMES
-from .system import IS_WINDOWS
+from .system import IS_WINDOWS, kill_wine
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -136,15 +137,22 @@ Q4WINE_DEFAULT_ICONS: tuple[tuple[str, str, str, str, str, str], ...] = (
 def create_wine_prefix(prefix_name: str,
                        *,
                        _32bit: bool = False,
+                       asio: bool = False,
+                       disable_explorer: bool = False,
+                       disable_services: bool = False,
                        dpi: int = DEFAULT_DPI,
                        dxva_vaapi: bool = False,
                        dxvk_nvapi: bool = False,
                        eax: bool = False,
                        gtk: bool = False,
+                       no_associations: bool = False,
+                       no_gecko: bool = False,
+                       no_mono: bool = False,
                        no_xdg: bool = False,
                        noto_sans: bool = False,
                        prefix_root: StrPath | None = None,
                        sandbox: bool = False,
+                       tmpfs: bool = False,
                        tricks: Iterable[str] | None = None,
                        vd: str = 'off',
                        windows_version: WineWindowsVersion = '10',
@@ -193,18 +201,16 @@ def create_wine_prefix(prefix_name: str,
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
     if dxva_vaapi:
-        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DXVA2', '/t', 'REG_SZ', '/v', 'backend',
-               '/d', 'va', '/f')
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DXVA2', '/v', 'backend', '/d', 'va', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
     if eax:
-        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DirectSound', '/t', 'REG_SZ', '/v',
-               'EAXEnabled', '/d', 'Y', '/f')
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DirectSound', '/v', 'EAXEnabled', '/d',
+               'Y', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
     if gtk:
-        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine', '/t', 'REG_SZ', '/v', 'ThemeEngine',
-               '/d', 'GTK', '/f')
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine', '/v', 'ThemeEngine', '/d', 'GTK', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
     if winrt_dark:
@@ -214,11 +220,40 @@ def create_wine_prefix(prefix_name: str,
                    'REG_DWORD', '/v', k, '/d', '0', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True)
+    if no_associations:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\Explorer\FileAssociations', '/v',
+               'Enable', '/d', 'N', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True)
     if no_xdg:
-        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/t', 'REG_SZ', '/v',
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v',
                'winemenubuilder.exe', '/f')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
+    if no_mono:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', 'mscoree', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True)
+    if no_gecko:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', 'mshtml', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True)
+    if disable_explorer:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', 'explorer.exe', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True)
+    if disable_services:
+        cmd = ('wine', 'reg', 'add', r'HKCU\Software\Wine\DllOverrides', '/v', 'services.exe', '/f')
+        log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+        sp.run(cmd, env=env, check=True)
+    if tmpfs:
+        username = environ.get('USER', environ.get('USERNAME', 'user'))
+        rmtree(target / f'drive_c/users/{username}/Temp', ignore_errors=True)
+        rmtree(target / 'drive_c/windows/temp', ignore_errors=True)
+        Path(target / f'drive_c/users/{username}/Temp').symlink_to(tempfile.gettempdir(),
+                                                                   target_is_directory=True)
+        Path(target / 'drive_c/windows/temp').symlink_to(tempfile.gettempdir(),
+                                                         target_is_directory=True)
     if dxvk_nvapi:
         tricks += ['dxvk']
     try:
@@ -311,6 +346,12 @@ def create_wine_prefix(prefix_name: str,
                 '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True)
+    if asio:
+        if register := which('wineasio-register'):
+            log.debug('Running: %s', register)
+            sp.run((register,), env=env, check=True)
+        else:
+            log.warning('Skipping ASIO setup because wineasio-register is not in PATH.')
     if (db_path := (platformdirs.user_config_path() / 'q4wine/db/generic.dat')).exists():
         # Based on addPrefix() and createPrefixDBStructure().
         # https://github.com/brezerk/q4wine/blob/master/src/core/database/prefix.cpp#L250
@@ -343,6 +384,32 @@ def create_wine_prefix(prefix_name: str,
     )""", params)
             c.execute('DELETE FROM logging WHERE prefix_id = ?', (prefix_id,))
     return target
+
+
+def unregister_wine_file_associations(*, debug: bool = False) -> None:
+    """Unregister all Wine file associations."""
+    kill_wine()
+    for item in (Path.home() / '.local/share/applications').glob('wine-extension-*.desktop'):
+        log.debug('Removing file association "%s".', item)
+        item.unlink()
+    for item in (Path.home() / '.local/share/icons/hicolor').rglob('application-x-wine-extension*'):
+        log.debug('Removing icon "%s".', item)
+        item.unlink()
+    (Path.home() / '.local/share/applications/mimeinfo.cache').unlink(missing_ok=True)
+    for item in (Path.home() / '.local/share/mime/packages').glob('x-wine*'):
+        log.debug('Removing MIME file "%s".', item)
+        item.unlink()
+    for item in (Path.home() / '.local/share/application').glob('x-wine-extension*'):
+        log.debug('Removing MIME file "%s".', item)
+        item.unlink()
+    cmd: tuple[str, ...] = ('update-desktop-database', *(('-v',) if debug else ()),
+                            str(Path.home() / '.local/share/applications'))
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
+    cmd = ('update-mime-database', *(('-v',) if debug else
+                                     ()), str(Path.home() / '.local/share/mime'))
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    sp.run(cmd, check=True)
 
 
 def secure_move_path(client: SSHClient,

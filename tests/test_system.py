@@ -162,7 +162,7 @@ def test_slug_rename_success(mocker: MockerFixture) -> None:
 def test_patch_macos_bundle_info_plist_success(mocker: MockerFixture) -> None:
     mock_path = mocker.patch('tatsh_misc_utils.system.Path')
     mock_plistlib = mocker.patch('tatsh_misc_utils.system.plistlib')
-    mock_info_plist = mock_path.return_value.resolve.return_value.__truediv__.return_value.__truediv__.return_value
+    mock_info_plist = mock_path.return_value.resolve.return_value.__truediv__.return_value.__truediv__.return_value  # noqa: E501
     mock_info_plist.open.return_value.__enter__.return_value = mock.Mock()
     patch_macos_bundle_info_plist('test_bundle', key='value')
     mock_info_plist.open.assert_any_call('rb')
