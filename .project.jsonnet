@@ -28,8 +28,8 @@ local repository_name = project_name;
 local repository_uri = 'https://github.com/%s/%s' % [github_username, project_name];
 
 local min_python_minor_version = '11';
-local supported_python_versions = ['3.%s' % min_python_minor_version] + [('3.%s' % i) for i in [12, 13]];
-local yarn_version = '4.5.0';
+local supported_python_versions = ['3.%s' % min_python_minor_version] + [('3.%s' % i) for i in [12]];
+local yarn_version = '4.7.0';
 
 local shared_ignore = [
   '*~',
@@ -249,7 +249,7 @@ local manifestYaml(value) =
           },
         ],
         repo: 'https://github.com/pre-commit/pre-commit-hooks',
-        rev: 'v4.6.0',
+        rev: 'v5.0.0',
       },
       {
         hooks: [
@@ -275,7 +275,7 @@ local manifestYaml(value) =
           },
         ],
         repo: 'https://github.com/python-poetry/poetry',
-        rev: '2.0.1',
+        rev: '2.1.1',
       },
       {
         hooks: [
@@ -285,7 +285,7 @@ local manifestYaml(value) =
           },
         ],
         repo: 'https://github.com/google/yapf',
-        rev: 'v0.40.2',
+        rev: 'v0.43.0',
       },
       {
         hooks: [
@@ -306,7 +306,7 @@ local manifestYaml(value) =
           },
         ],
         repo: 'https://github.com/python-jsonschema/check-jsonschema',
-        rev: '0.28.2',
+        rev: '0.31.3',
       },
       {
         hooks: [
@@ -601,7 +601,7 @@ local manifestYaml(value) =
           Issues: '%s/issues' % repository_uri,
         },
         dependencies: {
-          python: '>=3.%s,<4' % min_python_minor_version,
+          python: '>=3.%s,<3.13' % min_python_minor_version,
           beautifulsoup4: '^4.12.3',
           binaryornot: '^0.4.4',
           click: '^8.1.7',
