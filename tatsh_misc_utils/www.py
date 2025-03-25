@@ -4,6 +4,7 @@ from collections.abc import Callable, Iterator, Sequence
 from getpass import getuser
 from html import escape
 from http import HTTPStatus
+from io import BytesIO
 from itertools import chain
 from os import scandir
 from pathlib import Path
@@ -40,7 +41,7 @@ def where_from(file: FileDescriptorOrPath, *, webpage: bool = False) -> str | No
     index = 1 if webpage else 0
     attr_value = getxattr(file, KEY_ORIGIN_URL if IS_LINUX else KEY_WHERE_FROMS).decode()
     if not IS_LINUX:
-        return cast(Sequence[str], plistlib.loads(hexstr2bytes(attr_value)))[index]
+        return cast('Sequence[str]', plistlib.loads(hexstr2bytes(attr_value)))[index]
     return attr_value
 
 
@@ -171,15 +172,15 @@ def recurse_bookmarks_html(soup: Tag, callback: RecurseBookmarksHTMLCallback) ->
                     if parent.name == 'dl' and (h3 := parent.find_previous_sibling('h3')):
                         assert isinstance(h3, Tag)
                         folder_path.append((stripped_strings_fixed(h3),
-                                            cast(BookmarksHTMLFolderAttributes, h3.attrs)))
+                                            cast('BookmarksHTMLFolderAttributes', h3.attrs)))
                         for par in h3.parents:
                             if par.name == 'dl' and (par_h3 := par.find_previous_sibling('h3')):
                                 assert isinstance(par_h3, Tag)
                                 folder_path.insert(
                                     0, (stripped_strings_fixed(par_h3),
-                                        cast(BookmarksHTMLFolderAttributes, par_h3.attrs)))
+                                        cast('BookmarksHTMLFolderAttributes', par_h3.attrs)))
                         break
-                callback(cast(BookmarksHTMLAnchorAttributes, child.attrs),
+                callback(cast('BookmarksHTMLAnchorAttributes', child.attrs),
                          stripped_strings_fixed(child), folder_path)
 
 
@@ -265,3 +266,40 @@ def check_bookmarks_html_urls(
 
     recurse_bookmarks_html(Soup(html_content, 'html5lib'), callback)
     return data, changed, not_found
+
+
+def fix_chromium_pwa_icon(config_path: StrPath,
+                          app_id: str,
+                          icon_src_uri: str,
+                          profile: str = 'Default',
+                          *,
+                          masked: bool = False,
+                          monochrome: bool = False) -> None:
+    """
+    Fix a Chromium PWA icon that failed to sync.
+    
+    See Also
+    --------
+    https://issues.chromium.org/issues/40595456
+    """
+    from PIL import Image  # noqa: PLC0415
+    config_path = Path(config_path) / profile / 'Web Applications' / app_id
+    r = requests.get(icon_src_uri, headers={'user-agent': generate_chrome_user_agent()}, timeout=15)
+    r.raise_for_status()
+    img = Image.open(BytesIO(r.content))
+    width, height = img.size
+    if width != height:
+        msg = 'Icon is not square.'
+        raise ValueError(msg)
+    sizes = [1 << x for x in range(4, width.bit_length())]
+    for size in sizes:
+        img.resize((size, size),
+                   Image.Resampling.LANCZOS).save(config_path / 'Icons' / f'{size}.png')
+    if masked:
+        for size in sizes:
+            img.resize((size, size), Image.Resampling.LANCZOS).save(
+                config_path / 'Icons Maskable' / f'{size}.png')
+    if monochrome:
+        for size in sizes:
+            img.resize((size, size), Image.Resampling.LANCZOS).save(
+                config_path / 'Icons Monochrome' / f'{size}.png')

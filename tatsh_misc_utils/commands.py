@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from copy import deepcopy
 from operator import itemgetter
-from os import environ, listdir
+from os import environ
 from pathlib import Path
 from shlex import quote, split
 from shutil import which
 from time import sleep
-from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, get_args, overload
+from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, get_args, overload, override
 from urllib.parse import unquote_plus, urlparse
 import contextlib
 import errno
@@ -28,7 +28,6 @@ from binaryornot.helpers import is_binary_string
 from platformdirs import user_state_path
 from requests import HTTPError
 from send2trash import send2trash
-from typing_extensions import override
 import click
 import keyring
 import pexpect
@@ -81,6 +80,7 @@ from .string import (
     unix_path_to_wine,
 )
 from .system import (
+    CHROME_DEFAULT_CONFIG_PATH,
     CHROME_DEFAULT_LOCAL_STATE_PATH,
     IS_LINUX,
     IS_WINDOWS,
@@ -114,6 +114,7 @@ from .utils import (
 )
 from .www import (
     check_bookmarks_html_urls,
+    fix_chromium_pwa_icon,
     generate_html_dir_tree,
     upload_to_imgbb,
     where_from,
@@ -456,7 +457,7 @@ def ultraiso_main(ahide: str | None = None,
                      udfdvd=udfdvd,
                      ahide=ahide,
                      hide=hide,
-                     pn=cast(Any, pn),
+                     pn=cast('Any', pn),
                      appid=appid,
                      preparer=preparer,
                      publisher=publisher,
@@ -465,8 +466,8 @@ def ultraiso_main(ahide: str | None = None,
                      volume=volume,
                      input=input_,
                      bin2isz=bin2isz,
-                     compress=cast(Any, compress),
-                     encrypt=cast(Any, encrypt),
+                     compress=cast('Any', compress),
+                     encrypt=cast('Any', encrypt),
                      password=password,
                      split=split,
                      output=output,
@@ -1311,7 +1312,7 @@ def flacted_main(files: tuple[str, ...],
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
 
     def metaflac(*args: Any, **kwargs: Any) -> sp.CompletedProcess[str]:
-        return sp.run(('metaflac', *cast(tuple[str, ...], args)),
+        return sp.run(('metaflac', *cast('tuple[str, ...]', args)),
                       capture_output=not debug,
                       **kwargs,
                       check=True,
@@ -1951,10 +1952,10 @@ def flac_dir_finalize_main(directory: str, *, debug: bool = False) -> None:
 
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     path = Path(directory).resolve(strict=True)
-    flac_files = ((path / x) for x in listdir(directory) if x.endswith('.flac'))
+    flac_files = ((path / x) for x in Path(directory).iterdir() if x.name.endswith('.flac'))
     new_flac_files: list[Path] = []
-    imgs = ((path / x) for x in listdir(directory)
-            if re.search(r'\.(?:jpe?g|png|gif|webp)', x) is not None)
+    imgs = ((path / x) for x in Path(directory).iterdir()
+            if re.search(r'\.(?:jpe?g|png|gif|webp)', str(x)) is not None)
     misc_files_prefix = f'00-{path.name.lower()}'
     img_prefix = '-'.join(misc_files_prefix.split('-')[:-1])
     out_m3u = path / f'{misc_files_prefix}.m3u'
@@ -1987,3 +1988,36 @@ def kill_gamescope_main() -> None:
 def kill_wine_main() -> None:
     """Terminate all Wine processes."""
     kill_wine()
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('app_id')
+@click.argument('icon_src_uri')
+@click.option('-M', '--monochrome', help='Copy icons to monochrome directory.', is_flag=True)
+@click.option('-c',
+              '--config-path',
+              help='Chromium browser configuration path. Defaults to Google Chrome.',
+              default=str(CHROME_DEFAULT_CONFIG_PATH))
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-m', '--masked', help='Copy icons to masked directory.', is_flag=True)
+@click.option('-p', '--profile', help='Profile name.', default='Default')
+def fix_chromium_pwa_icon_main(config_path: str,
+                               app_id: str,
+                               icon_src_uri: str,
+                               profile: str = 'Default',
+                               *,
+                               debug: bool = False,
+                               masked: bool = False,
+                               monochrome: bool = False) -> None:
+    """
+    Fix a Chromium PWA icon that failed to sync.
+    
+    For more information see https://issues.chromium.org/issues/40595456.
+    """
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    fix_chromium_pwa_icon(config_path,
+                          app_id,
+                          icon_src_uri,
+                          profile,
+                          masked=masked,
+                          monochrome=monochrome)
