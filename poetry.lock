@@ -1511,14 +1511,14 @@ files = [
 
 [[package]]
 name = "types-mysqlclient"
-version = "2.2.0.20241221"
+version = "2.2.0.20250318"
 description = "Typing stubs for mysqlclient"
 optional = false
-python-versions = ">=3.8"
+python-versions = ">=3.9"
 groups = ["dev"]
 files = [
-    {file = "types_mysqlclient-2.2.0.20241221-py3-none-any.whl", hash = "sha256:2a00614fcf29896f2627c560ce68d4e725ce53336331cd3410e347e469cf98bc"},
-    {file = "types_mysqlclient-2.2.0.20241221.tar.gz", hash = "sha256:31e336db1e05c9b6f3bef0b124eb7eb73fb1047a8398c5bc17b24bc9fa8a1268"},
+    {file = "types_mysqlclient-2.2.0.20250318-py3-none-any.whl", hash = "sha256:a47d67f851638b25cafcbfaebcbc73e3e49309a4d63efb1521ff04b752b7e672"},
+    {file = "types_mysqlclient-2.2.0.20250318.tar.gz", hash = "sha256:f1dc73462da7d53d3b99512810b1aa88179ad40601db0c3dea477c467f77e661"},
 ]
 
 [[package]]
@@ -1642,4 +1642,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "f1f2a783df2c5c3dfd7063f9f2b6562b04c29577575b4b4fde9a05e4bc46b3b6"
+content-hash = "33dd74a4aefd85b1c8d17227ebdda6ab81cacf3ca32e283203f8b7505a3c7e4b"
