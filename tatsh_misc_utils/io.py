@@ -62,11 +62,10 @@ def unpack_0day(path: StrPath, *, remove_diz: bool = True) -> None:
         with Path(re.sub(r'(?:\.part\d+)?\.r(?:[0-9][0-9]|ar)$', '.sfv',
                          rars[0].name.lower())).open('w+', encoding='utf-8') as f:
             f.write(f'; {datetime.now(tz=UTC).astimezone()}\n')
-            for rar in sorted(
-                    path.glob('*.part*.rar' if any(
-                        re.search(r'\.part[0-9]{,3}\.rar$', str(r), re.IGNORECASE)
-                        for r in rars) else '*.[rstuvwxyz][0-9a][0-9r]')):
-                f.write(f'{rar.name} {crc32(rar.read_bytes()):08X}\n')
+            f.writelines(f'{rar.name} {crc32(rar.read_bytes()):08X}\n' for rar in sorted(
+                path.glob('*.part*.rar' if any(
+                    re.search(r'\.part[0-9]{,3}\.rar$', str(r), re.IGNORECASE)
+                    for r in rars) else '*.[rstuvwxyz][0-9a][0-9r]')))
 
 
 def extract_rar_from_zip(zip_file: ZipFile) -> Iterator[str]:
@@ -82,7 +81,7 @@ def unpack_ebook(path: StrPath) -> None:
     if not (path := Path(path)).is_dir():
         raise NotADirectoryError
     with contextlib.chdir(path):
-        zip_listing = frozenset(ZipFile(x) for x in os.listdir('.') if x.endswith('.zip'))
+        zip_listing = frozenset(ZipFile(x) for x in Path().iterdir() if x.name.endswith('.zip'))
         if len(zip_listing) == 0:
             raise FileExistsError
         extracted = [Path(x) for y in (extract_rar_from_zip(z) for z in zip_listing) for x in y]
@@ -91,8 +90,8 @@ def unpack_ebook(path: StrPath) -> None:
             raise ValueError(0)
         # Only need the .rar
         unrar_x(rar)
-        epub_list = [Path(x) for x in os.listdir('.') if x.lower().endswith('.epub')]
-        pdf_list = [Path(x) for x in os.listdir('.') if x.lower().endswith('.pdf')]
+        epub_list = [Path(x) for x in Path().iterdir() if x.name.lower().endswith('.epub')]
+        pdf_list = [Path(x) for x in Path().iterdir() if x.name.lower().endswith('.pdf')]
         if not pdf_list and not epub_list:
             raise ValueError(0)
         if pdf_list:

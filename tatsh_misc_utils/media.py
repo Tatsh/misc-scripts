@@ -143,7 +143,7 @@ def add_info_json_to_media_file(path: StrPath,
     def mkvpropedit_add_json() -> None:
         if any(
                 re.match((r"^Attachment ID \d+: type 'application/json', size \d+ bytes, "
-                          "file name 'info.json'"), line)
+                          r"file name 'info.json'"), line)
                 for line in sp.run(('mkvmerge', '--identify', str(path)),
                                    capture_output=True,
                                    check=True,
@@ -225,7 +225,7 @@ def ffprobe(path: StrPath) -> ProbeDict:
                check=True,
                capture_output=True,
                text=True)
-    return cast(ProbeDict, json.loads(p.stdout.strip()))
+    return cast('ProbeDict', json.loads(p.stdout.strip()))
 
 
 def get_info_json(path: StrPath, *, raw: bool = False) -> Any:
@@ -789,11 +789,11 @@ def archive_dashcam_footage(front_dir: StrPath,
             '-f': 'matroska'
         }.items() if v)))
     back_groups = group_files(
-        (str(rear_dir / x) for x in os.listdir(rear_dir) if not x.startswith('.')), clip_length,
-        match_re, time_format)
+        (str(rear_dir / x) for x in Path(rear_dir).iterdir() if not x.name.startswith('.')),
+        clip_length, match_re, time_format)
     front_groups = group_files(
-        (str(front_dir / x) for x in os.listdir(front_dir) if not x.startswith('.')), clip_length,
-        match_re, time_format)
+        (str(front_dir / x) for x in Path(front_dir).iterdir() if not x.name.startswith('.')),
+        clip_length, match_re, time_format)
     back_groups_len = len(back_groups)
     front_groups_len = len(front_groups)
     log.debug('Back group count: %d', back_groups_len)

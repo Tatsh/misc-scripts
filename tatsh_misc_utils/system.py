@@ -12,14 +12,15 @@ from .io import context_os_open
 from .string import slugify
 from .typing import CDStatus, StrPath
 
-__all__ = ('CHROME_DEFAULT_LOCAL_STATE_PATH', 'IS_LINUX', 'find_bluetooth_device_info_by_name',
-           'inhibit_notifications', 'slug_rename', 'uninhibit_notifications', 'wait_for_disc')
+__all__ = ('CHROME_DEFAULT_CONFIG_PATH', 'CHROME_DEFAULT_LOCAL_STATE_PATH', 'IS_LINUX',
+           'find_bluetooth_device_info_by_name', 'inhibit_notifications', 'slug_rename',
+           'uninhibit_notifications', 'wait_for_disc')
 
 CDROM_DRIVE_STATUS = 0x5326
 IS_LINUX = sys.platform == 'linux'
 IS_WINDOWS = sys.platform == 'win32' or sys.platform == 'cygwin'
-CHROME_DEFAULT_LOCAL_STATE_PATH: str | None = str(
-    Path('~/.config/google-chrome/Local State').expanduser())
+CHROME_DEFAULT_CONFIG_PATH = Path('~/.config/google-chrome').expanduser()
+CHROME_DEFAULT_LOCAL_STATE_PATH = str(CHROME_DEFAULT_CONFIG_PATH / 'Local State')
 log = logging.getLogger(__name__)
 
 
@@ -117,7 +118,7 @@ def get_inhibitor(what: str, who: str, why: str, mode: str) -> int:
         log.exception('Cannot import pydbus.', stack_info=False)
         return -1
     login1 = SystemBus().get('org.freedesktop.login1', '/org/freedesktop/login1')
-    return cast(int, login1['org.freedesktop.login1.Manager'].Inhibit(what, who, why, mode))
+    return cast('int', login1['org.freedesktop.login1.Manager'].Inhibit(what, who, why, mode))
 
 
 def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:

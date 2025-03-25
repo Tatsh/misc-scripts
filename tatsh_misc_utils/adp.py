@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 from datetime import UTC, datetime
-from typing import Final, TypedDict, cast
+from typing import Final, TypedDict, cast, override
 
-from typing_extensions import override
 import requests
 
 from .string import strip_ansi_if_no_colors
@@ -136,7 +135,7 @@ def calculate_salary(*,
                         },
                         timeout=30)
     req.raise_for_status()
-    data = cast(ResponseDict, req.json())['content']
+    data = cast('ResponseDict', req.json())['content']
     return SalaryResponse(federal=data['federal'],
                           fica=data['fica'],
                           gross=gross_pay,

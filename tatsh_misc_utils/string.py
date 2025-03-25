@@ -131,7 +131,7 @@ def get_last_chrome_major_version() -> str:
 def get_latest_chrome_major_version() -> str:
     """Get the latest Chrome major version."""
     return cast(
-        str,
+        'str',
         requests.get(
             ('https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/'
              'versions'),
@@ -201,7 +201,7 @@ def add_unidecode_custom_replacement(find: str, replace: str) -> None:
     codepoint = ord(find)
     section = codepoint >> 8
     position = codepoint % 256
-    new_section = cast(list[str | None],
+    new_section = cast('list[str | None]',
                        (Cache[section] if isinstance(Cache[section], list) else
                         (list(assert_not_none(Cache[section])) if Cache[section] is not None else
                          [None for _ in range(position + 1)])))  # convert to mutable type
