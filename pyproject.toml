@@ -44,7 +44,7 @@ types-beautifulsoup4 = "^4.12.0.20250204"
 types-mysqlclient = "^2.2.0.20250318"
 types-psutil = "^7.0.0.20250218"
 types-pyyaml = "^6.0.12.20250326"
-types-requests = "^2.32.0.20250306"
+types-requests = "^2.32.0.20250328"
 yapf = "^0.43.0"
 yt-dlp-types = "~0.0.14"
 
