@@ -1607,14 +1607,14 @@ platformdirs = ">=3.5.1"
 
 [[package]]
 name = "yt-dlp"
-version = "2025.3.25"
+version = "2025.3.31"
 description = "A feature-rich command-line audio/video downloader"
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "yt_dlp-2025.3.25-py3-none-any.whl", hash = "sha256:939cd8cc0a4bb5d090cd4dbda6e4361b634a4afe6e50c7f11e9f5431b4fcbe8e"},
-    {file = "yt_dlp-2025.3.25.tar.gz", hash = "sha256:c7f42516f9df31daef53cca2590239401cf31db7c4eaca67667cfd82f2e0ae27"},
+    {file = "yt_dlp-2025.3.31-py3-none-any.whl", hash = "sha256:8ecb3aa218a3bebe431119f513a8972b9b9d992edf67168c00ab92329a03baec"},
+    {file = "yt_dlp-2025.3.31.tar.gz", hash = "sha256:1bfe0e660d1a70a09e27b2d58f92e30b1e2e362cc487829f2f824346ae49fb91"},
 ]
 
 [package.extras]
@@ -1642,4 +1642,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.12"
-content-hash = "1ec15bf30f7c2b8367a61a71336035c23354556e484eab789d0ff1a0a2b09c4f"
+content-hash = "31256d440a70dc94640f202446643c40f2891b72307a104a2f2643ed20111958"
