@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from shlex import quote
+from shutil import copyfile
 from typing import TYPE_CHECKING, Literal
 import logging
 import os
@@ -189,6 +190,7 @@ def run_ultraiso(
                 'environment.')
         env['DISPLAY'] = os.environ.get('DISPLAY', '')
         env['XAUTHORITY'] = os.environ.get('XAUTHORITY', '')
+        env['WINEDEBUG'] = 'fixme-all'
     sp_args: list[str] = ['wine'] if not IS_WINDOWS else []
     sp_args += [str(actual_exe_path), '-silent']
     if cmd:
@@ -266,3 +268,40 @@ def run_ultraiso(
                     continue
                 log.exception(' -> %s', line)
         raise
+
+
+ULTRAISO_FONT_REPLACEMENT_MAX_LENGTH = 13
+
+
+class InvalidExec(Exception):
+    def __init__(self, *args: object) -> None:
+        super().__init__('Font not found in file. This is not the original UltraISO executable.')
+
+
+def patch_ultraiso_font(exe: Path, font_name: str = 'Noto Sans') -> None:
+    """
+    Patch hard-coded UI font in UltraISO executable.
+    
+    Must use the original executable. This will use a backup file if present if it has the suffix
+    ``.exebak``.
+    """
+    if len(font_name) > ULTRAISO_FONT_REPLACEMENT_MAX_LENGTH:
+        msg = f'Font name too long. Max length is {ULTRAISO_FONT_REPLACEMENT_MAX_LENGTH}.'
+        raise ValueError(msg)
+    if not exe.exists():
+        msg = f'File {exe} does not exist.'
+        raise FileNotFoundError(msg)
+    if not exe.is_file():
+        msg = f'File {exe} is a directory.'
+        raise IsADirectoryError(msg)
+    backup_file = exe.with_suffix('.exebak')
+    if backup_file.exists():
+        if not backup_file.is_file():
+            msg = f'File {backup_file} is a directory.'
+            raise IsADirectoryError(msg)
+    else:
+        copyfile(exe, exe.with_suffix('.exebak'))
+    data = backup_file.read_bytes()
+    if b'MS Sans Serif\x00' not in data:
+        raise InvalidExec
+    exe.write_bytes(data.replace(b'MS Sans Serif\x00', font_name.encode() + b'\x00'))

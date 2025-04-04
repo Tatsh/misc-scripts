@@ -71,10 +71,12 @@ cdth
 certutil
 cffconvert
 chdir
+chinesebig
 choco
 chost
 cigam
 cksfv
+cleartype
 closeapplications
 cmdargs
 cmds
@@ -116,6 +118,7 @@ dcterms
 debugpy
 deepcopy
 defusedxml
+demibold
 desat
 devnull
 dgenre
@@ -124,6 +127,7 @@ discid
 dists
 doctrees
 docutils
+dontcare
 dpkg
 drawtext
 driveropts
@@ -147,6 +151,7 @@ esac
 esbonio
 esync
 etree
+exebak
 execdir
 executable's
 executablepath
@@ -156,6 +161,8 @@ exiftool
 existant
 expanduser
 extdebug
+extrabold
+extralight
 f'prescaled
 f'wineprefix
 faststart
@@ -184,6 +191,7 @@ froms
 fromtimestamp
 frozenset
 fuckery
+fullfacesize
 fullscreen
 fulltimestudent
 fullwidth
@@ -214,6 +222,7 @@ groupdict
 hable
 halfwidth
 handle
+hangul
 hashlib
 headofhousehold
 helv
@@ -358,8 +367,10 @@ nargs
 ncmds
 newdir
 nfat
+noantialiased
 nocancel
 nologo
+nonantialiased
 nonblock
 norecursedirs
 norestart
@@ -472,6 +483,7 @@ setname
 setpts
 setwinsize
 shellcheck
+shiftjis
 shlex
 shopt
 shutil
@@ -537,6 +549,7 @@ uids
 uint
 uiso
 ukpabmc
+ultrabold
 ultraiso
 umount
 umpv
@@ -589,6 +602,7 @@ wineprefixes
 wineserver
 wineshell
 winetricks
+wingdi
 winrt
 winxp
 wkwebview

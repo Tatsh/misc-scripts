@@ -180,7 +180,7 @@ def create_wine_prefix(prefix_name: str,
         'PATH': environ['PATH'],
         'WINEPREFIX': str(target),
         'XAUTHORITY': environ.get('XAUTHORITY', ''),
-        'WINEDEBUG': environ.get('WINEDEBUG', '-all')
+        'WINEDEBUG': environ.get('WINEDEBUG', 'fixme-all')
     } | ({
         'WINEARCH': environ.get('WINEARCH', arch)
     } if arch else {}) | ({

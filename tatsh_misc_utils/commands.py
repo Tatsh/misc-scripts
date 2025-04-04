@@ -6,6 +6,7 @@ from os import environ
 from pathlib import Path
 from shlex import quote, split
 from shutil import which
+from tempfile import NamedTemporaryFile
 from time import sleep
 from typing import TYPE_CHECKING, Any, Literal, TextIO, TypeVar, cast, get_args, overload, override
 from urllib.parse import unquote_plus, urlparse
@@ -14,6 +15,7 @@ import errno
 import getpass
 import json
 import logging
+import os
 import plistlib
 import re
 import shutil
@@ -101,6 +103,7 @@ from .typing import (
 )
 from .ultraiso import (
     InsufficientArguments,
+    patch_ultraiso_font,
     run_ultraiso,
 )
 from .utils import (
@@ -112,6 +115,7 @@ from .utils import (
     secure_move_path,
     unregister_wine_file_associations,
 )
+from .windows import Field, make_font_entry
 from .www import (
     check_bookmarks_html_urls,
     fix_chromium_pwa_icon,
@@ -1467,6 +1471,7 @@ def winegoginstall_main(args: tuple[str, ...],
     env = {
         'DISPLAY': environ.get('DISPLAY', ''),
         'XAUTHORITY': environ.get('XAUTHORITY', ''),
+        'WINEDEBUG': 'fixme-all'
     }
     very_silent_args = ('/SP-', '/SUPPRESSMSGBOXES', '/VERYSILENT') if very_silent else ('/SILENT',)
     if prefix:
@@ -2021,3 +2026,56 @@ def fix_chromium_pwa_icon_main(config_path: str,
                           profile,
                           masked=masked,
                           monochrome=monochrome)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('--dpi', default=96, type=int, help='DPI.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-f', '--font', default='Noto Sans Regular', help='Font to use.')
+@click.option('-s', '--font-size', default=9, type=int, help='Font size in points.')
+def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool = False) -> None:
+    """Set all Wine fonts to be the one passed in."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    with NamedTemporaryFile(mode='w+',
+                            suffix='.reg',
+                            prefix='set-wine-fonts',
+                            delete=False,
+                            encoding='utf-8') as f:
+        f.write('Windows Registry Editor Version 5.00\n\n')
+        f.write(r'[HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics]')
+        f.write(''.join(make_font_entry(item, font, dpi=dpi) for item in Field))
+        f.write('\n')
+    cmd = ('wine', 'regedit', '/S', f.name)
+    log.debug('Registry file content:\n%s', Path(f.name).read_text(encoding='utf-8').strip())
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    env = {'HOME': os.environ['HOME']}
+    if 'DISPLAY' not in os.environ or 'XAUTHORITY' not in os.environ:
+        log.warning(
+            'UltraISO.exe will likely fail to run since DISPLAY or XAUTHORITY are not in the '
+            'environment.')
+    if 'WINEPREFIX' in os.environ:
+        env['WINEPREFIX'] = os.environ['WINEPREFIX']
+    env['DISPLAY'] = os.environ.get('DISPLAY', '')
+    env['XAUTHORITY'] = os.environ.get('XAUTHORITY', '')
+    env['WINEDEBUG'] = 'fixme-all'
+    sp.run(cmd, check=True, env=env)
+    Path(f.name).unlink()
+    click.echo('Fonts set. Restart Wine applications for changes to take effect.')
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-e',
+              '--exe',
+              help='EXE to patch.',
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option('-f', '--font', default='Noto Sans Regular', help='Font to use.')
+def patch_ultraiso_font_main(exe: Path | None = None,
+                             font: str = 'Noto Sans',
+                             *,
+                             debug: bool = False) -> None:
+    """Patches UltraISO's hard-coded font."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    if not exe:
+        exe = (Path(os.environ.get('WINEPREFIX', str(Path.home() / '.wine'))) / 'drive_c' /
+               'Program Files (x86)' / 'UltraISO' / 'UltraISO.exe')
+    patch_ultraiso_font(exe, font)
