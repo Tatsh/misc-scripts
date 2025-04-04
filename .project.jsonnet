@@ -617,6 +617,10 @@ local manifestYaml(value) =
             optional: true,
           },
           pexpect: '^4.9.0',
+          pillow: {
+            optional: true,
+            version: '^11.1.0',
+          },
           platformdirs: '^4.3.6',
           psutil: {
             optional: true,
@@ -667,6 +671,7 @@ local manifestYaml(value) =
               'types-beautifulsoup4': '^4.12.0.20241020',
               'types-paramiko': '^3.5.0.20240928',
               'types-pexpect': '^4.9.0.20240806',
+              'types-pillow': '^10.2.0.20240822',
               'types-psutil': '^6.1.0.20241102',
               'types-pyyaml': '^6.0.12.20240917',
               'types-requests': '^2.32.0.20241016',
