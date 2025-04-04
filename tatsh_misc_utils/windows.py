@@ -3,6 +3,12 @@ import enum
 
 
 class Weight(enum.IntEnum):
+    """
+    The weight of the font in the range 0 through 1000.
+
+    For example, 400 is normal and 700 is bold. If this value is zero, a default weight is used.
+    These values are provided for convenience.
+    """
     FW_BLACK = 900
     FW_BOLD = 700
     FW_DEMIBOLD = 600
@@ -21,22 +27,63 @@ class Weight(enum.IntEnum):
 
 
 class ClipPrecision(enum.IntEnum):
+    """
+    The clipping precision.
+
+    The clipping precision defines how to clip characters that are partially
+    outside the clipping region.
+    """
     CLIP_CHARACTER_PRECIS = 0x1
+    """Not used."""
     CLIP_DEFAULT_PRECIS = 0x0
+    """Specifies default clipping behaviour."""
     CLIP_DFA_DISABLE = 0x40
+    """
+    Windows XP SP1: Turns off font association for the font. Note that this flag is not guaranteed
+    to have any effect on any platform after Windows Server 2003.
+    """
     CLIP_EMBEDDED = 0x80
+    """You must specify this flag to use an embedded read-only font."""
     CLIP_LH_ANGLES = 0x10
+    """
+    When this value is used, the rotation for all fonts depends on whether the orientation of the
+    coordinate system is left-handed or right-handed.If not used, device fonts always rotate
+    counterclockwise, but the rotation of other fonts is dependent on the orientation of the
+    coordinate system.
+    """
     CLIP_MASK = 0xF
-    CLIP_STROKE_PRECIS = 0x2
+    """Not used."""
+    CLIP_STROKE_PRECIS = 0x2c
+    """
+    Not used by the font mapper, but is returned when raster, vector, or TrueType fonts are
+    enumerated. For compatibility, this value is always returned when enumerating fonts.
+    """
     CLIP_TT_ALWAYS = 0x20
+    """Not used."""
 
 
 class CharacterSet(enum.IntEnum):
+    """
+    The character set.
+    
+    Fonts with other character sets may exist in the operating system. If an application uses a font
+    with an unknown character set, it should not attempt to translate or interpret strings that are
+    rendered with that font.
+
+    This parameter is important in the font mapping process. To ensure consistent results when
+    creating a font, do not specify ``OEM_CHARSET`` or ``DEFAULT_CHARSET``. If you specify a
+    typeface name in the ``lfFaceName`` member, make sure that the ``lfCharSet`` value matches the
+    character set of the typeface specified in ``lfFaceName``.
+    """
     ANSI_CHARSET = 0
     ARABIC_CHARSET = 178
     BALTIC_CHARSET = 186
     CHINESEBIG5_CHARSET = 136
     DEFAULT_CHARSET = 1
+    """
+    DEFAULT_CHARSET is set to a value based on the current system locale. For example, when the
+    system locale is English (United States), it is set as ``ANSI_CHARSET``.
+    """
     EE_CHARSET = 238
     GB2312_CHARSET = 134
     GREEK_CHARSET = 161
@@ -45,6 +92,7 @@ class CharacterSet(enum.IntEnum):
     JOHAB_CHARSET = 130
     MAC_CHARSET = 77
     OEM_CHARSET = 255
+    """Specifies a character set that is operating-system dependent."""
     RUSSIAN_CHARSET = 204
     SHIFTJIS_CHARSET = 128
     SYMBOL_CHARSET = 2
@@ -54,20 +102,63 @@ class CharacterSet(enum.IntEnum):
 
 
 class OutputPrecision(enum.IntEnum):
+    """
+    The output precision.
+    
+    The output precision defines how closely the output must match the requested font's height,
+    width, character orientation, escapement, pitch, and font type.
+    """
     OUT_CHARACTER_PRECIS = 2
+    """Not used."""
     OUT_DEFAULT_PRECIS = 0
+    """Specifies the default font mapper behaviour."""
     OUT_DEVICE_PRECIS = 5
+    """
+    Instructs the font mapper to choose a Device font when the system contains multiple fonts with
+    the same name.
+    """
     OUT_OUTLINE_PRECIS = 8
+    """
+    This value instructs the font mapper to choose from TrueType and other outline-based fonts.
+    """
     OUT_PS_ONLY_PRECIS = 10
+    """
+    Instructs the font mapper to choose from only PostScript fonts. If there are no PostScript
+    fonts installed in the system, the font mapper returns to default behaviour.
+    """
     OUT_RASTER_PRECIS = 6
-    OUT_SCREEN_OUTLINE_PRECIS = 9
+    """
+    Instructs the font mapper to choose a raster font when the system contains multiple fonts with
+    the same name.
+    """
     OUT_STRING_PRECIS = 1
+    """
+    This value is not used by the font mapper, but it is returned when raster fonts are enumerated.
+    """
     OUT_STROKE_PRECIS = 3
+    """
+    This value is not used by the font mapper, but it is returned when TrueType, other
+    outline-based fonts, and vector fonts are enumerated.
+    """
     OUT_TT_ONLY_PRECIS = 7
+    """
+    Instructs the font mapper to choose from only TrueType fonts. If there are no TrueType fonts
+    installed in the system, the font mapper returns to default behaviour.
+    """
     OUT_TT_PRECIS = 4
+    """
+    Instructs the font mapper to choose a TrueType font when the system contains multiple fonts with
+    the same name.
+    """
 
 
 class Pitch(enum.IntEnum):
+    """
+    The pitch and family of the font.
+    
+    In the ``iPitchAndFamily`` argument to ``CreateFontW``, these values represent the two low-order
+    bits.
+    """
     DEFAULT_PITCH = 0x0
     FIXED_PITCH = 0x01
     MONO_FONT = 0x08
@@ -75,31 +166,84 @@ class Pitch(enum.IntEnum):
 
 
 class Family(enum.IntEnum):
+    """
+    Font Family.
+
+    Font families describe the look of a font in a general way. They are intended for specifying
+    fonts when the exact typeface desired is not available. 
+    
+    In the ``iPitchAndFamily`` argument to ``CreateFontW``, these values represent bits 4 through 7.
+    """
     FF_DECORATIVE = 0x50
+    """Novelty fonts. Old English is an example."""
     FF_DONTCARE = 0x0
+    """Use default font."""
     FF_MODERN = 0x30
+    """
+    Fonts with constant stroke width (monospace), with or without serifs. Monospace fonts are
+    usually modern. Pica, Elite, and CourierNew are examples.
+    """
     FF_ROMAN = 0x10
+    """Fonts with variable stroke width (proportional) and with serifs. MS Serif is an example."""
     FF_SCRIPT = 0x40
+    """Fonts designed to look like handwriting. Script and Cursive are examples."""
     FF_SWISS = 0x20
+    """
+    Fonts with variable stroke width (proportional) and without serifs. MS Sans Serif is an
+    example.
+    """
 
 
 class Quality(enum.IntEnum):
+    """
+    Quality.
+
+    The output quality defines how carefully the graphics device interface (GDI) must attempt to
+    match the logical-font attributes to those of an actual physical font.
+    
+    If neither ``ANTIALIASED_QUALITY`` nor ``NONANTIALIASED_QUALITY`` is selected, the font is
+    antialiased only if the user chooses smooth screen fonts in Control Panel.
+    """
     ANTIALIASED_QUALITY = 4
-    CLEARTYPE_NATURAL_QUALITY = 6
+    """
+    Font is always antialiased if the font supports it and the size of the font is not too small or
+    too large.
+    """
     CLEARTYPE_QUALITY = 5
+    """If set, text is rendered (when possible) using ClearType antialiasing method."""
     DEFAULT_QUALITY = 0
+    """Appearance of the font does not matter."""
     DRAFT_QUALITY = 1
-    NONANTIALIASED_QUALITY = 3
+    """
+    Appearance of the font is less important than when ``PROOF_QUALITY`` is used. For GDI raster
+    fonts, scaling is enabled, which means that more font sizes are available, but the quality may
+    be lower. Bold, italic, underline, and strikeout fonts are synthesized if necessary.
+    """
+    NONANTIALIASED_QUALITcY = 3
+    """Font is never antialiased."""
     PROOF_QUALITY = 2
+    """
+    Character quality of the font is more important than exact matching of the logical-font
+    attributes. For GDI raster fonts, scaling is disabled and the font closest in size is chosen.
+    Although the chosen font size may not be mapped exactly when ``PROOF_QUALITY`` is used, the
+    quality of the font is high and there is no distortion of appearance. Bold, italic, underline,
+    and strikeout fonts are synthesized if necessary.
+    """
 
 
 class Field(enum.StrEnum):
+    """Font field names in the registry."""
     CaptionFont = 'CaptionFont'
+    """Font used in window title bars."""
     IconFont = 'IconFont'
+    """Font used for icons in Explorer and similar views."""
     MenuFont = 'MenuFont'
+    """Font used for menus."""
     MessageFont = 'MessageFont'
+    """Font used in message boxes and many other places."""
     SmCaptionFont = 'SmCaptionFont'
     StatusFont = 'StatusFont'
+    """Font used in status bars."""
 
 
 LF_FULLFACESIZE = 64
@@ -186,9 +330,9 @@ def make_font_entry(field: Field,
     """  # noqa: E501
     if len(name) > LF_FULLFACESIZE:
         raise NameTooLong(name)
-    packed = pack('<5l8b64s', -((font_size_pt * dpi) // DEFAULT_DPI), width, escapement,
-                  orientation, weight, italic, underline, strike_out, char_set, out_precision,
-                  clip_precision, quality, pitch_and_family,
+    height = -((font_size_pt * dpi) // DEFAULT_DPI)
+    packed = pack('<5l8b64s', height, width, escapement, orientation, weight, italic, underline,
+                  strike_out, char_set, out_precision, clip_precision, quality, pitch_and_family,
                   name[:LF_FULLFACESIZE].encode('utf-16le').ljust(LF_FULLFACESIZE, b'\0'))
     lines: list[str] = []
     line = f'"{field}"=hex:'
