@@ -13,8 +13,8 @@ if TYPE_CHECKING:
     from .typing import StrPath
 
 DEFAULT_ACTIVE_KERNEL_NAME = 'linux'
-DEFAULT_KERNEL_LOCATION = '/usr/src'
-DEFAULT_MODULES_PATH = '/lib/modules/'
+DEFAULT_KERNEL_LOCATION = Path('/usr/src')
+DEFAULT_MODULES_PATH = Path('/lib/modules/')
 log = logging.getLogger(__name__)
 
 

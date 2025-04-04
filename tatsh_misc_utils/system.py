@@ -24,7 +24,7 @@ CHROME_DEFAULT_LOCAL_STATE_PATH = str(CHROME_DEFAULT_CONFIG_PATH / 'Local State'
 log = logging.getLogger(__name__)
 
 
-def wait_for_disc(drive_path: str = 'dev/sr0', *, sleep_time: float = 1.0) -> bool:
+def wait_for_disc(drive_path: StrPath = 'dev/sr0', *, sleep_time: float = 1.0) -> bool:
     """For Linux only."""
     import fcntl  # noqa: PLC0415
     with context_os_open(drive_path, os.O_RDONLY | os.O_NONBLOCK) as f:

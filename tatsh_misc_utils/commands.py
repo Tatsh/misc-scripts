@@ -134,16 +134,17 @@ log = logging.getLogger(__name__)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('drive_path', type=click.Path(exists=True, dir_okay=False, writable=True))
+@click.argument('drive_path',
+                type=click.Path(exists=True, dir_okay=False, writable=True, path_type=Path))
 @click.option('-w',
               '--wait-time',
               type=float,
               default=1.0,
               help='Wait time in seconds.',
               metavar='TIME')
-def wait_for_disc_main(drive_path: str, wait_time: float = 1.0) -> None:
+def wait_for_disc_main(drive_path: Path, wait_time: float = 1.0) -> None:
     """Wait for a disc in a drive to be ready."""
-    if not wait_for_disc(drive_path, sleep_time=wait_time):
+    if not wait_for_disc(str(drive_path), sleep_time=wait_time):
         raise click.Abort
 
 
@@ -191,9 +192,9 @@ def add_cdda_times_main(times: tuple[str, ...]) -> None:
 @click.argument('files',
                 metavar='FILE',
                 nargs=-1,
-                type=click.Path(exists=True, dir_okay=False, readable=True))
+                type=click.Path(exists=True, dir_okay=False, readable=True, path_type=Path))
 @click.option('-w', '--webpage', is_flag=True, help='Print the webpage URL (macOS only).')
-def where_from_main(files: Sequence[str], *, webpage: bool = False) -> None:
+def where_from_main(files: Sequence[Path], *, webpage: bool = False) -> None:
     """Display URL where a file was downloaded from."""
     has_multiple = len(files) > 1
     for arg in files:
@@ -240,8 +241,8 @@ def underscorize_main(file: TextIO) -> None:
 @click.argument('dirs',
                 nargs=-1,
                 metavar='DIR',
-                type=click.Path(exists=True, dir_okay=True, file_okay=False))
-def unpack_0day_main(dirs: Sequence[str]) -> None:
+                type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path))
+def unpack_0day_main(dirs: Sequence[Path]) -> None:
     """Unpack RAR files from 0day zip file sets."""
     for path in dirs:
         unpack_0day(path)
@@ -249,23 +250,21 @@ def unpack_0day_main(dirs: Sequence[str]) -> None:
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('path',
-                type=click.Path(exists=True, dir_okay=True, file_okay=False),
+                type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
                 default=DEFAULT_KERNEL_LOCATION)
 @click.option('--active-kernel-name',
               help='Kernel name like "linux".',
               default=DEFAULT_ACTIVE_KERNEL_NAME)
 @click.option('-m',
               '--modules-path',
-              type=click.Path(exists=True, dir_okay=True, file_okay=False),
+              type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
               help='Location where modules get installed, such as "/lib/modules".',
               default=DEFAULT_MODULES_PATH)
-@click.option('-q', '--quiet', help='Prevent output.', is_flag=True)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug logging.')
-def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
-                                       modules_path: str = DEFAULT_MODULES_PATH,
+def clean_old_kernels_and_modules_main(path: Path = DEFAULT_KERNEL_LOCATION,
+                                       modules_path: Path = DEFAULT_MODULES_PATH,
                                        active_kernel_name: str = DEFAULT_ACTIVE_KERNEL_NAME,
                                        *,
-                                       quiet: bool = False,
                                        debug: bool = False) -> None:
     """
     Remove inactive kernels and modules.
@@ -278,11 +277,13 @@ def clean_old_kernels_and_modules_main(path: str = DEFAULT_KERNEL_LOCATION,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('path', type=click.Path(exists=True, dir_okay=True, file_okay=False), default='.')
+@click.argument('path',
+                type=click.Path(exists=True, dir_okay=True, file_okay=False, path_type=Path),
+                default='.')
 @click.option('-d', '--depth', default=2, help='Maximum depth.', metavar='DEPTH')
 @click.option('-f', '--follow-symlinks', is_flag=True, help='Follow symbolic links.')
 @click.option('-o', '--output-file', type=click.File('w'), default=sys.stdout, help='Output file.')
-def generate_html_dir_tree_main(path: str,
+def generate_html_dir_tree_main(path: Path,
                                 *,
                                 output_file: TextIO,
                                 depth: int = 2,
@@ -302,7 +303,7 @@ def generate_html_dir_tree_main(path: str,
 @click.option('--bootfile',
               metavar='FILENAME',
               help='Set boot file',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('--bootinfotable', is_flag=True, help='Generate boot information table in boot file')
 @click.option('--optimize',
               is_flag=True,
@@ -314,14 +315,14 @@ def generate_html_dir_tree_main(path: str,
     metavar='FILENAME',
     help='Add one file or folder (include folder name and all files and folders under it)',
     multiple=True,
-    type=click.Path(exists=True))
+    type=click.Path(exists=True, path_type=Path))
 @click.option(
     '--dir',
     'dirs',
     metavar='DIRNAME',
     multiple=True,
     help='Add all files and folders under given directory (not include directory name itself)',
-    type=click.Path(exists=True))
+    type=click.Path(exists=True, path_type=Path))
 @click.option('--newdir', metavar='DIRNAME', help='Create a new directory')
 @click.option('-c', '--chdir', metavar='DIRNAME', help='Change current directory in ISO image')
 @click.option('-r',
@@ -340,20 +341,20 @@ def generate_html_dir_tree_main(path: str,
               'input_',
               metavar='FILENAME',
               help='Input ISO image',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-o', '--output', metavar='FILENAME', help='Output ISO image')
 @click.option('--bin2iso',
               metavar='FILENAME',
               help='Convert input CD/DVD image to ISO format',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('--dmg2iso',
               metavar='FILENAME',
               help='Convert input DMG image to ISO format',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('--bin2isz',
               metavar='FILENAME',
               help='Compress input CD/DVD image to ISZ format',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('--compress', help='Set compression level', type=click.IntRange(1, 16))
 @click.option('--encrypt', help='Set encryption method', type=click.IntRange(1, 3))
 @click.option('--password',
@@ -366,7 +367,7 @@ def generate_html_dir_tree_main(path: str,
               'list_',
               metavar='FILENAME',
               help='Create a list of files and folders in an ISO image',
-              type=click.Path(dir_okay=False))
+              type=click.Path(dir_okay=False, path_type=Path))
 @click.option('--get',
               metavar='FILENAME',
               help='Set a file or folder(full path should be specified) to be extracted')
@@ -374,7 +375,7 @@ def generate_html_dir_tree_main(path: str,
 @click.option('--cmd',
               metavar='FILENAME',
               help='Read arguments from a text file',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-l',
               '--ilong',
               is_flag=True,
@@ -393,21 +394,21 @@ def generate_html_dir_tree_main(path: str,
 @click.option('-d', '--debug', is_flag=True, help='Enable debug logging.')
 def ultraiso_main(ahide: str | None = None,
                   appid: str | None = None,
-                  bin2iso: str | None = None,
-                  bin2isz: str | None = None,
-                  bootfile: str | None = None,
+                  bin2iso: Path | None = None,
+                  bin2isz: Path | None = None,
+                  bootfile: Path | None = None,
                   chdir: str | None = None,
                   cmd: str | None = None,
                   compress: int | None = None,
-                  dirs: Sequence[str] | None = None,
-                  dmg2iso: str | None = None,
+                  dirs: Sequence[Path] | None = None,
+                  dmg2iso: Path | None = None,
                   encrypt: int | None = None,
                   extract: str | None = None,
-                  files: Sequence[str] | None = None,
+                  files: Sequence[Path] | None = None,
                   get: str | None = None,
                   hide: str | None = None,
-                  input_: str | None = None,
-                  list_: str | None = None,
+                  input_: Path | None = None,
+                  list_: Path | None = None,
                   newdir: str | None = None,
                   output: str | None = None,
                   password: str | None = None,
@@ -810,8 +811,8 @@ def supported_audio_input_formats_main(device: str, *, debug: bool = False) -> N
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False), nargs=-1)
-def add_info_json_main(filename: tuple[str], *, debug: bool = False) -> None:
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path), nargs=-1)
+def add_info_json_main(filename: Sequence[Path], *, debug: bool = False) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     for f in filename:
         add_info_json_to_media_file(f, debug=debug)
@@ -819,8 +820,8 @@ def add_info_json_main(filename: tuple[str], *, debug: bool = False) -> None:
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
-def display_info_json_main(filename: str, *, debug: bool = False) -> None:
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def display_info_json_main(filename: Path, *, debug: bool = False) -> None:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     try:
         click.echo(get_info_json(filename, raw=True))
@@ -837,9 +838,9 @@ def display_info_json_main(filename: str, *, debug: bool = False) -> None:
 @click.option('-f', '--font', default='Roboto', help='Font to use.')
 @click.option('-n', '--nvenc', is_flag=True, help='Use NVENC.')
 @click.option('-V', '--videotoolbox', is_flag=True, help='Use VideoToolbox.')
-@click.argument('audio_filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('audio_filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.argument('text')
-def audio2vid_main(audio_filename: str,
+def audio2vid_main(audio_filename: Path,
                    text: str,
                    font: str = 'Roboto',
                    *,
@@ -895,7 +896,7 @@ def slug_rename_main(filenames: tuple[str, ...],
                     'programs with --disable-explorer).'))
 @click.option('-E', '--eax', is_flag=True, help='Enable EAX.')
 @click.option('-g', '--gtk', is_flag=True, help='Enable Gtk+ theming.')
-@click.option('-r', '--prefix-root', type=click.Path(), help='Prefix root.')
+@click.option('-r', '--prefix-root', type=click.Path(path_type=Path), help='Prefix root.')
 @click.option('-S', '--sandbox', is_flag=True, help='Sandbox the prefix.')
 @click.option('--no-gecko', is_flag=True, help='Disable downloading Gecko automatically.')
 @click.option('--no-mono', is_flag=True, help='Disable downloading Mono automatically.')
@@ -922,7 +923,7 @@ def slug_rename_main(filenames: tuple[str, ...],
 @click.option('-x', '--dxva-vaapi', is_flag=True, help='Enable DXVA2 support with VA-API.')
 @click.option('--32', '_32bit', help='Use 32-bit prefix.', is_flag=True)
 def mkwineprefix_main(prefix_name: str,
-                      prefix_root: str,
+                      prefix_root: Path,
                       tricks: tuple[str, ...],
                       vd: str = 'off',
                       windows_version: WineWindowsVersion = '10',
@@ -1078,7 +1079,7 @@ def merge_dependabot_prs_main(username: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filenames', type=click.Path(exists=True), nargs=-1)
+@click.argument('filenames', type=click.Path(exists=True, path_type=Path), nargs=-1)
 @click.argument('target')
 @click.option('-C', 'compress', is_flag=True, help='Enable compression.')
 @click.option('-P', '--port', type=int, default=22, help='Port.')
@@ -1094,7 +1095,7 @@ def merge_dependabot_prs_main(username: str,
               '--dry-run',
               is_flag=True,
               help='Do not copy anything. Use with -d for testing.')
-def smv_main(filenames: str,
+def smv_main(filenames: Sequence[str],
              target: str,
              key_filename: str,
              port: int = 22,
@@ -1133,7 +1134,7 @@ def smv_main(filenames: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=-1)
+@click.argument('filenames', type=click.Path(exists=True, dir_okay=False, path_type=Path), nargs=-1)
 @click.option('--api-key', help='API key.', metavar='KEY')
 @click.option('--keyring-username', help='Keyring username override.', metavar='USERNAME')
 @click.option('--no-browser', is_flag=True, help='Do not copy URL to clipboard.')
@@ -1151,7 +1152,7 @@ def smv_main(filenames: str,
               metavar='PATH',
               help=('Install .desktop file. Argument is the installation prefix such as /usr. Use '
                     '- to install to user XDG directory.'))
-def upload_to_imgbb_main(filenames: tuple[str, ...],
+def upload_to_imgbb_main(filenames: Sequence[Path],
                          api_key: str | None = None,
                          keyring_username: str | None = None,
                          timeout: float = 5,
@@ -1233,12 +1234,15 @@ def cddb_query_main(args: tuple[str, ...], host: str | None = None, *, debug: bo
                           sort_keys=True))
 
 
+DEFAULT_DRIVE_SR0 = Path('/dev/sr0')
+
+
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('-D',
               '--drive',
               default='/dev/sr0',
               help='Optical drive path.',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-M',
               '--accept-first-cddb-match',
               is_flag=True,
@@ -1255,7 +1259,7 @@ def cddb_query_main(args: tuple[str, ...], host: str | None = None, *, debug: bo
               '--output-dir',
               help='Parent directory for album_dir. Defaults to current directory.')
 @click.option('-u', '--username', default=getpass.getuser(), help='Username for CDDB.')
-def ripcd_main(drive: str = '/dev/sr0',
+def ripcd_main(drive: Path = DEFAULT_DRIVE_SR0,
                album_artist: str | None = None,
                album_dir: str | None = None,
                cddb_host: str | None = None,
@@ -1393,10 +1397,13 @@ def flacted_main(files: tuple[str, ...],
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('paths', type=click.Path(exists=True, file_okay=False), nargs=-1)
+@click.argument('paths', type=click.Path(exists=True, file_okay=False, path_type=Path), nargs=-1)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-D', '--delete-paths', help='Delete paths after extraction.', is_flag=True)
-def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = False) -> None:
+def ke_ebook_ex_main(paths: Sequence[Path],
+                     *,
+                     debug: bool = False,
+                     delete_paths: bool = False) -> None:
     """Extract ebooks from RARs within Zip files."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     for path in paths:
@@ -1407,7 +1414,7 @@ def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = Fa
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('bundle', type=click.Path(dir_okay=True, file_okay=False))
+@click.argument('bundle', type=click.Path(dir_okay=True, file_okay=False, path_type=Path))
 @click.option('-E',
               '--env-var',
               'env_vars',
@@ -1415,7 +1422,7 @@ def ke_ebook_ex_main(paths: str, *, debug: bool = False, delete_paths: bool = Fa
               multiple=True,
               type=(str, str))
 @click.option('-r', '--retina', type=int, help='For macOS apps, force Retina support.')
-def patch_bundle_main(bundle: str,
+def patch_bundle_main(bundle: Path,
                       env_vars: tuple[tuple[str, str], ...],
                       *,
                       retina: bool = False) -> None:
@@ -1429,14 +1436,14 @@ def patch_bundle_main(bundle: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-o',
               '--output-dir',
               default='.',
-              type=click.Path(exists=True, file_okay=False),
+              type=click.Path(exists=True, file_okay=False, path_type=Path),
               help='Output directory.')
-def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> None:
+def gogextract_main(filename: Path, output_dir: Path, *, debug: bool = False) -> None:
     """Extract a Linux gog.com archive."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
     extract_gog(filename, output_dir)
@@ -1444,15 +1451,15 @@ def gogextract_main(filename: str, output_dir: str, *, debug: bool = False) -> N
 
 @click.command(context_settings=CONTEXT_SETTINGS | {'ignore_unknown_options': True})
 @click.argument('args', nargs=-1, type=click.UNPROCESSED)
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-S',
               '--very-silent',
               help='Pass /VERYSILENT (no windows will be displayed).',
               is_flag=True)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-p', '--prefix', help='Wine prefix path or name.')
-def winegoginstall_main(args: tuple[str, ...],
-                        filename: str,
+def winegoginstall_main(args: Sequence[str],
+                        filename: Path,
                         prefix: str,
                         *,
                         debug: bool = False,
@@ -1490,10 +1497,9 @@ def winegoginstall_main(args: tuple[str, ...],
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-@click.option('-o', '--output-file', type=click.File('w'), default=sys.stdout)
-def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool = False) -> None:
+def check_bookmarks_html_main(filename: Path, *, debug: bool = False) -> None:
     """Check for URLs that are not valid any more (status 404) and redirections."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     _, changed, not_found = check_bookmarks_html_urls(Path(filename).read_text(encoding='utf-8'))
@@ -1502,9 +1508,9 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('front_dir', type=click.Path(exists=True, dir_okay=True))
-@click.argument('rear_dir', type=click.Path(exists=True, dir_okay=True))
-@click.argument('output_dir', type=click.Path(dir_okay=True), default='.')
+@click.argument('front_dir', type=click.Path(exists=True, dir_okay=True, path_type=Path))
+@click.argument('rear_dir', type=click.Path(exists=True, dir_okay=True, path_type=Path))
+@click.argument('output_dir', type=click.Path(dir_okay=True, path_type=Path), default=Path())
 @click.option('--clip-length', help='Clip length in minutes.', type=int, default=3)
 @click.option('--hwaccel', help='-hwaccel string for ffmpeg.', default='auto')
 @click.option('--level', help='Level (HEVC).', type=int, default=5)
@@ -1544,9 +1550,9 @@ def check_bookmarks_html_main(filename: str, output_file: TextIO, *, debug: bool
 @click.option('-O', '--overwrite', is_flag=True, help='Overwrite existing files.')
 @click.option('-T', '--temp-dir', help='Temporary directory for processing.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-def encode_dashcam_main(front_dir: str,
-                        rear_dir: str,
-                        output_dir: str,
+def encode_dashcam_main(front_dir: Path,
+                        rear_dir: Path,
+                        output_dir: Path,
                         clip_length: int = 3,
                         hwaccel: str = 'auto',
                         level: int = 5,
@@ -1621,23 +1627,25 @@ def encode_dashcam_main(front_dir: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('rar_filename', type=click.Path(dir_okay=False, exists=True))
+@click.argument('rar_filename', type=click.Path(dir_okay=False, exists=True, path_type=Path))
 @click.option('--no-crc-check', is_flag=True, help='Disable CRC check.')
 @click.option('--test-extraction', help='Enable extraction test.', is_flag=True)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-D',
               '--device-name',
               help='Device name.',
-              type=click.Path(exists=True, dir_okay=False))
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-s', '--speed', type=int, help='Disc write speed.', default=8)
-@click.option('--sfv', help='SFV file.', type=click.Path(exists=True, dir_okay=False))
+@click.option('--sfv',
+              help='SFV file.',
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('--cdrecord-path', help='Path to cdrecord.', default='cdrecord')
 @click.option('--unrar-path', help='Path to unrar.', default='unrar')
-def burnrariso_main(rar_filename: str,
+def burnrariso_main(rar_filename: Path,
                     unrar_path: str = 'unrar',
                     cdrecord_path: str = 'cdrecord',
-                    device_name: str | None = None,
-                    sfv: str | None = None,
+                    device_name: Path | None = None,
+                    sfv: Path | None = None,
                     speed: int = 8,
                     *,
                     debug: bool = False,
@@ -1714,7 +1722,7 @@ def title_fixer_main(titles: tuple[str, ...],
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('local_state_path',
-                type=click.Path(dir_okay=False, exists=True),
+                type=click.Path(dir_okay=False, exists=True, path_type=Path),
                 metavar='LOCAL_STATE_PATH',
                 default=CHROME_DEFAULT_LOCAL_STATE_PATH)
 @click.option('-s',
@@ -1725,7 +1733,7 @@ def title_fixer_main(titles: tuple[str, ...],
               default=0.5,
               type=float,
               help='Time to sleep after attempting to kill the browser processes in seconds.')
-def chrome_bisect_flags_main(local_state_path: str,
+def chrome_bisect_flags_main(local_state_path: Path,
                              subprocess_name: str = 'chrome',
                              sleep_time: float = 0.5) -> None:
     """
@@ -1752,7 +1760,7 @@ def chrome_bisect_flags_main(local_state_path: str,
         for flag in flags:
             click.echo(f'- {flag}')
         local_state['browser']['enabled_labs_experiments'] = flags
-        with Path(local_state_path).open('w+', encoding='utf-8') as f:
+        with local_state_path.open('w+', encoding='utf-8') as f:
             json.dump(local_state, f, allow_nan=False)
         click.confirm('Start browser and test for the issue, then press enter', show_default=False)
         kill_processes_by_name(subprocess_name, sleep_time, force=True)
@@ -1771,7 +1779,7 @@ def chrome_bisect_flags_main(local_state_path: str,
             return bad_flag or do_test(flags[len_flags // 2:], local_state)
         return None
 
-    p_ls = Path(local_state_path).resolve(strict=True)
+    p_ls = local_state_path.resolve(strict=True)
     click.echo(f'Using "{local_state_path}".')
     with p_ls.open(encoding='utf-8') as f:
         local_state_data = json.load(f)
@@ -1800,9 +1808,9 @@ def chrome_bisect_flags_main(local_state_path: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filenames', type=click.Path(exists=True, dir_okay=False), nargs=2)
+@click.argument('filenames', type=click.Path(exists=True, dir_okay=False, path_type=Path), nargs=2)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-def mpv_sbs_main(filenames: tuple[str, str],
+def mpv_sbs_main(filenames: tuple[Path, Path],
                  max_width: int = 3840,
                  min_height: int = 31,
                  min_width: int = 31,
@@ -1862,13 +1870,13 @@ def mpv_sbs_main(filenames: tuple[str, str],
              f'[vid1_scale][vid{second_stream_index}_crop] hstack [vo]'))
     cmd = ('mpv', '--hwdec=no', '--config=no', filename1, f'--external-file={filename2}',
            f'--lavfi-complex={filter_chain}')
-    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    log.debug('Running: %s', ' '.join(quote(str(x)) for x in cmd))
     sp.run(cmd, check=True)
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
-@click.argument('output', type=click.Path(dir_okay=False), required=False)
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument('output', type=click.Path(dir_okay=False, path_type=Path), required=False)
 @click.option('--codec',
               help='Video codec.',
               type=click.Choice(('libx264', 'libx265')),
@@ -1877,8 +1885,8 @@ def mpv_sbs_main(filenames: tuple[str, str],
 @click.option('--crf', help='CRF value.', type=int, default=20)
 @click.option('--delete-after', help='Send processed file to wastebin.', is_flag=True)
 @click.option('-f', '--fast', help='Use less filters (lower quality).', is_flag=True)
-def hlg2sdr_main(filename: str,
-                 output: str | None,
+def hlg2sdr_main(filename: Path,
+                 output: Path | None,
                  crf: int = 20,
                  codec: Literal['libx264', 'libx265'] = 'libx265',
                  *,
@@ -1890,10 +1898,12 @@ def hlg2sdr_main(filename: str,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('filename', type=click.Path(exists=True, dir_okay=False))
+@click.argument('filename', type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-@click.option('--input-json', help='Input JSON file.', type=click.Path(exists=True, dir_okay=False))
-def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = False) -> None:
+@click.option('--input-json',
+              help='Input JSON file.',
+              type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def tbc2srt_main(filename: Path, input_json: Path | None = None, *, debug: bool = False) -> None:
     """
     Convert VBI data in a ld-decode/vhs-decode TBC file to SubRip format.
     
@@ -1904,9 +1914,9 @@ def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = 
     scc_file = p_filename.parent / f'{p_filename.stem}.scc'
     bin_file = p_filename.parent / f'{p_filename.stem}.bin'
     output_json_file = p_filename.parent / f'{p_filename.stem}.json'
-    input_json = input_json or str(p_filename.parent / 'input.json')
-    cmd: tuple[str, ...] = ('ld-process-vbi', '--input-json', input_json, '--output-json',
-                            str(output_json_file), filename)
+    input_json = input_json or p_filename.parent / 'input.json'
+    cmd: tuple[str, ...] = ('ld-process-vbi', '--input-json', str(input_json), '--output-json',
+                            str(output_json_file), str(filename))
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     sp.run(cmd, check=True)
     cmd = ('ld-export-metadata', '--closed-captions', str(scc_file), str(output_json_file))
@@ -1922,9 +1932,9 @@ def tbc2srt_main(filename: str, input_json: str | None = None, *, debug: bool = 
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.argument('directory', type=click.Path(exists=True, file_okay=False))
+@click.argument('directory', type=click.Path(exists=True, file_okay=False, path_type=Path))
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-def flac_dir_finalize_main(directory: str, *, debug: bool = False) -> None:
+def flac_dir_finalize_main(directory: Path, *, debug: bool = False) -> None:
     def get_flac_tags(flac_path: Path) -> Iterator[tuple[str, str]]:
         def _split_eq(x: str) -> tuple[str, str] | None:
             y = x.split('=', 1)
@@ -2002,11 +2012,12 @@ def kill_wine_main() -> None:
 @click.option('-c',
               '--config-path',
               help='Chromium browser configuration path. Defaults to Google Chrome.',
-              default=str(CHROME_DEFAULT_CONFIG_PATH))
+              default=CHROME_DEFAULT_CONFIG_PATH,
+              path_type=Path)
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-m', '--masked', help='Copy icons to masked directory.', is_flag=True)
 @click.option('-p', '--profile', help='Profile name.', default='Default')
-def fix_chromium_pwa_icon_main(config_path: str,
+def fix_chromium_pwa_icon_main(config_path: Path,
                                app_id: str,
                                icon_src_uri: str,
                                profile: str = 'Default',

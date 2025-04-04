@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 
 
 @contextlib.contextmanager
-def context_os_open(path: str,
+def context_os_open(path: StrPath,
                     flags: int,
                     mode: int = 511,
                     *,
@@ -122,7 +122,7 @@ GOG_FILESIZE_RE = re.compile(r'filesizes="(\d+?)"')
 GOG_OFFSET_RE = re.compile(r'offset=`head -n (\d+?) "\$0"')
 
 
-def extract_gog(filename: str, output_dir: StrPath) -> None:
+def extract_gog(filename: StrPath, output_dir: StrPath) -> None:
     """Extract a Linux gog.com archive."""
     output_dir = Path(output_dir)
     input_path = Path(filename).resolve(strict=True)

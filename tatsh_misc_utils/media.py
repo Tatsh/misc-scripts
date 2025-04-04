@@ -373,7 +373,7 @@ class CDROMTOCHeader(ctypes.Structure):
                                                  ('cdth_trk1', ctypes.c_ubyte)]
 
 
-def get_cd_disc_id(drive: str) -> str:
+def get_cd_disc_id(drive: StrPath) -> str:
     """
     Calculate a CDDB disc ID.
 
@@ -549,7 +549,7 @@ def cddb_query(disc_id: str,
                            tuple(x[1] for x in sorted(tracks.items(), key=operator.itemgetter(0))))
 
 
-def rip_cdda_to_flac(drive: str,
+def rip_cdda_to_flac(drive: StrPath,
                      *,
                      accept_first_cddb_match: bool = True,
                      album_artist: str | None = None,
