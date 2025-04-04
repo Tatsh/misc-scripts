@@ -2045,7 +2045,11 @@ def fix_chromium_pwa_icon_main(config_path: Path,
 @click.option('-f', '--font', default='Noto Sans Regular', help='Font to use.')
 @click.option('-s', '--font-size', default=9, type=int, help='Font size in points.')
 def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool = False) -> None:
-    """Set all Wine fonts to be the one passed in."""
+    """
+    Set all Wine fonts to be the one passed in.
+    
+    This will run on Windows but it is not recommended on newer than Windows 7.
+    """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     with NamedTemporaryFile(mode='w+',
                             suffix='.reg',
@@ -2056,7 +2060,7 @@ def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool =
         f.write(r'[HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics]')
         f.write(''.join(make_font_entry(item, font, dpi=dpi) for item in Field))
         f.write('\n')
-    cmd = ('wine', 'regedit', '/S', f.name)
+    cmd = ('wine', 'regedit', '/S', f.name) if not IS_WINDOWS else ('regedit', '/S', f.name)
     log.debug('Registry file content:\n%s', Path(f.name).read_text(encoding='utf-8').strip())
     log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
     env = {'HOME': os.environ['HOME']}
@@ -2084,9 +2088,13 @@ def patch_ultraiso_font_main(exe: Path | None = None,
                              font: str = 'Noto Sans',
                              *,
                              debug: bool = False) -> None:
-    """Patches UltraISO's hard-coded font."""
+    """Patch UltraISO's hard-coded font."""
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     if not exe:
-        exe = (Path(os.environ.get('WINEPREFIX', str(Path.home() / '.wine'))) / 'drive_c' /
-               'Program Files (x86)' / 'UltraISO' / 'UltraISO.exe')
+        if not IS_WINDOWS:
+            exe = (Path(os.environ.get('WINEPREFIX', str(Path.home() / '.wine'))) / 'drive_c' /
+                   'Program Files (x86)' / 'UltraISO' / 'UltraISO.exe')
+        else:
+            exe = (Path(os.environ.get('PROGRAMFILES(X86)', os.environ.get('PROGRAMFILES', ''))) /
+                   'UltraISO' / 'UltraISO.exe')
     patch_ultraiso_font(exe, font)
