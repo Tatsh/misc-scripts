@@ -3,17 +3,24 @@ from __future__ import annotations
 from pathlib import Path
 from shlex import quote
 from time import sleep
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
+import configparser
 import json
 import logging
 import os
 import plistlib
+import re
 import subprocess as sp
 import sys
+
+from binaryornot.helpers import is_binary_string
 
 from .io import context_os_open
 from .string import slugify
 from .typing import CDStatus, StrPath
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 __all__ = ('CHROME_DEFAULT_CONFIG_PATH', 'CHROME_DEFAULT_LOCAL_STATE_PATH', 'IS_LINUX',
            'find_bluetooth_device_info_by_name', 'inhibit_notifications', 'slug_rename',
@@ -250,3 +257,69 @@ def reset_tpm_enrollment(uuid: str, *, dry_run: bool = True) -> None:
         log.debug('Running: %s', cryptenroll_cmd_quoted)
         sp.run(cryptenroll_cmd, check=True)
         log.info('Reset TPM enrolment for %s.', uuid)
+
+
+IGNORED_GROUPS = {
+    'KFileDialog Settings', 'FileDialogSize', 'Recent Files[$e]', 'Recent URLs[$e]', 'Recent Files',
+    '$Version'
+}
+DEFAULT_FILE = Path.home() / '.config' / 'kdeglobals'
+POSITION_RE = (
+    r'(^(Height|Width|Window-Maximized) [0-9]+)|'
+    r'((e?DP-[0-9]+|HDMI-[0-9]+(-[0-9]+)?|VNC-[0-9]+)$)|'
+    r'((e?DP-[0-9]+|HDMI-[0-9]+(-[0-9]+)?|VNC-[0-9]+) (Height|Width|(X|Y)Position|Window-Maximized))|'  # noqa: E501
+    r'([0-9]+x[0-9]+ screen: (Height|Width|(X|Y)Position)$)|'
+    r'([0-9] screens: (Height|Width|(X|Y)Position)$)')
+STATE_RE = r'^AAAA/'
+
+
+def get_kwriteconfig_commands(file: StrPath = DEFAULT_FILE) -> Iterator[str]:
+    home = str(Path.home())
+    config = configparser.ConfigParser(delimiters=('=',), interpolation=None)
+    config.optionxform = str  # type: ignore[assignment]
+    file = Path(file).resolve(strict=True)
+    displayed_file = re.sub(rf'^{home}/', '~/', str(file))
+    try:
+        config.read(file)
+    except (UnicodeDecodeError, configparser.MissingSectionHeaderError, configparser.ParsingError):
+        log.warning('Cannot parse "%s".', file)
+        return
+    for section in config.sections():
+        if '][' in section:
+            log.debug('Skipping unsupported section "%s".', section)
+            continue
+        if section in IGNORED_GROUPS:
+            log.debug('Ignoring section "%s".', section)
+            continue
+        for key, value in config[section].items():
+            if is_binary_string(value.encode()):
+                log.debug('Ignoring binary value in key %s.', key)
+                continue
+            is_int = re.match(r'^-?[0-9]+$', value)
+            if re.search(POSITION_RE, key):
+                log.debug('Skipping metrics key "%s".', key)
+                continue
+            if key == 'State' and re.search(STATE_RE, value):
+                log.debug('Skipping state key.')
+                continue
+            if key.endswith('[$e]'):
+                log.debug('Skipping special key "%s".', key)
+                continue
+            type_ = None
+            try:
+                is_file = '/' in value and Path(value).exists()
+            except OSError:
+                is_file = False
+            if is_file:
+                type_ = 'path'
+            elif re.match(r'^(?:1|true|false|on|yes)$', value):
+                type_ = 'bool'
+            elif is_int:
+                type_ = 'int'
+            cmd: tuple[str, ...] = ('kwriteconfig6',)
+            if file != DEFAULT_FILE:
+                cmd += ('--file', displayed_file)
+            if type_:
+                cmd += ('--type', quote(type_))
+            cmd += ('--group', quote(section), '--key', quote(key), quote(value))
+            yield ' '.join(cmd)

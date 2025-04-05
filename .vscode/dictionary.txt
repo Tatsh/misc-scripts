@@ -282,12 +282,15 @@ joinpath
 jsonnet
 jsonschema
 kakasi
+kconfig
+kdeglobals
 kdialog
 keepends
 khtml
 killall
 klipper
 kwargs
+kwriteconfig
 l
 lahu
 laka

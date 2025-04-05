@@ -88,6 +88,7 @@ from .system import (
     IS_WINDOWS,
     MultipleKeySlots,
     find_bluetooth_device_info_by_name,
+    get_kwriteconfig_commands,
     inhibit_notifications,
     kill_gamescope,
     kill_wine,
@@ -2117,7 +2118,14 @@ def reset_tpm_enrollments_main(uuids: Sequence[str],
                                *,
                                all_: bool = False,
                                debug: bool = False,
-                               force: bool = True) -> None:
+                               force: bool = False) -> None:
+    """
+    Reset TPM enrolments that were created by systemd-cryptenroll -tpm2-device=auto.
+
+    Requires root privileges to work.
+
+    Only crypttab files with UUID= entries are supported.
+    """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     if all_:
         uuids = [
@@ -2132,3 +2140,20 @@ def reset_tpm_enrollments_main(uuids: Sequence[str],
         except MultipleKeySlots:
             log.exception('Cannot reset TPM enrolment for %s.', uuid)
             continue
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('files', type=click.Path(exists=True, file_okay=False, path_type=Path), nargs=-1)
+@click.option('-a', '--all', 'all_', is_flag=True, help='Find compatible files and process them.')
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+def kconfig_to_commands_main(files: Sequence[Path],
+                             *,
+                             all_: bool = False,
+                             debug: bool = False) -> None:
+    """Generate kwriteconfig6 commands to set (Plasma) settings from your current settings."""
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    if all_:
+        files = [*list((Path.home() / '.config').glob('*rc')), Path.home() / '.config/kdeglobals']
+    for file in sorted(files):
+        for cmd in get_kwriteconfig_commands(file):
+            click.echo(cmd)
