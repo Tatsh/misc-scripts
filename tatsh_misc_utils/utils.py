@@ -1,6 +1,7 @@
 """Uncategorised utilities."""
 from __future__ import annotations
 
+from http import HTTPStatus
 from io import BytesIO
 from math import trunc
 from os import environ
@@ -8,7 +9,7 @@ from pathlib import Path
 from shlex import quote
 from shutil import copyfile, rmtree, which
 from signal import SIGTERM
-from typing import TYPE_CHECKING, Literal, NamedTuple, overload
+from typing import TYPE_CHECKING, Literal, NamedTuple, overload, override
 import csv
 import logging
 import os
@@ -20,6 +21,7 @@ import tarfile
 import tempfile
 import time
 
+from requests.adapters import BaseAdapter
 import platformdirs
 import requests
 import xz
@@ -28,7 +30,7 @@ from .media import CD_FRAMES
 from .system import IS_WINDOWS, kill_wine
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Iterable, Mapping
 
     from paramiko import SFTPClient, SSHClient
 
@@ -569,3 +571,32 @@ def kill_processes_by_name(name: str,
                        check=False,
                        capture_output=True)
     return pids if wait_timeout else None
+
+
+class DataAdapter(BaseAdapter):
+    """
+    Adapter for requests to handle data: URLs.
+    
+    Example use:
+
+    .. code-block:: python
+       s = requests.Session()
+       s.mount('data:', DataAdapter())
+    """
+    @override
+    def send(self,
+             request: requests.PreparedRequest,
+             stream: bool = False,
+             timeout: float | tuple[float, float] | tuple[float, None] | None = None,
+             verify: bool | str = True,
+             cert: bytes | str | tuple[bytes | str, bytes | str] | None = None,
+             proxies: Mapping[str, str] | None = None) -> requests.Response:
+        r = requests.Response()
+        assert request.url is not None
+        r._content = request.url[5:].encode()  # noqa: SLF001
+        r.status_code = HTTPStatus.OK
+        return r
+
+    @override
+    def close(self) -> None:
+        pass
