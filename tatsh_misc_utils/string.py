@@ -100,7 +100,7 @@ def unix_path_to_wine(path: StrPath) -> str:
 def get_last_chrome_major_version() -> str:
     """
     Get last major Chrome version from the profile directory.
-    
+
     Tries the following, in order:
 
     * Chrome Beta
@@ -171,13 +171,13 @@ def sanitize(s: str, *, restricted: bool = True) -> str:
 
 
 @cache
-def is_url(filename: str) -> bool:
+def is_url(filename: StrPath) -> bool:
     """
     Detect if ``filename`` is a URL.
 
     This is the same method mpv uses to decide this.
     """
-    parts = filename.split('://', 1)
+    parts = str(filename).split('://', 1)
     if len(parts) < 2:  # noqa: PLR2004
         return False
     # protocol prefix has no special characters => it's a URL
@@ -323,7 +323,7 @@ FULLWIDTH_MAP = (
 def fullwidth_to_narrow(s: str) -> str:
     """
     Convert fullwidth characters in ``s`` to narrow or halfwidth.
-    
+
     Unlike Unidecode this will convert ``'￥'`` to its halfwidth form ``'¥'``.
     """
     for find, replace in FULLWIDTH_MAP:
@@ -350,7 +350,7 @@ def is_roman_numeral(string: str) -> bool:
 def fix_apostrophes(word: str) -> str:
     """
     Fix letters around an apostrophe.
-    
+
     Example: ``"Don'T"`` becomes ``"Don't"``.
     """
     if "'" not in word:

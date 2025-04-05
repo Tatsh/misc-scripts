@@ -48,7 +48,7 @@ class ClipPrecision(enum.IntEnum):
     """
     When this value is used, the rotation for all fonts depends on whether the orientation of the
     coordinate system is left-handed or right-handed.If not used, device fonts always rotate
-    counterclockwise, but the rotation of other fonts is dependent on the orientation of the
+    counter-clockwise, but the rotation of other fonts is dependent on the orientation of the
     coordinate system.
     """
     CLIP_MASK = 0xF
@@ -65,7 +65,7 @@ class ClipPrecision(enum.IntEnum):
 class CharacterSet(enum.IntEnum):
     """
     The character set.
-    
+
     Fonts with other character sets may exist in the operating system. If an application uses a font
     with an unknown character set, it should not attempt to translate or interpret strings that are
     rendered with that font.
@@ -104,7 +104,7 @@ class CharacterSet(enum.IntEnum):
 class OutputPrecision(enum.IntEnum):
     """
     The output precision.
-    
+
     The output precision defines how closely the output must match the requested font's height,
     width, character orientation, escapement, pitch, and font type.
     """
@@ -155,7 +155,7 @@ class OutputPrecision(enum.IntEnum):
 class Pitch(enum.IntEnum):
     """
     The pitch and family of the font.
-    
+
     In the ``iPitchAndFamily`` argument to ``CreateFontW``, these values represent the two low-order
     bits.
     """
@@ -170,8 +170,8 @@ class Family(enum.IntEnum):
     Font Family.
 
     Font families describe the look of a font in a general way. They are intended for specifying
-    fonts when the exact typeface desired is not available. 
-    
+    fonts when the exact typeface desired is not available.
+
     In the ``iPitchAndFamily`` argument to ``CreateFontW``, these values represent bits 4 through 7.
     """
     FF_DECORATIVE = 0x50
@@ -200,7 +200,7 @@ class Quality(enum.IntEnum):
 
     The output quality defines how carefully the graphics device interface (GDI) must attempt to
     match the logical-font attributes to those of an actual physical font.
-    
+
     If neither ``ANTIALIASED_QUALITY`` nor ``NONANTIALIASED_QUALITY`` is selected, the font is
     antialiased only if the user chooses smooth screen fonts in Control Panel.
     """
@@ -219,7 +219,7 @@ class Quality(enum.IntEnum):
     fonts, scaling is enabled, which means that more font sizes are available, but the quality may
     be lower. Bold, italic, underline, and strikeout fonts are synthesized if necessary.
     """
-    NONANTIALIASED_QUALITcY = 3
+    NONANTIALIASED_QUALITY = 3
     """Font is never antialiased."""
     PROOF_QUALITY = 2
     """
@@ -276,7 +276,7 @@ def make_font_entry(field: Field,
                     weight: Weight = Weight.FW_NORMAL,
                     width: int = 0) -> str:
     r"""
-    Generate a string for a ``.reg`` file to set a font in ``HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics``. 
+    Generate a string for a ``.reg`` file to set a font in ``HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics``.
 
     This is used to set the font for the caption, icon, menu, message, small caption, and status
     fonts. The font name must be less than 64 characters.

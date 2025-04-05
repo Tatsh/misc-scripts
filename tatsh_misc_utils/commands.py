@@ -677,10 +677,10 @@ def is_bin_main(file: BytesIO) -> None:
 @click.command(context_settings={**CONTEXT_SETTINGS, 'auto_envvar_prefix': 'UMPV'})
 @click.option('-d', '--debug', is_flag=True)
 @click.option('--mpv-command', default='mpv', help='mpv command including arguments.')
-@click.argument('files', nargs=-1)
-def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = False) -> int:
+@click.argument('files', type=click.Path(path_type=Path), nargs=-1)
+def umpv_main(files: Sequence[Path], mpv_command: str = 'mpv', *, debug: bool = False) -> int:
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
-    fixed_files = ((p if is_url(p) else str(Path(p).resolve(strict=True))) for p in files)
+    fixed_files = ((p if is_url(p) else str(p.resolve(strict=True))) for p in files)
     socket_path = str(user_state_path() / 'umpv-socket')
     sock = None
     socket_connected = False
@@ -702,7 +702,7 @@ def umpv_main(files: Sequence[str], mpv_command: str = 'mpv', *, debug: bool = F
         # Unhandled race condition: what if mpv is terminating right now?
         for f in fixed_files:
             # escape: \ \n "
-            g = f.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
+            g = str(f).replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n')
             log.debug('Loading file "%s"', f)
             sock.send(f'raw loadfile "{g}"\n'.encode())
     else:
@@ -1007,7 +1007,7 @@ def unregister_wine_file_associations_main(*, debug: bool = False) -> None:
 def wineshell_main(prefix_name: str, *, debug: bool = False) -> None:
     """
     Start a new shell with WINEPREFIX set up.
-    
+
     For Bash and similar shells only.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.ERROR)
@@ -1466,7 +1466,7 @@ def winegoginstall_main(args: Sequence[str],
                         very_silent: bool = False) -> None:
     """
     Silent installer for GOG InnoSetup-based releases.
-    
+
     This calls the installer with the following arguments:
 
     /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /NOCANCEL /NORESTART /SILENT
@@ -1577,19 +1577,19 @@ def encode_dashcam_main(front_dir: Path,
                         overwrite: bool = False) -> None:
     """
     Batch encode dashcam footage, merging rear and front camera footage.
-    
+
     This command's defaults are intended for use with Red Tiger dashcam output and file structure.
 
     The rear camera view will be placed in the bottom right of the video scaled by dividing the
     width and height by the --rear-view-scale-divisor value specified. It will also be cropped using
     the --rear-crop value unless --no-rear-crop is passed.
-    
+
     Files are automatically grouped using the regular expression passed with -M/--match-regexp. This
     RE must contain at least one group and only the first group will be considered. Make dubious use
     of non-capturing groups if necessary. The captured group string is expected to be usable with
     the time format specified with --time-format (see strptime documentation at
     https://docs.python.org/3/library/datetime.html#datetime.datetime.strptime).
-    
+
     In many cases, the camera leaves behind stray rear camera files (usually no more than one per
     group and always a video without a matching front video file the end). These are automatically
     ignored if possible. This behaviour can be disabled by passing --no-fix-groups.
@@ -1597,7 +1597,7 @@ def encode_dashcam_main(front_dir: Path,
     Original files' whose content is successfully converted are sent to the wastebin.
 
     Example use:
-    
+
         encode-dashcam Movie_F/ Movie_R/ ~/output_dir
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
@@ -1906,7 +1906,7 @@ def hlg2sdr_main(filename: Path,
 def tbc2srt_main(filename: Path, input_json: Path | None = None, *, debug: bool = False) -> None:
     """
     Convert VBI data in a ld-decode/vhs-decode TBC file to SubRip format.
-    
+
     Requires the following: ld-process-vbi, ld-export-metadata, scc2raw.pl, ccextractor.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
@@ -2013,7 +2013,7 @@ def kill_wine_main() -> None:
               '--config-path',
               help='Chromium browser configuration path. Defaults to Google Chrome.',
               default=CHROME_DEFAULT_CONFIG_PATH,
-              path_type=Path)
+              type=click.Path(exists=True, path_type=Path))
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-m', '--masked', help='Copy icons to masked directory.', is_flag=True)
 @click.option('-p', '--profile', help='Profile name.', default='Default')
@@ -2027,7 +2027,7 @@ def fix_chromium_pwa_icon_main(config_path: Path,
                                monochrome: bool = False) -> None:
     """
     Fix a Chromium PWA icon that failed to sync.
-    
+
     For more information see https://issues.chromium.org/issues/40595456.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
@@ -2047,7 +2047,7 @@ def fix_chromium_pwa_icon_main(config_path: Path,
 def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool = False) -> None:
     """
     Set all Wine fonts to be the one passed in.
-    
+
     This will run on Windows but it is not recommended on newer than Windows 7.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
