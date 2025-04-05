@@ -115,6 +115,7 @@ datamode
 dataoffset
 datetime
 davidanson
+dbus
 dcterms
 debugpy
 deepcopy

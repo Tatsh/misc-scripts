@@ -166,6 +166,53 @@ def find_bluetooth_device_info_by_name(name: str) -> tuple[str, dict[str, Any]]:
     raise KeyError(name)
 
 
+def pan_connect(device_mac: str, hci: str = 'hci0') -> None:
+    """
+    Connect a Bluetooth PAN device for internet access.
+    
+    For Linux with NetworkManager only.
+
+    This function must be called and then waited by an event loop.
+
+    Translation of the following command:
+
+    ... code-block:: bash
+       dbus-send --system --type=method_call --dest=org.bluez \
+           /org/bluez/hci0/dev_{MAC with : replaced by _} \
+           org.bluez.Network1.Connect \
+           string:nap
+    """
+    if not IS_LINUX:
+        raise NotImplementedError
+    from pydbus import SystemBus  # noqa: PLC0415
+    device_mac = f"dev_{device_mac.upper().replace(':', '_')}"
+    device = SystemBus().get('org.bluez', f'/org/bluez/{hci}/{device_mac}')
+    device.Connect('nap')
+
+
+def pan_disconnect(device_mac: str, hci: str = 'hci0') -> None:
+    """
+    Disconnect a Bluetooth PAN device.
+    
+    For Linux with NetworkManager only.
+
+    This function must be called and then waited by an event loop.
+
+    Translation of the following command:
+
+    ... code-block:: bash
+       dbus-send --system --type=method_call --dest=org.bluez \
+           /org/bluez/hci0/dev_{MAC with : replaced by _} \
+           org.bluez.Network1.Disconnect
+    """
+    if not IS_LINUX:
+        raise NotImplementedError
+    from pydbus import SystemBus  # noqa: PLC0415
+    device_mac = f"dev_{device_mac.upper().replace(':', '_')}"
+    device = SystemBus().get('org.bluez', f'/org/bluez/{hci}/{device_mac}')
+    device.Disconnect()
+
+
 def slug_rename(path: StrPath, *, no_lower: bool = False) -> StrPath:
     path = Path(path).resolve(strict=True)
     parent = path.parent
