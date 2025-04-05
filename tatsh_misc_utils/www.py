@@ -277,29 +277,28 @@ def fix_chromium_pwa_icon(config_path: StrPath,
                           monochrome: bool = False) -> None:
     """
     Fix a Chromium PWA icon that failed to sync.
-    
+
     See Also
     --------
     https://issues.chromium.org/issues/40595456
     """
     from PIL import Image  # noqa: PLC0415
     config_path = Path(config_path) / profile / 'Web Applications' / app_id
-    r = requests.get(icon_src_uri, headers={'user-agent': generate_chrome_user_agent()}, timeout=15)
+    r = requests.get(icon_src_uri, timeout=15)
     r.raise_for_status()
     img = Image.open(BytesIO(r.content))
     width, height = img.size
     if width != height:
         msg = 'Icon is not square.'
         raise ValueError(msg)
-    sizes = [1 << x for x in range(4, width.bit_length())]
+    sizes = reversed([1 << x for x in range(4, min(10, width.bit_length()))])
     for size in sizes:
-        img.resize((size, size),
-                   Image.Resampling.LANCZOS).save(config_path / 'Icons' / f'{size}.png')
+        img.resize((size, size), Image.LANCZOS).save(config_path / 'Icons' / f'{size}.png')
     if masked:
         for size in sizes:
-            img.resize((size, size), Image.Resampling.LANCZOS).save(
-                config_path / 'Icons Maskable' / f'{size}.png')
+            img.resize((size, size),
+                       Image.LANCZOS).save(config_path / 'Icons Maskable' / f'{size}.png')
     if monochrome:
         for size in sizes:
-            img.resize((size, size), Image.Resampling.LANCZOS).save(
-                config_path / 'Icons Monochrome' / f'{size}.png')
+            img.resize((size, size),
+                       Image.LANCZOS).save(config_path / 'Icons Monochrome' / f'{size}.png')
