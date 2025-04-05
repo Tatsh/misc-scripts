@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from shlex import quote
 from time import sleep
 from typing import Any, cast
+import json
 import logging
 import os
 import plistlib
+import subprocess as sp
 import sys
 
 from .io import context_os_open
@@ -202,3 +205,48 @@ def kill_wine() -> None:
                  if x.info['name'] in {'wineserver', 'wine-preloader', 'wine64-preloader'} or (
                      x.info['name'].lower().endswith('.exe'))):
         proc.kill()
+
+
+class MultipleKeySlots(Exception):
+    """Exception raised when a device has more than one keyslot."""
+    def __init__(self, dev: str) -> None:
+        super().__init__(f'Device {dev} has more than one keyslot. This is not supported.')
+
+
+def reset_tpm_enrollment(uuid: str, *, dry_run: bool = True) -> None:
+    """
+    Reset the systemd-cryptsetup TPM enrolment for a device.
+    
+    Requires root privileges.
+    """
+    dev = f'/dev/disk/by-uuid/{uuid}'
+    cmd = ('cryptsetup', 'luksDump', '--dump-json-metadata', dev)
+    log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
+    info = json.loads(sp.run(cmd, check=True, capture_output=True).stdout)
+    systemd_tokens = [(k, x) for k, x in info['tokens'].items() if x['type'] == 'systemd-tpm2']
+    if not systemd_tokens:
+        log.debug('No tokens found for device %s.', dev)
+        return
+    systemd_token_id = systemd_tokens[0][0]
+    n_keyslots = len(info['tokens'][systemd_token_id]['keyslots'])
+    if n_keyslots > 1:
+        raise MultipleKeySlots(dev)
+    slot = info['tokens'][systemd_token_id]['keyslots'][0]
+    luks_kill_slot_cmd = ('cryptsetup', 'luksKillSlot', dev, slot)
+    luks_kill_slot_cmd_quoted = ' '.join(quote(x) for x in luks_kill_slot_cmd)
+    luks_token_remove_cmd = ('cryptsetup', 'token', 'remove', f'--token-id={systemd_token_id}', dev)
+    luks_token_remove_cmd_quoted = ' '.join(quote(x) for x in luks_token_remove_cmd)
+    cryptenroll_cmd = ('systemd-cryptenroll', '--tpm2-device=auto', dev)
+    cryptenroll_cmd_quoted = ' '.join(quote(x) for x in cryptenroll_cmd)
+    if dry_run:
+        log.info('Would run: %s', luks_kill_slot_cmd_quoted)
+        log.info('Would run: %s', luks_token_remove_cmd_quoted)
+        log.info('Would run: %s', cryptenroll_cmd_quoted)
+    else:
+        log.debug('Running: %s', luks_kill_slot_cmd_quoted)
+        sp.run(luks_kill_slot_cmd, check=True)
+        log.debug('Running: %s', luks_token_remove_cmd_quoted)
+        sp.run(luks_token_remove_cmd, check=True)
+        log.debug('Running: %s', cryptenroll_cmd_quoted)
+        sp.run(cryptenroll_cmd, check=True)
+        log.info('Reset TPM enrolment for %s.', uuid)

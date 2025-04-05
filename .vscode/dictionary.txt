@@ -105,6 +105,7 @@ cpusubtype
 cputype
 crit
 crossorigin
+cryptenroll
 cscript
 cuvid
 cygpath
@@ -143,6 +144,8 @@ elif
 endianness
 endswith
 enoent
+enrollment
+enrollments
 epilog
 epqrv
 epub
@@ -307,6 +310,7 @@ loglevel
 loguru
 lsregister
 lstrip
+luks
 lxml
 maa
 maahu

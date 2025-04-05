@@ -86,11 +86,13 @@ from .system import (
     CHROME_DEFAULT_LOCAL_STATE_PATH,
     IS_LINUX,
     IS_WINDOWS,
+    MultipleKeySlots,
     find_bluetooth_device_info_by_name,
     inhibit_notifications,
     kill_gamescope,
     kill_wine,
     patch_macos_bundle_info_plist,
+    reset_tpm_enrollment,
     slug_rename,
     wait_for_disc,
 )
@@ -2047,8 +2049,8 @@ def fix_chromium_pwa_icon_main(config_path: Path,
 def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool = False) -> None:
     """
     Set all Wine fonts to be the one passed in.
-
-    This will run on Windows but it is not recommended on newer than Windows 7.
+    
+    This will run on Windows but it is not recommended to try on newer than Windows 7.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
     with NamedTemporaryFile(mode='w+',
@@ -2079,6 +2081,7 @@ def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool =
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('-e',
               '--exe',
               help='EXE to patch.',
@@ -2098,3 +2101,34 @@ def patch_ultraiso_font_main(exe: Path | None = None,
             exe = (Path(os.environ.get('PROGRAMFILES(X86)', os.environ.get('PROGRAMFILES', ''))) /
                    'UltraISO' / 'UltraISO.exe')
     patch_ultraiso_font(exe, font)
+
+
+@click.command(context_settings=CONTEXT_SETTINGS)
+@click.argument('uuids', nargs=-1)
+@click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
+@click.option('-a', '--all', 'all_', is_flag=True, help='Reset all enrolments.')
+@click.option('-f', '--force', is_flag=True, help='Apply the changes.')
+@click.option('--crypttab',
+              type=click.Path(path_type=Path, dir_okay=False, exists=True),
+              help='File to read from when passing --all.',
+              default='/etc/crypttab')
+def reset_tpm_enrollments_main(uuids: Sequence[str],
+                               crypttab: Path,
+                               *,
+                               all_: bool = False,
+                               debug: bool = False,
+                               force: bool = True) -> None:
+    logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
+    if all_:
+        uuids = [
+            x[1][5:] for x in (re.split(r'\s+', line, maxsplit=4)
+                               for line in (li.strip() for li in crypttab.read_text().splitlines())
+                               if not line.startswith('#'))
+            if 'tpm2-device=auto' in x[3] and 'UUID=' in x[1]
+        ]
+    for uuid in uuids:
+        try:
+            reset_tpm_enrollment(uuid, dry_run=not force)
+        except MultipleKeySlots:
+            log.exception('Cannot reset TPM enrolment for %s.', uuid)
+            continue
