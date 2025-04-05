@@ -357,3 +357,19 @@ def fix_apostrophes(word: str) -> str:
         return word
     return re.sub(r"[A-Za-z]+('[A-Za-z]+)?",
                   lambda mo: f'{mo.group(0)[0].upper()}{mo.group(0)[1:].lower()}', word)
+
+
+def rev_sentence(w: str) -> str:
+    """REverse a sentence by word."""
+    ending = m.group(1) if (m := re.search(r'([\.\!\?])$', w)) else '.'
+    lst = list(reversed(re.sub(r'([\.\!\?:;])$', '', w).split()))
+    lst[0] = lst[0].title()
+    lst[-1] = lst[-1].lower()
+    fixed_i = re.sub(r'(\b)i(\b)', r'\1I\2', ' '.join(lst))
+    return f'{fixed_i}{ending}'
+
+
+def rev_sentences(sentences: Sequence[str]) -> Iterator[str]:
+    """Reverse sentences by word."""
+    for line in (x.strip() for x in sentences if x.strip()):
+        yield rev_sentence(line)
