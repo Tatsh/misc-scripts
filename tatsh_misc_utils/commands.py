@@ -40,6 +40,7 @@ import yaml
 from tatsh_misc_utils import naming
 
 from .adp import calculate_salary
+from .chromium import fix_chromium_pwa_icon
 from .gentoo import (
     DEFAULT_ACTIVE_KERNEL_NAME,
     DEFAULT_KERNEL_LOCATION,
@@ -121,7 +122,6 @@ from .utils import (
 from .windows import Field, make_font_entry
 from .www import (
     check_bookmarks_html_urls,
-    fix_chromium_pwa_icon,
     generate_html_dir_tree,
     upload_to_imgbb,
     where_from,
@@ -2061,6 +2061,7 @@ def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool =
                             encoding='utf-8') as f:
         f.write('Windows Registry Editor Version 5.00\n\n')
         f.write(r'[HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics]')
+        f.write('\n')
         f.write(''.join(make_font_entry(item, font, dpi=dpi) for item in Field))
         f.write('\n')
     cmd = ('wine', 'regedit', '/S', f.name) if not IS_WINDOWS else ('regedit', '/S', f.name)

@@ -29,6 +29,7 @@ import xz
 
 from .media import CD_FRAMES
 from .system import IS_WINDOWS, kill_wine
+from .windows import CharacterSet, ClipPrecision, Family, OutputPrecision, Pitch, Quality, Weight
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -67,7 +68,6 @@ def add_cdda_times(times: Iterable[str] | None) -> str | None:
     return f'{trunc(minutes):02d}:{trunc(seconds):02d}:{trunc(frames):02d}'
 
 
-WineWindowsVersion = Literal['11', '10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']
 WINETRICKS_VERSION_MAPPING = {
     '11': 'win11',
     '10': 'win10',
@@ -82,9 +82,7 @@ WINETRICKS_VERSION_MAPPING = {
     '98': 'win98',
     '95': 'win95'
 }
-
 DEFAULT_DPI = 96
-
 _CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS = {
     'Arial Baltic,186', 'Arial CE,238', 'Arial CYR,204', 'Arial Greek,161', 'Arial TUR,162',
     'Courier New Baltic,186', 'Courier New CE,238', 'Courier New CYR,204', 'Courier New Greek,161',
@@ -96,9 +94,7 @@ _CREATE_WINE_PREFIX_NOTO_FONT_REPLACEMENTS = {
 _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES = {
     'Caption', 'Icon', 'Menu', 'Message', 'SmCaption', 'Status'
 }
-FW_BOLD = 700
-FW_NORMAL = 400
-DEFAULT_CHARSET = 1
+WineWindowsVersion = Literal['11', '10', 'vista', '2k3', '7', '8', 'xp', '81', '2k', '98', '95']
 
 
 class LOGFONTW(NamedTuple):
@@ -319,34 +315,25 @@ def create_wine_prefix(prefix_name: str,
             sp.run(cmd, env=env, check=True)
         face_name = list('Noto Sans Regular'.encode('utf-16le')) + (30 * [0])
         for entry_name in _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES:
-            cmd = (
-                'wine',
-                'reg',
-                'add',
-                r'HKCU\Control Panel\Desktop\WindowMetrics',
-                '/t',
-                'REG_BINARY',
-                '/v',
-                f'{entry_name}Font',
-                '/d',
-                ''.join(f'{x:02x}' for x in struct.pack(
-                    '=5L8B64B',
-                    *LOGFONTW(
-                        lfHeight=0xfffffff4,
-                        lfWidth=0,
-                        lfEscapement=0,
-                        lfOrientation=0,
-                        lfWeight=FW_BOLD if entry_name == 'Caption' else FW_NORMAL,
-                        lfItalic=False,
-                        lfUnderline=False,
-                        lfStrikeOut=False,
-                        lfCharSet=DEFAULT_CHARSET,
-                        lfOutPrecision=0,  # OUT_DEFAULT_PRECIS
-                        lfClipPrecision=0,  # OUT_DEFAULT_CLIP_PRECIS
-                        lfQuality=0,  # DEFAULT_QUALITY
-                        lfPitchAndFamily=0x22),  # VARIABLE_PITCH | FF_SWISS
-                    *face_name)),
-                '/f')
+            cmd = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop\WindowMetrics', '/t',
+                   'REG_BINARY', '/v', f'{entry_name}Font', '/d',
+                   ''.join(f'{x:02x}' for x in struct.pack(
+                       '=5L8B64B',
+                       *LOGFONTW(
+                           lfHeight=0xfffffff4,
+                           lfWidth=0,
+                           lfEscapement=0,
+                           lfOrientation=0,
+                           lfWeight=Weight.FW_BOLD if entry_name == 'Caption' else Weight.FW_NORMAL,
+                           lfItalic=False,
+                           lfUnderline=False,
+                           lfStrikeOut=False,
+                           lfCharSet=CharacterSet.DEFAULT_CHARSET,
+                           lfOutPrecision=OutputPrecision.OUT_DEFAULT_PRECIS,
+                           lfClipPrecision=ClipPrecision.CLIP_DEFAULT_PRECIS,
+                           lfQuality=Quality.DEFAULT_QUALITY,
+                           lfPitchAndFamily=Pitch.VARIABLE_PITCH | Family.FF_SWISS), *face_name)),
+                   '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True)
     if asio:

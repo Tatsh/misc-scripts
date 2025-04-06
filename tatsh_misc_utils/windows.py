@@ -331,7 +331,7 @@ def make_font_entry(field: Field,
     if len(name) > LF_FULLFACESIZE:
         raise NameTooLong(name)
     height = -((font_size_pt * dpi) // DEFAULT_DPI)
-    packed = pack('<5l8b64s', height, width, escapement, orientation, weight, italic, underline,
+    packed = pack('=5L8B64B', height, width, escapement, orientation, weight, italic, underline,
                   strike_out, char_set, out_precision, clip_precision, quality, pitch_and_family,
                   name[:LF_FULLFACESIZE].encode('utf-16le').ljust(LF_FULLFACESIZE, b'\0'))
     lines: list[str] = []
