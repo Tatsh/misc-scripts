@@ -282,7 +282,7 @@ def create_wine_prefix(prefix_name: str,
         cmd = ('setup_vkd3d_proton.sh', 'install')
         log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
         sp.run(cmd, env=env, check=True)
-        version = '0.8.1'
+        version = '0.8.3'
         nvidia_libs = 'nvidia-libs'
         prefix = f'{nvidia_libs}-{version}'
         r = requests.get(
