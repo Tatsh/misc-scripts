@@ -29,7 +29,16 @@ import xz
 
 from .media import CD_FRAMES
 from .system import IS_WINDOWS, kill_wine
-from .windows import CharacterSet, ClipPrecision, Family, OutputPrecision, Pitch, Quality, Weight
+from .windows import (
+    LF_FULLFACESIZE,
+    CharacterSet,
+    ClipPrecision,
+    Family,
+    OutputPrecision,
+    Pitch,
+    Quality,
+    Weight,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
@@ -114,22 +123,23 @@ class LOGFONTW(NamedTuple):
 
 
 Q4WINE_DEFAULT_ICONS: tuple[tuple[str, str, str, str, str, str], ...] = (
-    ('', 'winecfg.exe', 'winecfg', 'Configure the general settings for Wine', 'system', 'winecfg'),
-    ('--backend=user cmd', 'wineconsole', 'wineconsole',
-     'Wineconsole is similar to wine command wcmd', 'system', 'wineconsole'),
-    ('', 'uninstaller.exe', 'uninstaller', 'Uninstall Windows programs under Wine properly',
-     'system', 'uninstaller'),
-    ('', 'regedit.exe', 'regedit', 'Wine registry editor', 'system', 'regedit'),
+    ('', 'control.exe', 'control', 'Wine control panel', 'system', 'Control Panel'),
+    ('', 'eject.exe', 'eject', 'Wine CD eject tool', 'system', 'Eject'),
     ('', 'explorer.exe', 'explorer', 'Browse the files in the virtual Wine Drive', 'system',
-     'explorer'),
-    ('', 'eject.exe', 'eject', 'Wine CD eject tool', 'system', 'eject'),
-    ('', 'wordpad.exe', 'wordpad', 'Wine wordpad text editor', 'system', 'wordpad'),
-    ('', 'taskmgr.exe', 'taskmgr', 'Wine task manager', 'system', 'taskmgr'),
-    ('', 'winemine.exe', 'winemine', 'Wine sweeper game', 'system', 'winemine'),
-    ('', 'oleview.exe', 'wordpad', 'Wine OLE/COM object viewer', 'system', 'oleview'),
-    ('', 'notepad.exe', 'notepad', 'Wine notepad text editor', 'system', 'notepad'),
-    ('', 'iexplore.exe', 'iexplore', 'Wine internet explorer', 'system', 'iexplore'),
-    ('', 'control.exe', 'control', 'Wine control panel', 'system', 'control'),
+     'Explorer'),
+    ('', 'iexplore.exe', 'iexplore', 'Wine internet browser', 'system', 'Internet Explorer'),
+    ('', 'notepad.exe', 'notepad', 'Wine notepad text editor', 'system', 'Notepad'),
+    ('', 'oleview.exe', 'oleview', 'Wine OLE/COM object viewer', 'system', 'OLE Viewer'),
+    ('', 'regedit.exe', 'regedit', 'Wine registry editor', 'system', 'Registry Editor'),
+    ('', 'taskmgr.exe', 'taskmgr', 'Wine task manager', 'system', 'Task Manager'),
+    ('', 'uninstaller.exe', 'uninstaller', 'Uninstall Windows programs under Wine properly',
+     'system', 'Uninstaller'),
+    ('', 'winecfg.exe', 'winecfg', 'Configure the general settings for Wine', 'system',
+     'Configuration'),
+    ('', 'wineconsole', 'wineconsole', 'Wineconsole is similar to wine command wcmd', 'system',
+     'Console'),
+    ('', 'winemine.exe', 'winemine', 'Wine sweeper game', 'system', 'Winemine'),
+    ('', 'wordpad.exe', 'wordpad', 'Wine wordpad text editor', 'system', 'WordPad'),
 )
 
 
@@ -313,27 +323,36 @@ def create_wine_prefix(prefix_name: str,
                    'REG_SZ', '/v', font_name, '/d', 'Noto Sans', '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True)
-        face_name = list('Noto Sans Regular'.encode('utf-16le')) + (30 * [0])
+        face_name = 'Noto Sans'.encode('utf-16le').ljust(LF_FULLFACESIZE, b'\0')
         for entry_name in _CREATE_WINE_PREFIX_NOTO_REGISTRY_ENTRIES:
-            cmd = ('wine', 'reg', 'add', r'HKCU\Control Panel\Desktop\WindowMetrics', '/t',
-                   'REG_BINARY', '/v', f'{entry_name}Font', '/d',
-                   ''.join(f'{x:02x}' for x in struct.pack(
-                       '=5L8B64B',
-                       *LOGFONTW(
-                           lfHeight=0xfffffff4,
-                           lfWidth=0,
-                           lfEscapement=0,
-                           lfOrientation=0,
-                           lfWeight=Weight.FW_BOLD if entry_name == 'Caption' else Weight.FW_NORMAL,
-                           lfItalic=False,
-                           lfUnderline=False,
-                           lfStrikeOut=False,
-                           lfCharSet=CharacterSet.DEFAULT_CHARSET,
-                           lfOutPrecision=OutputPrecision.OUT_DEFAULT_PRECIS,
-                           lfClipPrecision=ClipPrecision.CLIP_DEFAULT_PRECIS,
-                           lfQuality=Quality.DEFAULT_QUALITY,
-                           lfPitchAndFamily=Pitch.VARIABLE_PITCH | Family.FF_SWISS), *face_name)),
-                   '/f')
+            cmd = (
+                'wine',
+                'reg',
+                'add',
+                r'HKCU\Control Panel\Desktop\WindowMetrics',
+                '/t',
+                'REG_BINARY',
+                '/v',
+                f'{entry_name}Font',
+                '/d',
+                ''.join(f'{x:02x}' for x in struct.pack(
+                    '=5l8B64B',
+                    *LOGFONTW(
+                        lfHeight=-12,  # Size 9 pt
+                        lfWidth=0,
+                        lfEscapement=0,
+                        lfOrientation=0,
+                        lfWeight=Weight.FW_BOLD if entry_name == 'Caption' else Weight.FW_NORMAL,
+                        lfItalic=False,
+                        lfUnderline=False,
+                        lfStrikeOut=False,
+                        lfCharSet=CharacterSet.DEFAULT_CHARSET,
+                        lfOutPrecision=OutputPrecision.OUT_DEFAULT_PRECIS,
+                        lfClipPrecision=ClipPrecision.CLIP_DEFAULT_PRECIS,
+                        lfQuality=Quality.DEFAULT_QUALITY,
+                        lfPitchAndFamily=Pitch.VARIABLE_PITCH | Family.FF_SWISS),
+                    *face_name)),
+                '/f')
             log.debug('Running: %s', ' '.join(quote(x) for x in cmd))
             sp.run(cmd, env=env, check=True)
     if asio:
@@ -515,7 +534,7 @@ def kill_processes_by_name(name: str,
     Terminate processes by name.
 
     Alternative to using `psutil <https://pypi.org/project/psutil/>`_.
-    
+
     Parameters
     ----------
     name : str
@@ -562,7 +581,7 @@ def kill_processes_by_name(name: str,
 class DataAdapter(BaseAdapter):
     """
     Adapter for requests to handle data: URLs.
-    
+
     Example use:
 
     .. code-block:: python

@@ -263,7 +263,7 @@ def make_font_entry(field: Field,
                     clip_precision: ClipPrecision = ClipPrecision.CLIP_DEFAULT_PRECIS,
                     default_setting: bool = False,
                     header: bool = False,
-                    dpi: int = 96,
+                    dpi: int = DEFAULT_DPI,
                     escapement: int = 0,
                     font_size_pt: int = 9,
                     italic: bool = False,
@@ -300,7 +300,7 @@ def make_font_entry(field: Field,
     header : bool
         If ``True``, the header will be included in the output.
     dpi : int
-        The DPI to use.
+        The DPI to use. Even if the DPI setting is higher, this should usually be left as ``96``.
     escapement : int
         The escapement to use.
     font_size_pt : int
@@ -331,9 +331,9 @@ def make_font_entry(field: Field,
     if len(name) > LF_FULLFACESIZE:
         raise NameTooLong(name)
     height = -((font_size_pt * dpi) // DEFAULT_DPI)
-    packed = pack('=5L8B64B', height, width, escapement, orientation, weight, italic, underline,
+    packed = pack('=5l8B64B', height, width, escapement, orientation, weight, italic, underline,
                   strike_out, char_set, out_precision, clip_precision, quality, pitch_and_family,
-                  name[:LF_FULLFACESIZE].encode('utf-16le').ljust(LF_FULLFACESIZE, b'\0'))
+                  *name[:LF_FULLFACESIZE].encode('utf-16le').ljust(LF_FULLFACESIZE, b'\0'))
     lines: list[str] = []
     line = f'"{field}"=hex:'
     for n in packed:

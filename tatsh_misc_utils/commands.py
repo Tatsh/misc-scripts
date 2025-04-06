@@ -119,7 +119,7 @@ from .utils import (
     secure_move_path,
     unregister_wine_file_associations,
 )
-from .windows import Field, make_font_entry
+from .windows import DEFAULT_DPI, Field, make_font_entry
 from .www import (
     check_bookmarks_html_urls,
     generate_html_dir_tree,
@@ -888,7 +888,7 @@ def slug_rename_main(filenames: tuple[str, ...],
 
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.argument('prefix_name')
-@click.option('-D', '--dpi', default=96, type=int, help='DPI.')
+@click.option('-D', '--dpi', default=DEFAULT_DPI, type=int, help='DPI.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
 @click.option('--disable-explorer',
               is_flag=True,
@@ -936,7 +936,7 @@ def mkwineprefix_main(prefix_name: str,
                       debug: bool = False,
                       disable_explorer: bool = False,
                       disable_services: bool = False,
-                      dpi: int = 96,
+                      dpi: int = DEFAULT_DPI,
                       dxva_vaapi: bool = False,
                       eax: bool = False,
                       gtk: bool = False,
@@ -2043,14 +2043,21 @@ def fix_chromium_pwa_icon_main(config_path: Path,
 
 
 @click.command(context_settings=CONTEXT_SETTINGS)
-@click.option('--dpi', default=96, type=int, help='DPI.')
+@click.option('--dpi',
+              default=DEFAULT_DPI,
+              type=int,
+              help='DPI. This should generally be left as 96.')
 @click.option('-d', '--debug', is_flag=True, help='Enable debug output.')
-@click.option('-f', '--font', default='Noto Sans Regular', help='Font to use.')
+@click.option('-f', '--font', default='Noto Sans', help='Font to use.')
 @click.option('-s', '--font-size', default=9, type=int, help='Font size in points.')
-def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool = False) -> None:
+def set_wine_fonts_main(dpi: int = DEFAULT_DPI,
+                        font: str = 'Noto Sans',
+                        font_size: int = 9,
+                        *,
+                        debug: bool = False) -> None:
     """
     Set all Wine fonts to be the one passed in.
-    
+
     This will run on Windows but it is not recommended to try on newer than Windows 7.
     """
     logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
@@ -2062,7 +2069,8 @@ def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool =
         f.write('Windows Registry Editor Version 5.00\n\n')
         f.write(r'[HKEY_CURRENT_USER\Control Panel\Desktop\WindowMetrics]')
         f.write('\n')
-        f.write(''.join(make_font_entry(item, font, dpi=dpi) for item in Field))
+        f.write(''.join(
+            make_font_entry(item, font, dpi=dpi, font_size_pt=font_size) for item in Field))
         f.write('\n')
     cmd = ('wine', 'regedit', '/S', f.name) if not IS_WINDOWS else ('regedit', '/S', f.name)
     log.debug('Registry file content:\n%s', Path(f.name).read_text(encoding='utf-8').strip())
@@ -2077,6 +2085,7 @@ def set_wine_fonts_main(dpi: int = 96, font: str = 'Noto Sans', *, debug: bool =
     env['DISPLAY'] = os.environ.get('DISPLAY', '')
     env['XAUTHORITY'] = os.environ.get('XAUTHORITY', '')
     env['WINEDEBUG'] = 'fixme-all'
+    env['PATH'] = os.environ.get('PATH', '')
     sp.run(cmd, check=True, env=env)
     Path(f.name).unlink()
     click.echo('Fonts set. Restart Wine applications for changes to take effect.')
