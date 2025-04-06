@@ -311,7 +311,7 @@ def fix_apostrophes(word: str) -> str:
 
 
 def rev_sentence(w: str) -> str:
-    """REverse a sentence by word."""
+    """Reverse a sentence by word."""
     ending = m.group(1) if (m := re.search(r'([\.\!\?])$', w)) else '.'
     lst = list(reversed(re.sub(r'([\.\!\?:;])$', '', w).split()))
     lst[0] = lst[0].title()
