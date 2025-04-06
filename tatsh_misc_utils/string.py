@@ -9,7 +9,6 @@ import re
 import string
 
 from yt_dlp.utils import sanitize_filename
-import requests
 
 from .itertools import chunks
 from .typing import StrPath, assert_not_none
@@ -17,9 +16,9 @@ from .typing import StrPath, assert_not_none
 if TYPE_CHECKING:
     from collections.abc import Iterator, Sequence
 
-__all__ = ('fullwidth_to_narrow', 'generate_chrome_user_agent', 'get_latest_chrome_major_version',
-           'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url', 'sanitize', 'slugify',
-           'strip_ansi', 'strip_ansi_if_no_colors', 'underscorize', 'unix_path_to_wine')
+__all__ = ('fullwidth_to_narrow', 'hexstr2bytes', 'hexstr2bytes_generator', 'is_ascii', 'is_url',
+           'sanitize', 'slugify', 'strip_ansi', 'strip_ansi_if_no_colors', 'underscorize',
+           'unix_path_to_wine')
 
 ORD_MAX = 128
 STRIP_ANSI_PATTERN = re.compile(r'\x1B\[\d+(;\d+){0,2}m')
@@ -94,56 +93,6 @@ def unix_path_to_wine(path: StrPath) -> str:
     except FileNotFoundError:
         path = Path.cwd() / path
     return f'Z:{path}'.replace('/', '\\')
-
-
-@cache
-def get_last_chrome_major_version() -> str:
-    """
-    Get last major Chrome version from the profile directory.
-
-    Tries the following, in order:
-
-    * Chrome Beta
-    * Chrome
-    * Chrome Canary
-    * Chromium
-
-    Returns
-    -------
-    str
-        If no ``Last Version`` file is found, returns empty string.
-    """
-    for location in ('~/.config/google-chrome-beta', '~/AppData/Local/Google/Chrome Beta/User Data'
-                     '~/Library/Application Support/Google/Chrome Beta', '~/.config/google-chrome',
-                     '~/AppData/Local/Google/Chrome/User Data',
-                     '~/Library/Application Support/Google/Chrome',
-                     '~/.config/google-chrome-unstable',
-                     '~/AppData/Local/Google/Chrome Canary/User Data',
-                     '~/Library/Application Support/Google/Chrome Canary', '~/.config/chromium',
-                     '~/AppData/Local/Google/Chromium/User Data',
-                     '~/Library/Application Support/Google/Chromium'):
-        if (p := (Path(location).expanduser() / 'Last Version')).exists():
-            return p.read_text().split('.', 1)[0]
-    return ''
-
-
-@cache
-def get_latest_chrome_major_version() -> str:
-    """Get the latest Chrome major version."""
-    return cast(
-        'str',
-        requests.get(
-            ('https://versionhistory.googleapis.com/v1/chrome/platforms/win/channels/stable/'
-             'versions'),
-            timeout=5).json()['versions'][0]['version'].split('.')[0])
-
-
-@cache
-def generate_chrome_user_agent(os: str = 'Windows NT 10.0; Win64; x64') -> str:
-    """Get a Chrome user agent."""
-    last_major = get_last_chrome_major_version() or get_latest_chrome_major_version()
-    return (f'Mozilla/5.0 ({os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{last_major}.0.0.0'
-            ' Safari/537.36')
 
 
 @cache
