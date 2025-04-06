@@ -1,4 +1,5 @@
 """Uncategorised utilities."""
+# ruff: noqa: N815
 from __future__ import annotations
 
 from http import HTTPStatus
@@ -101,19 +102,19 @@ DEFAULT_CHARSET = 1
 
 
 class LOGFONTW(NamedTuple):
-    lfHeight: int  # noqa: N815
-    lfWidth: int  # noqa: N815
-    lfEscapement: int  # noqa: N815
-    lfOrientation: int  # noqa: N815
-    lfWeight: int  # noqa: N815
-    lfItalic: bool  # noqa: N815
-    lfUnderline: bool  # noqa: N815
-    lfStrikeOut: bool  # noqa: N815
-    lfCharSet: int  # noqa: N815
-    lfOutPrecision: int  # noqa: N815
-    lfClipPrecision: int  # noqa: N815
-    lfQuality: int  # noqa: N815
-    lfPitchAndFamily: int  # noqa: N815
+    lfHeight: int
+    lfWidth: int
+    lfEscapement: int
+    lfOrientation: int
+    lfWeight: int
+    lfItalic: bool
+    lfUnderline: bool
+    lfStrikeOut: bool
+    lfCharSet: int
+    lfOutPrecision: int
+    lfClipPrecision: int
+    lfQuality: int
+    lfPitchAndFamily: int
 
 
 Q4WINE_DEFAULT_ICONS: tuple[tuple[str, str, str, str, str, str], ...] = (
@@ -374,8 +375,6 @@ def create_wine_prefix(prefix_name: str,
             for dir_name in ('system', 'autostart', 'import'):
                 c.execute('INSERT INTO dir (name, prefix_id) VALUES (?, ?)', (dir_name, prefix_id))
             for args, exec_, icon_path, desc, folder, display_name in Q4WINE_DEFAULT_ICONS:
-                params = (args or None, exec_, icon_path, desc, folder, prefix_id, display_name,
-                          prefix_id)
                 c.execute(
                     """INSERT INTO icon (
     cmdargs, exec, icon_path, desc, dir_id, name, prefix_id, nice)
@@ -383,7 +382,7 @@ def create_wine_prefix(prefix_name: str,
         ?, ?, ?, ?, (
             SELECT id FROM dir WHERE name = ? AND prefix_id = ?
         ), ?, ?, 0
-    )""", params)
+    )""", (args or None, exec_, icon_path, desc, folder, prefix_id, display_name, prefix_id))
             c.execute('DELETE FROM logging WHERE prefix_id = ?', (prefix_id,))
     return target
 
