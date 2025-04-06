@@ -1,3 +1,4 @@
+
 abbrev
 abspath
 acodec
@@ -106,6 +107,8 @@ cputype
 crit
 crossorigin
 cryptenroll
+cryptsetup
+crypttab
 cscript
 cuvid
 cygpath
@@ -287,6 +290,8 @@ kconfig
 kdeglobals
 kdialog
 keepends
+keyslot
+keyslots
 khtml
 killall
 klipper
