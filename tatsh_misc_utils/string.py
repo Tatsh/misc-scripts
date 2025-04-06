@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from functools import cache
+from itertools import batched, takewhile
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 import os
@@ -10,7 +11,6 @@ import string
 
 from yt_dlp.utils import sanitize_filename
 
-from .itertools import chunks
 from .typing import StrPath, assert_not_none
 
 if TYPE_CHECKING:
@@ -55,13 +55,15 @@ def underscorize(s: str) -> str:
 @cache
 def is_ascii(s: Sequence[str]) -> bool:
     """Check if a string consists of only ASCII characters."""
-    return len(s) == len(''.join(y for y in s if ord(y) < ORD_MAX))
+    return len(s) == len(list(takewhile(lambda x: ord(x) < ORD_MAX, s)))
 
 
 def hexstr2bytes_generator(s: str) -> Iterator[int]:
     """Convert a hex string such as ``"01020a"`` to integers."""
-    for hex_num in chunks(s, 2):
-        yield int(hex_num, 16)
+    for hex_num in batched(s, 2):
+        if len(hex_num) != 2:  # noqa: PLR2004
+            raise ValueError(hex_num)
+        yield int(''.join(hex_num), 16)
 
 
 def hexstr2bytes(s: str) -> bytes:
