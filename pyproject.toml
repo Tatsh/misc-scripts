@@ -70,6 +70,7 @@ python-xz = "^0.5.0"
 pyyaml = "^6.0.2"
 requests = "^2.32.3"
 send2trash = "^1.8.3"
+types-binaryornot = "^0.4.0.20250507"
 yt-dlp = "^2025.3.25"
 
 [tool.poetry.dependencies.gitpython]
@@ -105,7 +106,6 @@ unidecode = ["unidecode"]
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-binaryornot-stubs = "^0.0.3"
 cffconvert = "^2.0.0"
 commitizen = "^4.4.1"
 mypy = "^1.15.0"
