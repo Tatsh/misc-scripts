@@ -4,6 +4,11 @@
 
 Random scripts I make and might still use.
 
+## Deprecation notice
+
+This repository is deprecated. Visit [deltona](https://github.com/Tatsh/deltona) to see the
+successor project.
+
 ## Poetry usage
 
 ```shell
